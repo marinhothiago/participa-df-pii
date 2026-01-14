@@ -1,0 +1,24 @@
+# Ignora ambiente virtual local
+venv/
+.git/
+__pycache__/
+data/output/
+.ipynb_checkpoints/
+
+# Ignora Git
+.git
+.gitignore
+
+# Ignora dados e caches
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.cache
+data/
+outputs/
+resultados/
+AMOSTRA_e-SIC.xlsx
+resultado_hackathon.xlsx
