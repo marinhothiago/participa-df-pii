@@ -338,12 +338,12 @@ class PIIDetector:
                             if self._deve_ignorar_nome(text, ent.start_char):
                                 continue
                             if not any(f['valor'] == ent.text for f in findings):
-                                findings.append({"tipo": "IA_PER", "valor": ent.text, "conf": 0.80})
+                                findings.append({"tipo": "NOME_POR_IA", "valor": ent.text, "conf": 0.80})
             except: pass
 
         pesos = {
             "CPF": 5, "RG_CNH": 5, "EMAIL": 4, "TELEFONE": 4, 
-            "ENDERECO_RESIDENCIAL": 4, "NOME_PESSOAL": 4, "IA_PER": 3, "NOME_CONTEXTO": 4,
+            "ENDERECO_RESIDENCIAL": 4, "NOME_PESSOAL": 4, "NOME_POR_IA": 3, "NOME_CONTEXTO": 4,
             "PASSAPORTE": 5, "CONTA_BANCARIA": 5, "PIX": 5
         }
         
@@ -361,4 +361,6 @@ class PIIDetector:
         is_pii = max_score >= 3
         risco_map = {5: "CRÍTICO", 4: "ALTO", 3: "MODERADO", 0: "SEGURO"}
         
-        return is_pii, pii_relevantes, risco_map.get(max_score, "BAIXO"), float(max_score)
+        # Normalizar confiança para 0-1 (max_score vai de 0 a 5)
+        confidence = float(max_score) / 5.0 if max_score > 0 else 0.0
+        return is_pii, pii_relevantes, risco_map.get(max_score, "BAIXO"), confidence

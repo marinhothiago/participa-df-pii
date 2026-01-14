@@ -9,14 +9,12 @@ interface ConfidenceBarProps {
 
 /**
  * Barra de confiança com preenchimento verde sólido
- * O preenchimento segue a porcentagem de confiança
+ * O preenchimento segue a porcentagem de confiança (0-100%)
  * 
- * Regra especial: PÚBLICO com prob 0 = 99% (Certeza de Segurança)
+ * Recebe valor entre 0-1 do backend
  */
 export function ConfidenceBar({ value, classification, className, showLabel = true }: ConfidenceBarProps) {
-  // Normalizar confiança: se PÚBLICO e probabilidade 0, tratar como 0.99
-  const normalizedValue = classification === 'PÚBLICO' && value === 0 ? 0.99 : value;
-  const percentage = normalizedValue * 100;
+  const percentage = value * 100;
   
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -26,14 +24,14 @@ export function ConfidenceBar({ value, classification, className, showLabel = tr
         <div 
           className="h-full rounded-full transition-all duration-300"
           style={{ 
-            width: `${percentage}%`,
+            width: `${Math.min(percentage, 100)}%`,
             backgroundColor: 'hsl(120, 60%, 40%)'
           }}
         />
       </div>
       {showLabel && (
         <span className="text-xs font-medium text-muted-foreground w-10 text-right">
-          {percentage.toFixed(0)}%
+          {Math.min(percentage, 100).toFixed(0)}%
         </span>
       )}
     </div>
@@ -49,11 +47,9 @@ export function getConfidenceColor(): string {
 
 /**
  * Normaliza a probabilidade para exibição
- * Se classificação é PÚBLICO e probabilidade é 0, retorna 0.99
+ * Backend retorna valor entre 0-1, apenas multiplica por 100 para exibir %
  */
-export function normalizeConfidence(probability: number, classification: string): number {
-  if (classification === 'PÚBLICO' && probability === 0) {
-    return 0.99;
-  }
-  return probability;
+export function normalizeConfidence(probability: number): number {
+  // Garante que o valor está entre 0-1
+  return Math.min(Math.max(probability, 0), 1);
 }

@@ -16,6 +16,25 @@ interface ResultsTableProps {
   pageSize?: number;
 }
 
+/**
+ * Mapeamento de tipos de PII para nomes amigáveis ao usuário
+ */
+const piiTypeLabels: Record<string, string> = {
+  'CPF': 'CPF',
+  'EMAIL': 'Email',
+  'TELEFONE': 'Telefone',
+  'TELEFONE_DDI': 'Telefone (DDI)',
+  'RG_CNH': 'RG/CNH',
+  'PASSAPORTE': 'Passaporte',
+  'CONTA_BANCARIA': 'Conta Bancária',
+  'PIX': 'Chave PIX',
+  'ENDERECO_RESIDENCIAL': 'Endereço',
+  'NOME_PESSOAL': 'Nome Pessoal',
+  'NOME_POR_IA': 'Nome (IA)',
+  'NOME_CONTEXTO': 'Nome em Contexto',
+  'CHAVE_PIX': 'Chave PIX'
+};
+
 export function ResultsTable({ results, pageSize = 5 }: ResultsTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedResult, setSelectedResult] = useState<BatchResult | null>(null);
@@ -154,7 +173,7 @@ export function ResultsTable({ results, pageSize = 5 }: ResultsTableProps) {
                       <div key={idx} className="flex items-center justify-between p-2 bg-destructive/5 rounded-lg border border-destructive/20">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium px-2 py-0.5 bg-destructive/10 text-destructive rounded">
-                            {entity.type}
+                            {piiTypeLabels[entity.type] || entity.type}
                           </span>
                           <span className="text-sm font-mono text-foreground">{entity.value}</span>
                         </div>

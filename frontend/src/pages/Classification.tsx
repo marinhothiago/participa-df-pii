@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { FileDropzone } from '@/components/FileDropzone';
 import { KPICard } from '@/components/KPICard';
 import { ExportButton } from '@/components/ExportButton';
-import { ConfidenceBar, normalizeConfidence } from '@/components/ConfidenceBar';
+import { ConfidenceBar } from '@/components/ConfidenceBar';
 import { ResultsLegend } from '@/components/ResultsLegend';
 import { AnalysisSkeleton } from '@/components/AnalysisSkeleton';
 import { ApiWakingUpMessage } from '@/components/ApiWakingUpMessage';
@@ -165,12 +165,10 @@ export function Classification() {
   const getClassification = (result: AnalysisResult) => {
     return result.classificacao;
   };
-
   const getProbability = (result: AnalysisResult) => {
     const prob = result.confianca ?? 0;
-    const classification = getClassification(result);
-    // Normaliza: PÚBLICO com 0% retorna 99%
-    return normalizeConfidence(prob, classification);
+    // Backend retorna confiança já normalizada entre 0-1
+    return prob;
   };
 
   const getDetails = (result: AnalysisResult) => {
@@ -526,16 +524,11 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        {(() => {
-                          const normalizedProb = normalizeConfidence(item.probability, item.classification);
-                          return (
-                            <ConfidenceBar 
-                              value={normalizedProb} 
-                              classification={item.classification}
-                              className="justify-center"
-                            />
-                          );
-                        })()}
+                        <ConfidenceBar 
+                          value={item.probability}
+                          classification={item.classification}
+                          className="justify-center"
+                        />
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className={cn(

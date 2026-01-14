@@ -5,6 +5,25 @@ interface PIITypesChartProps {
   data: PIITypeCounts;
 }
 
+/**
+ * Mapeamento de tipos de PII para nomes amigáveis ao usuário
+ */
+const piiTypeLabels: Record<string, string> = {
+  'CPF': 'CPF',
+  'EMAIL': 'Email',
+  'TELEFONE': 'Telefone',
+  'TELEFONE_DDI': 'Telefone (DDI)',
+  'RG_CNH': 'RG/CNH',
+  'PASSAPORTE': 'Passaporte',
+  'CONTA_BANCARIA': 'Conta Bancária',
+  'PIX': 'Chave PIX',
+  'ENDERECO_RESIDENCIAL': 'Endereço',
+  'NOME_PESSOAL': 'Nome Pessoal',
+  'NOME_POR_IA': 'Nome (IA)',
+  'NOME_CONTEXTO': 'Nome em Contexto',
+  'CHAVE_PIX': 'Chave PIX'
+};
+
 export function PIITypesChart({ data }: PIITypesChartProps) {
   const colors = [
     'hsl(0, 80%, 40%)',
@@ -17,7 +36,11 @@ export function PIITypesChart({ data }: PIITypesChartProps) {
   ];
 
   const chartData = Object.entries(data)
-    .map(([name, count]) => ({ name, count }))
+    .map(([name, count]) => ({ 
+      name: piiTypeLabels[name] || name, 
+      count,
+      originalType: name 
+    }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 7);
 

@@ -175,9 +175,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     historyItems.forEach(item => {
       if (item.classification === 'PÚBLICO') {
         publicCount++;
-        // Para PÚBLICO com probabilidade 0, considerar como 0.99 (99% de certeza)
-        const normalizedProbability = item.probability === 0 ? 0.99 : item.probability;
-        totalConfidence += normalizedProbability;
+        // Usar probabilidade como recebida (já normalizada entre 0-1)
+        totalConfidence += item.probability;
       } else {
         nonPublicCount++;
         totalConfidence += item.probability;
