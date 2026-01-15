@@ -27,7 +27,7 @@ jobs:
       
       - name: Add HuggingFace remote
         run: |
-          git remote add hf https://marinhothiago:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/marinhothiago/participa-df-pii
+          git remote add hf https://marinhothiago:${{ secrets.HUGGINGFACE }}@huggingface.co/spaces/marinhothiago/participa-df-pii
       
       - name: Create subtree split
         run: |

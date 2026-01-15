@@ -552,11 +552,81 @@ Resposta esperada: {"status": "ok"}
 
 ---
 
+---
+
+## 🚀 Deploy Automático (CI/CD com GitHub Actions)
+
+O projeto implementa **deploy seletivo e automático** para cada componente:
+
+### 📤 Backend → HuggingFace Spaces
+
+**Gatilho:** Qualquer `git push` que modifique `/backend/**`
+
+```
+Você edita backend/ → git push origin main
+   ↓
+   GitHub Actions dispara deploy-hf.yml
+   ├─ Git subtree split (isola apenas backend/)
+   ├─ Autentica com secrets.HUGGINGFACE
+   └─ Push para HuggingFace Spaces
+   ↓
+   Backend atualizado em: https://huggingface.co/spaces/marinhothiago/participa-df-pii
+```
+
+### 🎨 Frontend → GitHub Pages
+
+**Gatilho:** Qualquer `git push` que modifique `/frontend/**`
+
+```
+Você edita frontend/ → git push origin main
+   ↓
+   GitHub Actions dispara deploy.yml
+   ├─ npm install
+   ├─ npm run build (Vite → /dist)
+   └─ Push para branch gh-pages
+   ↓
+   Frontend atualizado em: https://marinhothiago.github.io/desafio-participa-df/
+```
+
+### ⚙️ Configuração
+
+**Secret necessária:** `HUGGINGFACE` (token HF)
+
+1. GitHub Repo → Settings → Secrets and variables → Actions
+2. New repository secret
+3. Name: `HUGGINGFACE`
+4. Value: Token de https://huggingface.co/settings/tokens
+
+### 📊 Usar
+
+```bash
+# Atualizar backend
+git add backend/ && git commit -m "fix: detector" && git push origin main
+# ✅ HuggingFace atualizado em 5-10 min
+
+# Atualizar frontend
+git add frontend/ && git commit -m "feat: novo gráfico" && git push origin main
+# ✅ GitHub Pages atualizado em 3-5 min
+
+# Atualizar ambos
+git add . && git commit -m "feat: end-to-end" && git push origin main
+# ✅ Ambas rodam em paralelo
+```
+
+### 🔍 Monitorar
+
+- GitHub Actions: https://github.com/marinhothiago/desafio-participa-df/actions
+- Backend: https://marinhothiago-participa-df-pii.hf.space/
+- Frontend: https://marinhothiago.github.io/desafio-participa-df/
+
+---
+
 ## 🛠️ Tecnologias
 
 - **Backend:** FastAPI, spaCy (NLP PT), Transformers (BERT), Python 3.10+
 - **Frontend:** React 18, Vite, Tailwind CSS, Shadcn/UI, Recharts
 - **Deploy:** Docker (HuggingFace), GitHub Pages
+- **CI/CD:** GitHub Actions (workflows automáticos)
 
 - **Processamento Efêmero:** Nenhum dado pessoal é armazenado no banco de dados após a análise
 - **Anonimização em Lote:** Capacidade de processar grandes volumes de arquivos CSV/XLSX preservando o ID original para auditoria

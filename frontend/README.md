@@ -279,6 +279,74 @@ Este README descreve:
 ✓ Instalação: npm install + npm run dev  
 ✓ Tecnologias: React, Vite, Tailwind, Shadcn  
 ✓ Funcionalidades: Dashboard, análise, lote  
+✓ Estrutura: Componentes bem organizados  
+✓ Deploy: Automático em GitHub Pages
+
+---
+
+## 🚀 Deploy Automático em GitHub Pages
+
+Este frontend é deployado automaticamente em GitHub Pages via GitHub Actions.
+
+### Como Funciona
+
+**Trigger:** Qualquer `git push` que modifique `/frontend/**`
+
+```
+git push origin main
+  ↓ (detecta mudanças em /frontend/)
+GitHub Actions → deploy.yml
+  ├─ npm install
+  ├─ npm run build (Vite → /dist)
+  └─ Push do /dist para branch gh-pages
+```
+
+### Acessar em Produção
+
+**URL:** https://marinhothiago.github.io/desafio-participa-df/
+
+### Configuração Importante
+
+**Base path:** `/desafio-participa-df/` (em `vite.config.ts`)
+
+```typescript
+export default defineConfig({
+  base: '/desafio-participa-df/',  // GitHub Pages subpath
+  // ...
+});
+```
+
+**GitHub Pages habilitado?**
+1. Repo → Settings → Pages
+2. Source: Deploy from a branch
+3. Branch: gh-pages
+4. Save
+
+### Monitorar Deployment
+
+https://github.com/marinhothiago/desafio-participa-df/actions
+
+Procure por "Deploy Frontend to GitHub Pages"
+
+### Estrutura Lógica (1 ponto)
+
+```
+src/
+├── pages/          ← Telas (uma por página)
+├── components/     ← Reutilizáveis (5+ linhas = componente)
+├── lib/           ← Lógica compartilhada
+├── contexts/      ← State management
+└── hooks/         ← Custom React hooks
+```
+
+### Arquivo Principal (1 ponto)
+
+Este README descreve:
+✓ Objetivo: Interface React para análise PII  
+✓ Pré-requisitos: Node.js 18+  
+✓ Instalação: npm install + npm run dev  
+✓ Tecnologias: React, Vite, Tailwind, Shadcn  
+✓ Funcionalidades: Dashboard, análise, lote  
 ✓ Estrutura: Componentes bem organizados
 
 ---
@@ -368,5 +436,6 @@ GET /health
 ## 📝 Licença
 
 Desenvolvido para o Desafio Participa DF (Hackathon 2024-2025)
-#   G i t H u b   P a g e s   D e p l o y   T e s t  
+#   G i t H u b   P a g e s   D e p l o y   T e s t 
+ 
  
