@@ -18,13 +18,8 @@ interface ExportButtonProps {
 export function ExportButton({ data, disabled = false }: ExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
 
-  // Normaliza confiança: PÚBLICO com 0% deve exibir 99%
-  const normalizeConfidence = (probability: number, classification: string): number => {
-    if (classification === 'PÚBLICO' && probability === 0) {
-      return 0.99;
-    }
-    return probability;
-  };
+  // Usa função global centralizada
+  import { normalizeConfidence } from '@/components/ConfidenceBar';
 
   const formatDataForExport = () => {
     return data.map((item, index) => {

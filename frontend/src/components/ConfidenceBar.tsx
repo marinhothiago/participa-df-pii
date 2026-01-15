@@ -49,7 +49,14 @@ export function getConfidenceColor(): string {
  * Normaliza a probabilidade para exibição
  * Backend retorna valor entre 0-1, apenas multiplica por 100 para exibir %
  */
-export function normalizeConfidence(probability: number): number {
-  // Garante que o valor está entre 0-1
+/**
+ * Normaliza a probabilidade para exibição
+ * Se classificação for 'PÚBLICO' e probabilidade 0, retorna 0.99 (caso especial LAI)
+ * Caso contrário, garante valor entre 0-1
+ */
+export function normalizeConfidence(probability: number, classification?: string): number {
+  if (classification === 'PÚBLICO' && probability === 0) {
+    return 0.99;
+  }
   return Math.min(Math.max(probability, 0), 1);
 }
