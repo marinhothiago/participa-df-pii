@@ -1,27 +1,81 @@
+# ===== PYTHON =====
 # Ambiente Virtual
 venv/
 ENV/
 env/
 .venv/
+venv_*/
+.python-version
 
 # Caches de Python
 **/__pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pyw
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.so
 
-# Dados e Outputs (Não queremos subir dados sensíveis de teste)
+# ===== DADOS E OUTPUTS =====
+# Não queremos subir dados sensíveis de teste
 data/output/*
 !data/output/.gitkeep
 data/input/*.xlsx
 data/input/*.csv
+data/temp/*
+!data/temp/.gitkeep
 
-# Configurações de Ambiente e IDE
+# ===== CONFIGURAÇÕES E CREDENCIAIS =====
 .env
+.env.local
+.env.*.local
+*.pem
+*.key
+.env.prod
+.env.staging
+
+# ===== IDE E EDITOR =====
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.code-workspace
+.history/
+
+# ===== LOGS E BINÁRIOS =====
+*.log
+logs/
+ngrok.exe
+*.pid
+
+# ===== HUGGING FACE / DEPLOYMENT =====
+.huggingface/
+.cache/
+.wandb/
+
+# ===== TESTING =====
+.pytest_cache/
+.coverage
+htmlcov/
+.hypothesis/
+
+# ===== MLFLOW (se usar) =====
+mlruns/
+mlartifacts/
+
+# ===== MACOS =====
+.AppleDouble
+.LSOverride
+*.swp
 .DS_Store
 
-# Binários e Logs
-*.log
-ngrok.exe
+# ===== WINDOWS =====
+Thumbs.db
+desktop.ini

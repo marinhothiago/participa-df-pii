@@ -11,12 +11,16 @@ lerna-debug.log*
 node_modules/
 package-lock.json
 .npm
+dist/
+.turbo/
+.eslintcache
 
 # ===== BUILD OUTPUTS =====
 dist/
 build/
 .next/
 out/
+*.tsbuildinfo
 
 # ===== DESENVOLVIMENTO =====
 .env
@@ -34,17 +38,21 @@ Thumbs.db
 *.sublime-workspace
 *.sublime-project
 .history/
+.vscode-settings
 
 # ===== TESTING =====
 .coverage
 coverage/
 .pytest_cache/
+*.lcov
+.nyc_output/
 
 # ===== SYSTEM =====
 .DS_Store
 .AppleDouble
 .LSOverride
 Thumbs.db
+desktop.ini
 
 # ===== IDE =====
 .vscode
@@ -54,3 +62,9 @@ Thumbs.db
 # ===== MISC =====
 *.lock
 .cache/
+
+# ===== VITE =====
+.vite/
+
+# ===== BABELRC =====
+.babelrc.json

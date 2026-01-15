@@ -1,0 +1,30 @@
+# ===== GERAL =====
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.local
+
+# ===== VSCODE =====
+.vscode/
+*.code-workspace
+
+# ===== IDEA (JETBRAINS) =====
+.idea/
+*.iml
+
+# ===== OS =====
+.AppleDouble
+.LSOverride
+desktop.ini
+
+# ===== TEMP FILES =====
+*~
+*.swp
+*.swo
+.tmp/
+
+# ===== BUILD ARTIFACTS =====
+dist/
+build/
+out/
