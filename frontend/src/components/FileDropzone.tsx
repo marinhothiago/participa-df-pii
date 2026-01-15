@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
-import { Upload, FileSpreadsheet, X } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { validateBatchFile, downloadExampleCsv, BatchFileValidationResult } from '@/lib/validateBatchFile';
 
 interface FileDropzoneProps {
   onFileSelect: (file: File) => void;
@@ -12,6 +13,8 @@ interface FileDropzoneProps {
 export function FileDropzone({ onFileSelect, accept = '.csv,.xlsx', disabled }: FileDropzoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [exampleCsv, setExampleCsv] = useState<string | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -25,29 +28,44 @@ export function FileDropzone({ onFileSelect, accept = '.csv,.xlsx', disabled }: 
     setIsDragOver(false);
   }, []);
 
+
+  const handleFile = useCallback(async (file: File) => {
+    setError(null);
+    setExampleCsv(null);
+    const result: BatchFileValidationResult = await validateBatchFile(file);
+    if (result.valid) {
+      setSelectedFile(file);
+      setError(null);
+      setExampleCsv(null);
+      onFileSelect(file);
+    } else {
+      setSelectedFile(null);
+      setError(result.error);
+      setExampleCsv(result.exampleCsv);
+    }
+  }, [onFileSelect]);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
     if (disabled) return;
-
     const file = e.dataTransfer.files[0];
-    if (file && (file.name.endsWith('.csv') || file.name.endsWith('.xlsx'))) {
-      setSelectedFile(file);
-      onFileSelect(file);
+    if (file) {
+      handleFile(file);
     }
-  }, [disabled, onFileSelect]);
+  }, [disabled, handleFile]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
-      onFileSelect(file);
+      handleFile(file);
     }
-  }, [onFileSelect]);
+  }, [handleFile]);
 
   const clearFile = useCallback(() => {
     setSelectedFile(null);
+    setError(null);
+    setExampleCsv(null);
   }, []);
 
   return (
@@ -70,7 +88,6 @@ export function FileDropzone({ onFileSelect, accept = '.csv,.xlsx', disabled }: 
           disabled={disabled}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
         />
-        
         <div className="flex flex-col items-center gap-4">
           <div className={cn(
             'p-4 rounded-full transition-colors',
@@ -81,7 +98,6 @@ export function FileDropzone({ onFileSelect, accept = '.csv,.xlsx', disabled }: 
               isDragOver ? 'text-primary' : 'text-muted-foreground'
             )} />
           </div>
-          
           <div>
             <p className="text-base font-medium text-foreground">
               Arraste e solte seu arquivo aqui
@@ -90,14 +106,28 @@ export function FileDropzone({ onFileSelect, accept = '.csv,.xlsx', disabled }: 
               ou clique para selecionar
             </p>
           </div>
-          
           <p className="text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
             Formatos aceitos: CSV, XLSX
           </p>
         </div>
       </div>
 
-      {selectedFile && (
+      {error && (
+        <div className="flex flex-col items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg animate-fade-in">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="w-5 h-5" />
+            <span className="font-semibold">Erro no arquivo:</span>
+          </div>
+          <p className="text-sm text-destructive text-center">{error}</p>
+          {exampleCsv && (
+            <Button variant="outline" size="sm" onClick={downloadExampleCsv} className="mt-1">
+              Baixar exemplo CSV
+            </Button>
+          )}
+        </div>
+      )}
+
+      {selectedFile && !error && (
         <div className="flex items-center justify-between p-3 bg-accent/50 rounded-lg animate-fade-in">
           <div className="flex items-center gap-3">
             <FileSpreadsheet className="w-5 h-5 text-primary" />
@@ -120,7 +150,7 @@ export function FileDropzone({ onFileSelect, accept = '.csv,.xlsx', disabled }: 
       )}
 
       <p className="text-xs text-muted-foreground text-center">
-        💡 Utilize o arquivo <code className="bg-muted px-1.5 py-0.5 rounded">AMOSTRA_e-SIC.xlsx</code> para testes
+        💡 Utilize o arquivo <code className="bg-muted px-1.5 py-0.5 rounded">AMOSTRA_e-SIC.xlsx</code> para testes ou baixe o exemplo CSV acima.
       </p>
     </div>
   );
