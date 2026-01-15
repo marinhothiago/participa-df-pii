@@ -70,18 +70,6 @@ export function BrazilianAtomIcon({ size = 40, className = "" }: BrazilianAtomIc
         r="3.5"
         fill="#E60000"
       />
-
-      {/* Animação de rotação */}
-      <style>{`
-        @keyframes atomRotate {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        svg {
-          animation: atomRotate 8s linear infinite;
-          transform-origin: center;
-        }
-      `}</style>
     </svg>
   );
 }
