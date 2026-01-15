@@ -9,7 +9,7 @@ export function Header() {
           {/* Logo and Title */}
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 bg-primary-foreground/10 rounded-lg">
-              <Shield className="w-6 h-6" />
+              <Shield className="w-6 h-6 text-[#00A65E]" />
             </div>
             <div>
               <h1 className="text-lg font-semibold tracking-tight">Desafio Participa DF – Conectando Governo e Cidadão</h1>
