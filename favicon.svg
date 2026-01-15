@@ -1,20 +1,49 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Background branco -->
-  <rect width="100" height="100" fill="#FFFFFF" />
+  <defs>
+    <!-- Gradientes para efeito 3D -->
+    <radialGradient id="coreGrad" cx="35%" cy="35%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFA500;stop-opacity:1" />
+    </radialGradient>
+    
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F5F5F5;stop-opacity:1" />
+    </linearGradient>
+  </defs>
   
-  <!-- Faixa verde superior (cor da bandeira brasileira) -->
-  <rect x="5" y="5" width="90" height="30" fill="#009B3A" rx="4" />
+  <!-- Background gradiente -->
+  <rect width="100" height="100" fill="url(#bgGrad)" />
   
-  <!-- Faixa amarela central (cor da bandeira brasileira) -->
-  <rect x="5" y="35" width="90" height="30" fill="#FFCA00" rx="4" />
+  <!-- Núcleo do átomo (Amarelo - cor da bandeira) -->
+  <circle cx="50" cy="50" r="12" fill="url(#coreGrad)" />
+  <circle cx="50" cy="50" r="12" fill="none" stroke="#FF8C00" stroke-width="0.5" opacity="0.6" />
   
-  <!-- Faixa azul inferior (cor da bandeira brasileira) -->
-  <rect x="5" y="65" width="90" height="30" fill="#002776" rx="4" />
+  <!-- Órbita 1 (Verde - cor da bandeira) -->
+  <ellipse cx="50" cy="50" rx="28" ry="14" fill="none" stroke="#009B3A" stroke-width="2.5" opacity="0.8" stroke-dasharray="2,3" />
   
-  <!-- Losango branco no centro (inspirado no losango da bandeira) -->
-  <circle cx="50" cy="50" r="15" fill="#FFFFFF" opacity="0.9" />
+  <!-- Órbita 2 (Azul - cor da bandeira) rotacionada 60° -->
+  <ellipse cx="50" cy="50" rx="28" ry="14" fill="none" stroke="#002776" stroke-width="2.5" opacity="0.8" stroke-dasharray="2,3" transform="rotate(60 50 50)" />
   
-  <!-- Círculo central azul com DF -->
-  <circle cx="50" cy="50" r="10" fill="#002776" />
-  <text x="50" y="55" font-size="9" font-weight="bold" fill="#FFCA00" text-anchor="middle" font-family="Arial, sans-serif">DF</text>
+  <!-- Órbita 3 (Verde novamente) rotacionada 120° -->
+  <ellipse cx="50" cy="50" rx="28" ry="14" fill="none" stroke="#009B3A" stroke-width="2.5" opacity="0.8" stroke-dasharray="2,3" transform="rotate(120 50 50)" />
+  
+  <!-- Elétrons nas órbitas (vermelho/laranja para contraste) -->
+  <!-- Elétron 1 (Verde) -->
+  <circle cx="78" cy="50" r="5" fill="#009B3A" opacity="0.9" />
+  <circle cx="78" cy="50" r="5" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.6" />
+  
+  <!-- Elétron 2 (Azul) -->
+  <circle cx="29" cy="64.95" r="5" fill="#002776" opacity="0.9" />
+  <circle cx="29" cy="64.95" r="5" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.6" />
+  
+  <!-- Elétron 3 (Verde) -->
+  <circle cx="29" cy="35.05" r="5" fill="#009B3A" opacity="0.9" />
+  <circle cx="29" cy="35.05" r="5" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.6" />
+  
+  <!-- Brilho central no núcleo -->
+  <circle cx="46" cy="46" r="4" fill="#FFFFFF" opacity="0.4" />
+  
+  <!-- Aro/borda externa para profundidade -->
+  <circle cx="50" cy="50" r="48" fill="none" stroke="#009B3A" stroke-width="1" opacity="0.3" />
 </svg>
