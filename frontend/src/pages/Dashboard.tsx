@@ -24,7 +24,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { BrazilianAtomIcon } from '../components/BrazilianAtomIcon';
 
 function MetricTooltip({ children, content }: { children: React.ReactNode; content: string }) {
   return (
@@ -67,19 +66,8 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section com Ícone */}
-      <div className="bg-gradient-to-r from-[#1351B4] to-[#00A65E] py-12 text-center">
-        <BrazilianAtomIcon size={80} className="mx-auto mb-4" style={{ filter: 'invert(1)' }} />
-        <h2 className="text-3xl font-bold text-white mb-2">
-          Análise Inteligente de Privacidade
-        </h2>
-        <p className="text-blue-100">
-          Detecte e proteja dados sensíveis em documentos públicos
-        </p>
-      </div>
-
       {/* Header */}
-      <div>
+      <div className="px-6 py-4 bg-white border-b border-gray-200">
         <h2 className="text-2xl font-bold text-foreground">Dashboard de Análise</h2>
         <p className="text-muted-foreground">
           Métricas em tempo real e análise de desempenho do sistema de identificação de dados pessoais
