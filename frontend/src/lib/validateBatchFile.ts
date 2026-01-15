@@ -7,14 +7,19 @@ export type BatchFileValidationResult =
   | { valid: true; rows: { id: string; text: string }[] }
   | { valid: false; error: string; exampleCsv: string };
 
-const REQUIRED_HEADERS = ['id', 'text'];
 
-// Exemplo de template CSV para download em caso de erro
-const EXAMPLE_CSV = 'id,text\n12345,Exemplo de texto para análise';
+// Variações aceitas para as colunas obrigatórias
+const ID_ALIASES = ['id', 'identificador', 'protocolo', 'idpedido', 'id_pedido'];
+const TEXT_ALIASES = [
+  'text', 'texto', 'texto_mascarado', 'texto mascarado', 'mascarado', 'mensagem', 'solicitacao', 'descrição', 'descricao', 'conteudo', 'conteúdo'
+];
+
+const EXAMPLE_CSV = 'id,texto mascarado\n12345,Exemplo de texto para análise';
 
 function normalizeHeader(header: string) {
-  return header.trim().toLowerCase().replace(/\s+/g, '');
+  return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
+
 
 export async function validateBatchFile(file: File): Promise<BatchFileValidationResult> {
   // 1. Verifica extensão
@@ -61,15 +66,20 @@ export async function validateBatchFile(file: File): Promise<BatchFileValidation
     };
   }
 
-  // 5. Valida headers
-  const headers = Object.keys(rows[0]).map(normalizeHeader);
-  const missing = REQUIRED_HEADERS.filter(
-    (h) => !headers.includes(normalizeHeader(h))
-  );
-  if (missing.length) {
+  // 5. Detecta colunas id/texto por aliases
+  const headerMap = Object.keys(rows[0]).reduce((acc, h) => {
+    acc[normalizeHeader(h)] = h;
+    return acc;
+  }, {} as Record<string, string>);
+
+  // Busca o header real para id/texto
+  const idHeader = ID_ALIASES.map(normalizeHeader).find((alias) => alias in headerMap);
+  const textHeader = TEXT_ALIASES.map(normalizeHeader).find((alias) => alias in headerMap);
+
+  if (!idHeader || !textHeader) {
     return {
       valid: false,
-      error: `Colunas obrigatórias ausentes: ${missing.join(', ')}. O arquivo deve conter as colunas: id, text.`,
+      error: `Colunas obrigatórias ausentes. O arquivo deve conter uma coluna de id (ex: id, protocolo) e uma de texto (ex: texto, texto mascarado). Veja o exemplo.`,
       exampleCsv: EXAMPLE_CSV,
     };
   }
@@ -78,8 +88,8 @@ export async function validateBatchFile(file: File): Promise<BatchFileValidation
   const parsedRows: { id: string; text: string }[] = [];
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    const id = row['id'] ?? row['ID'] ?? row['Id'] ?? row['Id '];
-    const text = row['text'] ?? row['Text'] ?? row['texto'] ?? row['Texto'];
+    const id = row[headerMap[idHeader]];
+    const text = row[headerMap[textHeader]];
     if (!id || !text) {
       return {
         valid: false,
@@ -90,8 +100,14 @@ export async function validateBatchFile(file: File): Promise<BatchFileValidation
     parsedRows.push({ id: String(id).trim(), text: String(text).trim() });
   }
 
-  // 7. Sucesso
-  return { valid: true, rows: parsedRows };
+  // 7. Sucesso: informa ao usuário quais colunas foram reconhecidas
+  return {
+    valid: true,
+    rows: parsedRows,
+    // info extra pode ser usada na UI futuramente
+    // idColumn: headerMap[idHeader],
+    // textColumn: headerMap[textHeader],
+  };
 }
 
 // Função utilitária para baixar o template CSV
