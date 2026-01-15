@@ -1,3 +1,13 @@
+---
+title: Participa DF - PII Detector
+emoji: 🛡️
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
 # 🛡️ Projeto Participa DF: Detector Inteligente de Dados Pessoais para Transparência Ativa
 
 [![Status do Deploy](https://img.shields.io/badge/Status-Online%20v8.5-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
