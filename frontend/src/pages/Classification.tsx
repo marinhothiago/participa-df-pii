@@ -54,16 +54,16 @@ export function Classification() {
     setAnalysisError(null);
     setAnalysisResult(null);
 
+    const textoParaAnalise = text;
+    setText(''); // Limpa o campo imediatamente após o clique
+
     try {
-      const data = await api.analyzeText(text);
+      const data = await api.analyzeText(textoParaAnalise);
       setAnalysisResult(data);
-      
       // Add to global history
-      addAnalysisResult(data, text, 'individual');
-      
+      addAnalysisResult(data, textoParaAnalise, 'individual');
       // Increment classification requests counter
       incrementClassificationRequests(1);
-      
       // Reset to first page to see new result
       setCurrentPage(1);
     } catch (err) {
