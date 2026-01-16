@@ -339,19 +339,16 @@ class PIIDetector:
             # Crítico (5) - Identificação direta
             "CPF": 5, "RG": 5, "CNH": 5, "PASSAPORTE": 5,
             "TITULO_ELEITOR": 5, "PIS": 5, "CNS": 5, "CNPJ_PESSOAL": 5,
-            "CERTIDAO": 5, "CTPS": 5, "CRM": 5, "OAB": 5,
+            "CERTIDAO": 5, "CTPS": 5, "REGISTRO_PROFISSIONAL": 5,
             
             # Alto (4) - Contato direto
-            "EMAIL_PESSOAL": 4, "TELEFONE": 4, "CELULAR": 4,
-            "ENDERECO_RESIDENCIAL": 4, "NOME_COMPLETO": 4,
+            "EMAIL_PESSOAL": 4, "TELEFONE": 4,
+            "ENDERECO_RESIDENCIAL": 4, "NOME": 4,
             "CONTA_BANCARIA": 4, "PIX": 4, "CARTAO_CREDITO": 4,
             
             # Moderado (3) - Identificação indireta
-            "NOME_CONTEXTO": 3, "NOME_POR_IA": 3, "PLACA_VEICULO": 3,
-            "IP_ADDRESS": 3, "DATA_NASCIMENTO": 3,
-            
-            # Baixo (2) - Precisa de combinação
-            "NOME_PARCIAL": 2, "IDADE": 2,
+            "PLACA_VEICULO": 3, "CEP": 3,
+            "DATA_NASCIMENTO": 3, "PROCESSO_CNJ": 3,
         }
     
     def _compilar_patterns(self) -> None:
@@ -709,6 +706,47 @@ class PIIDetector:
                         tipo="DATA_NASCIMENTO", valor=valor, confianca=0.85,
                         peso=3, inicio=match.start(), fim=match.end()
                     ))
+                
+                elif tipo == 'TITULO_ELEITOR':
+                    if not self.validador.validar_titulo_eleitor(valor):
+                        continue
+                    findings.append(PIIFinding(
+                        tipo="TITULO_ELEITOR", valor=valor, confianca=0.95,
+                        peso=5, inicio=match.start(), fim=match.end()
+                    ))
+                
+                elif tipo == 'CTPS':
+                    findings.append(PIIFinding(
+                        tipo="CTPS", valor=valor, confianca=0.95,
+                        peso=5, inicio=match.start(), fim=match.end()
+                    ))
+                
+                elif tipo == 'CERTIDAO':
+                    findings.append(PIIFinding(
+                        tipo="CERTIDAO", valor=valor, confianca=0.90,
+                        peso=5, inicio=match.start(), fim=match.end()
+                    ))
+                
+                elif tipo == 'REGISTRO_PROFISSIONAL':
+                    findings.append(PIIFinding(
+                        tipo="REGISTRO_PROFISSIONAL", valor=valor, confianca=0.90,
+                        peso=5, inicio=match.start(), fim=match.end()
+                    ))
+                
+                elif tipo == 'CEP':
+                    # CEP só é PII se estiver em contexto de endereço pessoal
+                    contexto = texto[max(0, match.start()-50):match.end()+50].upper()
+                    if any(p in contexto for p in ["MORO", "RESIDO", "MINHA CASA", "MEU ENDERECO"]):
+                        findings.append(PIIFinding(
+                            tipo="CEP", valor=valor, confianca=0.80,
+                            peso=3, inicio=match.start(), fim=match.end()
+                        ))
+                
+                elif tipo == 'PROCESSO_CNJ':
+                    findings.append(PIIFinding(
+                        tipo="PROCESSO_CNJ", valor=valor, confianca=0.95,
+                        peso=3, inicio=match.start(), fim=match.end()
+                    ))
         
         return findings
     
@@ -743,7 +781,7 @@ class PIIDetector:
                     continue
                 
                 findings.append(PIIFinding(
-                    tipo="NOME_CONTEXTO", valor=nome, confianca=0.95,
+                    tipo="NOME", valor=nome, confianca=0.95,
                     peso=4, inicio=idx + match.start(), fim=idx + match.end()
                 ))
         
@@ -759,8 +797,8 @@ class PIIDetector:
                 
                 if len(nome) > 3 and nome_upper not in self.blocklist_total:
                     findings.append(PIIFinding(
-                        tipo="NOME_CONTEXTO", valor=nome, confianca=0.85,
-                        peso=3, inicio=idx, fim=idx + len(nome)
+                        tipo="NOME", valor=nome, confianca=0.85,
+                        peso=4, inicio=idx, fim=idx + len(nome)
                     ))
         
         return findings
@@ -825,7 +863,7 @@ class PIIDetector:
                             continue
                         
                         findings.append(PIIFinding(
-                            tipo="NOME_COMPLETO", valor=palavra,
+                            tipo="NOME", valor=palavra,
                             confianca=float(ent['score']), peso=4,
                             inicio=ent['start'], fim=ent['end']
                         ))
@@ -853,8 +891,8 @@ class PIIDetector:
                     # Evita duplicatas com BERT
                     if not any(f.valor.lower() == ent.text.lower() for f in findings):
                         findings.append(PIIFinding(
-                            tipo="NOME_POR_IA", valor=ent.text,
-                            confianca=0.80, peso=3,
+                            tipo="NOME", valor=ent.text,
+                            confianca=0.80, peso=4,
                             inicio=ent.start_char, fim=ent.end_char
                         ))
             except Exception as e:

@@ -42,23 +42,23 @@ export function RiskDistributionChart({ distribution }: RiskDistributionChartPro
   return (
     <div className="gov-card animate-slide-up h-full flex flex-col">
       <h3 className="text-lg font-semibold text-foreground mb-4">Distribuição de Nível de Risco</h3>
-      <div className="flex-1 min-h-[320px] max-h-[420px] flex items-center justify-center">
-        <ResponsiveContainer width={340} height={340}>
-          <PieChart margin={{ top: 20, right: 40, bottom: 40, left: 40 }}>
+      <div className="flex-1 min-h-[200px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart margin={{ top: 20, right: 80, bottom: 20, left: 80 }}>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={70}
-              outerRadius={120}
-              paddingAngle={2}
+              innerRadius="35%"
+              outerRadius="55%"
+              paddingAngle={3}
               dataKey="value"
               isAnimationActive={animate}
               animationDuration={900}
               animationBegin={0}
               label={({ name, percent, cx, cy, midAngle, outerRadius }) => {
                 const RADIAN = Math.PI / 180;
-                const radius = outerRadius * 1.5;
+                const radius = outerRadius * 1.4;
                 const x = cx + radius * Math.cos(-midAngle * RADIAN);
                 const y = cy + radius * Math.sin(-midAngle * RADIAN);
                 return (
@@ -68,7 +68,7 @@ export function RiskDistributionChart({ distribution }: RiskDistributionChartPro
                     fill="hsl(var(--foreground))"
                     textAnchor={x > cx ? 'start' : 'end'}
                     dominantBaseline="central"
-                    fontSize={13}
+                    fontSize={12}
                     fontWeight={500}
                   >
                     {`${name}: ${(percent * 100).toFixed(0)}%`}
@@ -95,10 +95,10 @@ export function RiskDistributionChart({ distribution }: RiskDistributionChartPro
             />
             <Legend
               verticalAlign="bottom"
-              height={48}
-              wrapperStyle={{ paddingTop: '8px' }}
+              height={32}
+              wrapperStyle={{ paddingTop: '10px' }}
               formatter={(value) => (
-                <span className="text-[10px] text-foreground">{value}</span>
+                <span className="text-xs text-foreground">{value}</span>
               )}
             />
           </PieChart>
