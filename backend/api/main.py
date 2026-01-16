@@ -132,7 +132,7 @@ async def health() -> Dict[str, str]:
     Returns:
         Dict com:
             - status (str): "healthy" se tudo funcionando
-            - version (str): Versão do detector (v9.2)
+            - version (str): Versão do detector (v9.3)
     
     HTTP Status Codes:
         - 200: API operacional
@@ -140,5 +140,5 @@ async def health() -> Dict[str, str]:
     """
     return {
         "status": "healthy",
-        "version": "9.2"
+        "version": "9.3"
     }
