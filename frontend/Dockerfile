@@ -15,8 +15,8 @@ RUN npm ci || npm install
 
 # Copia código e faz build
 COPY . .
-# Garante que o build Docker use a raiz como base path
-ENV VITE_BASE_PATH=/
+# Define base path para servir em /desafio-participa-df/
+ENV VITE_BASE_PATH=/desafio-participa-df/
 RUN npm run build
 
 # Stage 2: Serve com nginx
@@ -25,8 +25,8 @@ FROM nginx:alpine
 # Remove config default
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copia build para nginx (Vite gera em /dist)
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copia build para subpasta /desafio-participa-df/
+COPY --from=builder /app/dist /usr/share/nginx/html/desafio-participa-df
 
 # Configuração nginx para SPA (React Router)
 COPY nginx.conf /etc/nginx/conf.d/default.conf
