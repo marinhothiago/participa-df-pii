@@ -1,6 +1,6 @@
 """Módulo de detecção de Informações Pessoais Identificáveis (PII).
 
-Versão: 9.4 - HACKATHON PARTICIPA-DF 2025
+Versão: 9.4.3 - HACKATHON PARTICIPA-DF 2025
 Abordagem: Ensemble híbrido com alta recall (estratégia OR)
 Confiança: Sistema probabilístico com calibração e log-odds
 
@@ -19,6 +19,12 @@ Correções v9.4:
 - Integração com allow_list.py expandida
 - Melhoria na filtragem de falsos positivos de NER
 - Novos termos: leis, lugares, organizações, termos técnicos
+
+Correções v9.4.3:
+- 5 níveis de risco LGPD completos: CRÍTICO(5), ALTO(4), MODERADO(3), BAIXO(2), SEGURO(0)
+- Novos tipos de PII: IP_ADDRESS, COORDENADAS_GEO, USER_AGENT (peso=2)
+- Telefones internacionais (+1, +351, etc.)
+- Filtro peso >= 2 para incluir risco BAIXO
 """
 
 import re
@@ -310,7 +316,7 @@ class PIIDetector:
             use_probabilistic_confidence: Se deve usar sistema de confiança 
                 probabilística (default: True)
         """
-        logger.info("🏆 [v9.4] VERSÃO HACKATHON - ENSEMBLE 5 FONTES + CONFIANÇA PROBABILÍSTICA")
+        logger.info("🏆 [v9.4.3] VERSÃO HACKATHON - ENSEMBLE 5 FONTES + CONFIANÇA PROBABILÍSTICA")
         
         self.validador = ValidadorDocumentos()
         self._inicializar_modelos(usar_gpu)
@@ -714,6 +720,38 @@ class PIIDetector:
                 r'([A-Z][a-záéíóúàâêôãõç]+)[,\s]+(\d{1,2})\s*anos[,\s]+(?:estudante|alun[oa]|crian[çc]a|menor)'
                 r')',
                 re.IGNORECASE | re.UNICODE
+            ),
+            
+            # === DADOS DE RISCO BAIXO (peso=2) - Identificação indireta ===
+            
+            # Endereço IP (IPv4 e IPv6)
+            # IPv4: 192.168.1.1, 10.0.0.1 (exclui localhost e ranges privados comuns)
+            # IPv6: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+            'IP_ADDRESS': re.compile(
+                r'(?i)(?:IP|endere[cç]o\s*IP|IP\s*address)[:\s]*'
+                r'((?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)|'
+                r'(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4})',
+                re.IGNORECASE
+            ),
+            
+            # Coordenadas geográficas (latitude/longitude)
+            # Formato: -15.7801, -47.9292 ou lat: -15.7801, long: -47.9292
+            'COORDENADAS_GEO': re.compile(
+                r'(?i)(?:'
+                r'(?:lat(?:itude)?|coordenadas?)[:\s]*(-?\d{1,3}\.\d{4,7})[,\s]+'
+                r'(?:lon(?:g(?:itude)?)?)?[:\s]*(-?\d{1,3}\.\d{4,7})|'
+                r'(?:GPS|localiza[çc][ãa]o|posi[çc][ãa]o)[:\s]*'
+                r'(-?\d{1,3}\.\d{4,7})[,\s]+(-?\d{1,3}\.\d{4,7})'
+                r')',
+                re.IGNORECASE
+            ),
+            
+            # User-Agent / Identificador de dispositivo
+            # Mozilla/5.0 (Windows NT 10.0; Win64; x64) ...
+            'USER_AGENT': re.compile(
+                r'(?i)(?:user[\-\s]?agent|navegador|browser)[:\s]*'
+                r'(Mozilla/\d\.\d\s*\([^)]+\)[^\n]{0,100})',
+                re.IGNORECASE
             ),
         }
     
@@ -1228,6 +1266,31 @@ class PIIDetector:
                         tipo="MENOR_IDENTIFICADO", valor=valor, confianca=confianca,
                         peso=5, inicio=inicio, fim=fim  # Peso alto - menor é dado sensível
                     ))
+                
+                # === NOVOS TIPOS - RISCO BAIXO (peso=2) ===
+                
+                elif tipo == 'IP_ADDRESS':
+                    # Filtrar IPs locais/privados que não identificam pessoa
+                    if not any(valor.startswith(prefix) for prefix in ['127.', '0.', '255.']):
+                        confianca = self._calcular_confianca("IP_ADDRESS", texto, inicio, fim)
+                        findings.append(PIIFinding(
+                            tipo="IP_ADDRESS", valor=valor, confianca=confianca,
+                            peso=2, inicio=inicio, fim=fim  # Baixo - identificação indireta
+                        ))
+                
+                elif tipo == 'COORDENADAS_GEO':
+                    confianca = self._calcular_confianca("COORDENADAS_GEO", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="COORDENADAS_GEO", valor=valor, confianca=confianca,
+                        peso=2, inicio=inicio, fim=fim  # Baixo - localização aproximada
+                    ))
+                
+                elif tipo == 'USER_AGENT':
+                    confianca = self._calcular_confianca("USER_AGENT", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="USER_AGENT", valor=valor, confianca=confianca,
+                        peso=2, inicio=inicio, fim=fim  # Baixo - identificador técnico
+                    ))
         
         return findings
     
@@ -1664,8 +1727,8 @@ class PIIDetector:
         # === RESULTADO FINAL ===
         final_list = list(final_dict.values())
         
-        # Filtra apenas PII relevantes (peso >= 3)
-        pii_relevantes = [f for f in final_list if f.peso >= 3]
+        # Filtra apenas PII relevantes (peso >= 2, inclui BAIXO)
+        pii_relevantes = [f for f in final_list if f.peso >= 2]
         
         if not pii_relevantes:
             return False, [], "SEGURO", 1.0

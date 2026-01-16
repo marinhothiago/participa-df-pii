@@ -1,7 +1,7 @@
 # 🛡️ Participa DF - Detector Inteligente de Dados Pessoais
 
 [![Status](https://img.shields.io/badge/Status-Produção-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
-[![Versão](https://img.shields.io/badge/Versão-9.4-blue)](./backend/README.md)
+[![Versão](https://img.shields.io/badge/Versão-9.4.3-blue)](./backend/README.md)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)](https://react.dev/)
 [![F1--Score](https://img.shields.io/badge/F1--Score-1.0000-success)](./backend/benchmark.py)
@@ -9,9 +9,9 @@
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade com LGPD e LAI em manifestações do Participa DF.
 > 
-> 🎉 **v9.4**: Sistema otimizado com **F1-Score = 1.0000** (100% precisão e sensibilidade) em benchmark de 303 casos LGPD.
+> 🎉 **v9.4.3**: Sistema otimizado com **F1-Score = 1.0000** (100% precisão e sensibilidade) em benchmark de 303 casos LGPD.
 > 
-> 🆕 **Novidades v9.4**: Telefones internacionais, allow_list centralizado (375 termos), contadores globais, menu hambúrguer mobile.
+> 🆕 **Novidades v9.4.3**: Telefones internacionais, 5 níveis de risco LGPD completos (CRÍTICO → BAIXO), IP/Coordenadas/User-Agent, contadores globais, menu hambúrguer mobile, allow_list (375 termos).
 
 | 🌐 **Links de Produção** | URL |
 |--------------------------|-----|
@@ -30,12 +30,14 @@ O **Participa DF - PII Detector** é um sistema completo para **detectar, classi
 
 O GDF precisa publicar manifestações de cidadãos em transparência ativa (LAI) sem violar a privacidade garantida pela LGPD. Este sistema automatiza a detecção de:
 
-- **CPF, RG, CNH, Passaporte, PIS, CNS** (documentos de identificação)
-- **Email, Telefone, Celular** (dados de contato)
-- **Endereços residenciais, CEP** (localização)
-- **Nomes pessoais** (com análise de contexto)
-- **Dados bancários, PIX, Cartão de Crédito** (informações financeiras)
-- **Placas de veículos, Processos judiciais** (outros identificadores)
+- **CPF, RG, CNH, Passaporte, PIS, CNS, Título Eleitor, CTPS** (documentos de identificação)
+- **Email, Telefone, Celular, Telefones Internacionais** (dados de contato)
+- **Endereços residenciais, CEP, Endereços Brasília (SQS, SQN, etc)** (localização)
+- **Nomes pessoais** (com análise de contexto via BERT + spaCy + NuNER)
+- **Dados bancários, PIX, Cartão de Crédito, Conta Bancária** (informações financeiras)
+- **Placas de veículos, Processos CNJ, Matrículas** (outros identificadores)
+- **Dados de Saúde (CID), Dados Biométricos, Menores Identificados** (dados sensíveis LGPD)
+- **IP Address, Coordenadas GPS, User-Agent** (identificação indireta - risco baixo)
 
 ### Resultado
 
@@ -62,13 +64,14 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 │                 BACKEND (FastAPI + Python)                  │
 │           HuggingFace Spaces / Docker                       │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │ Motor Híbrido de Detecção PII (v9.4 - 2000+ linhas)    │ │
+│  │ Motor Híbrido de Detecção PII (v9.4.3 - 2100+ linhas)  │ │
 │  │                                                         │ │
 │  │ 1. REGEX + Validação DV (CPF, CNPJ, PIS, CNS, CNH)    │ │
-│  │ 2. BERT NER Multilíngue (detector primário de nomes)   │ │
-│  │ 3. spaCy pt_core_news_lg (NER complementar)            │ │
-│  │ 4. Regras de Negócio (imunidade funcional, contexto)   │ │
-│  │ 5. Confiança Probabilística (isotônico + log-odds)     │ │
+│  │ 2. BERT Davlan NER (detector primário de nomes)        │ │
+│  │ 3. NuNER pt-BR (especializado em português)            │ │
+│  │ 4. spaCy pt_core_news_lg (NER complementar)            │ │
+│  │ 5. Regras de Negócio (imunidade funcional, contexto)   │ │
+│  │ 6. Confiança Probabilística (isotônico + log-odds)     │ │
 │  │                                                         │ │
 │  │ Estratégia: Ensemble OR (alta recall para LGPD)        │ │
 │  └────────────────────────────────────────────────────────┘ │
@@ -96,8 +99,8 @@ desafio-participa-df/
 │   │   └── main.py               ← FastAPI: endpoints /analyze e /health
 │   │
 │   ├── src/
-│   │   ├── detector.py           ← Motor híbrido PII v9.4 (2000+ linhas)
-│   │   ├── allow_list.py         ← Lista de termos seguros (GDF, órgãos)
+│   │   ├── detector.py           ← Motor híbrido PII v9.4.3 (2100+ linhas, 30+ tipos)
+│   │   ├── allow_list.py         ← Lista de termos seguros (375 termos blocklist)
 │   │   └── confidence/           ← Módulo de confiança probabilística
 │   │       ├── types.py          ← Dataclasses: PIIEntity, DocumentConfidence
 │   │       ├── config.py         ← FN/FP rates, pesos LGPD, thresholds
@@ -659,10 +662,10 @@ O arquivo `benchmark.py` contém **303 casos de teste LGPD** com **F1-Score = 1.
 
 | Nível | Peso | Tipos de PII | Ação Recomendada |
 |-------|------|--------------|------------------|
-| 🔴 **CRÍTICO** | 5 | CPF, RG, CNH, Passaporte, PIS, CNS | ❌ Não publicar |
-| 🟠 **ALTO** | 4 | Email, Telefone, Endereço, Nome completo | ❌ Não publicar |
-| 🟡 **MODERADO** | 3 | Nome por IA, Placa veículo | ⚠️ Revisar manualmente |
-| 🔵 **BAIXO** | 2 | Nome parcial, Data nascimento | ⚠️ Revisar contexto |
+| 🔴 **CRÍTICO** | 5 | CPF, RG, CNH, Passaporte, PIS, CNS, Título Eleitor, CTPS | ❌ Não publicar |
+| 🟠 **ALTO** | 4 | Email, Telefone, Endereço, Nome completo, Dados Bancários, PIX | ❌ Não publicar |
+| 🟡 **MODERADO** | 3 | Placa de veículo, Data de nascimento, CEP (com contexto), Processo CNJ | ⚠️ Revisar manualmente |
+| 🔵 **BAIXO** | 2 | IP Address, Coordenadas GPS, User-Agent (identificação indireta) | ⚠️ Revisar contexto |
 | 🟢 **SEGURO** | 0 | Nenhum PII detectado | ✅ Pode publicar |
 
 ---

@@ -23,8 +23,10 @@ Disponibilizar uma interface web intuitiva e acessível para:
 - ✅ **Dashboard de Métricas:** KPIs e histórico de análises realizadas
 - ✅ **Exportação de Dados:** Download de resultados em JSON
 - ✅ **Design DSGOV:** Interface seguindo padrão federal brasileiro (Gov.br)
-- ✅ **Responsivo (v9.4):** Menu hambúrguer em dispositivos móveis
-- ✅ **Estatísticas Globais (v9.4):** Contadores de acessos e requisições sincronizados via backend
+- ✅ **Responsivo (v9.4.3):** Menu hambúrguer em dispositivos móveis com Sheet lateral
+- ✅ **Estatísticas Globais (v9.4.3):** Contadores sincronizados via backend (stats.json)
+- ✅ **5 Níveis de Risco (v9.4.3):** CRÍTICO, ALTO, MODERADO, BAIXO, SEGURO
+- ✅ **GitHub Link (v9.4.3):** Acesso direto ao repositório no header
 
 ---
 
@@ -69,7 +71,7 @@ Disponibilizar uma interface web intuitiva e acessível para:
                   POST /stats/visit
                          │
                          ▼
-              Backend (FastAPI)
+              Backend (FastAPI v9.4.3)
               Port 7860 (local)
               ou HuggingFace Spaces
 ```
@@ -164,16 +166,19 @@ frontend/
     │   ├── EntityTypesChart.tsx ← Gráfico de tipos de entidade
     │   ├── PIITypesChart.tsx    ← Gráfico de tipos de PII
     │   ├── RiskDistributionChart.tsx ← Gráfico de distribuição de risco
-    │   ├── FooterWithCounters.tsx ← Rodapé com contadores
+    │   ├── FooterWithCounters.tsx ← Rodapé com contadores globais
+    │   │                          - Autor (esquerda), Contadores (centro), CGDF (direita)
+    │   │                          - Integração com backend /stats
     │   ├── NavLink.tsx          ← Link de navegação ativo
     │   └── BrazilianAtomIcon.tsx← Ícone customizado
     │
     ├── lib/                     ← Utilitários e serviços
-    │   ├── api.ts               ← Cliente HTTP para backend (376 linhas)
+    │   ├── api.ts               ← Cliente HTTP para backend (416 linhas)
     │   │                          - Detecção automática de backend local
     │   │                          - Retry com exponential backoff
     │   │                          - Tratamento de erros (CORS, timeout)
-    │   │                          - Interfaces TypeScript
+    │   │                          - getStats() e registerVisit() para contadores
+    │   │                          - Interfaces TypeScript com 5 níveis de risco
     │   │
     │   ├── fileParser.ts        ← Parser de arquivos CSV/XLSX
     │   │                          - Validação de colunas

@@ -12,11 +12,13 @@ pinned: false
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![spaCy](https://img.shields.io/badge/spaCy-3.8.0-09A3D5?logo=spacy)](https://spacy.io/)
-[![Versão](https://img.shields.io/badge/Versão-9.4-blue)](./src/detector.py)
+[![Versão](https://img.shields.io/badge/Versão-9.4.3-blue)](./src/detector.py)
 [![F1--Score](https://img.shields.io/badge/F1--Score-1.0000-success)](./benchmark.py)
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade LGPD/LAI em manifestações do Participa DF.
-> 🏆 **v9.4 - F1-Score = 1.0000** (100% precisão, 100% sensibilidade) em benchmark de 303 casos LGPD.
+> 🏆 **v9.4.3 - F1-Score = 1.0000** (100% precisão, 100% sensibilidade) em benchmark de 303 casos LGPD.
+>
+> 🆕 **v9.4.3**: 5 níveis de risco LGPD (CRÍTICO → BAIXO), 30+ tipos de PII, IP/Coordenadas/User-Agent, contadores globais.
 
 | 🌐 **Links de Produção** | URL |
 |--------------------------|-----|
@@ -31,18 +33,20 @@ pinned: false
 Detectar, classificar e avaliar o risco de vazamento de dados pessoais em textos de manifestações do Participa DF, retornando:
 
 - **Classificação:** "PÚBLICO" ou "NÃO PÚBLICO"
-- **Nível de Risco:** SEGURO, BAIXO, MODERADO, ALTO, CRÍTICO
+- **Nível de Risco:** SEGURO, BAIXO, MODERADO, ALTO, CRÍTICO (5 níveis LGPD)
 - **Confiança:** Score normalizado (0.0 a 1.0)
 - **Detalhes:** Lista de PIIs encontrados com tipo, valor e confiança
 
 ### Funcionalidades Principais
 
 - ✅ **Rastreabilidade Total:** Preserva o ID original do e-SIC em todo o fluxo
-- ✅ **Motor Híbrido v9.4:** Ensemble de Regex + BERT NER + spaCy + Regras de Negócio
+- ✅ **Motor Híbrido v9.4.3:** Ensemble de Regex + BERT Davlan + NuNER + spaCy + Regras
+- ✅ **30+ Tipos de PII:** Documentos, contatos, financeiros, saúde, biometria, localização
 - ✅ **Confiança Probabilística:** Calibração isotônica + combinação log-odds
 - ✅ **Três Formas de Uso:** API REST, Interface CLI (lote) e integração com Dashboard Web
 - ✅ **Validação de Documentos:** CPF, CNPJ, PIS, CNS com dígito verificador
 - ✅ **Contexto Brasília/GDF:** Imunidade funcional para servidores públicos em exercício
+- ✅ **Contadores Globais:** Persistência em stats.json com thread-safety
 
 ---
 
@@ -62,19 +66,20 @@ backend/
 │
 ├── src/
 │   ├── __init__.py           ← Marca como módulo Python
-│   ├── detector.py           ← Motor híbrido PII v9.4
+│   ├── detector.py           ← Motor híbrido PII v9.4.3
 │   │                           (2100+ linhas com comentários explicativos)
 │   │                           - Classe PIIDetector: ensemble de detectores
 │   │                           - Classe ValidadorDocumentos: validação DV
-│   │                           - Regex patterns para 22 tipos de PII
-│   │                           - NER: BERT (primário) + spaCy (complementar)
+│   │                           - Regex patterns para 30+ tipos de PII
+│   │                           - NER: BERT Davlan + NuNER + spaCy
 │   │                           - Regras de negócio (imunidade funcional)
 │   │                           - Método detect_extended() com confiança prob.
 │   │
-│   ├── allow_list.py         ← Lista de termos seguros (não são PII)
+│   ├── allow_list.py         ← Lista de termos seguros (375 termos)
 │   │                           - Órgãos do GDF (SEEDF, SESDF, DETRAN, etc)
 │   │                           - Regiões administrativas de Brasília
 │   │                           - Endereços administrativos (SQS, SQN, etc)
+│   │                           - Confiança base por tipo de PII
 │   │
 │   └── confidence/           ← NOVO: Módulo de confiança probabilística
 │       ├── __init__.py       ← Exports do módulo
@@ -210,9 +215,10 @@ uvicorn api.main:app --host 0.0.0.0 --port 7860 --reload
 
 **Saída esperada:**
 ```
-INFO:     🏆 [v9.2] VERSÃO HACKATHON - F1-Score = 1.0000
+INFO:     🏆 [v9.4.3] VERSÃO HACKATHON - ENSEMBLE 5 FONTES + CONFIANÇA PROBABILÍSTICA
 INFO:     ✅ spaCy pt_core_news_lg carregado
-INFO:     ✅ BERT NER multilíngue carregado (PER, ORG, LOC, DATE)
+INFO:     ✅ BERT Davlan NER multilíngue carregado (PER, ORG, LOC, DATE)
+INFO:     ✅ NuNER pt-BR carregado (especializado em português)
 INFO:     Uvicorn running on http://0.0.0.0:7860 (Press CTRL+C to quit)
 ```
 
@@ -389,7 +395,7 @@ man_002,"Meu CPF é 529.982.247-25...","❌ NÃO PÚBLICO","98.0%","CRÍTICO","[
 
 ---
 
-## 🧠 Arquitetura do Motor de Detecção (v9.2)
+## 🧠 Arquitetura do Motor de Detecção (v9.4.3)
 
 ### Pipeline de Processamento
 

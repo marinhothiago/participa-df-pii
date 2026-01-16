@@ -126,6 +126,9 @@ PESOS_LGPD: Dict[str, int] = {
     # Moderado (3) - Identificação indireta
     "PLACA_VEICULO": 3, "CEP": 3,
     "DATA_NASCIMENTO": 3, "PROCESSO_CNJ": 3,
+    
+    # Baixo (2) - Identificação técnica/indireta
+    "IP_ADDRESS": 2, "COORDENADAS_GEO": 2, "USER_AGENT": 2,
 }
 
 
