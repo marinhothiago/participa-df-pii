@@ -1,7 +1,7 @@
 # 🛡️ Participa DF - Detector Inteligente de Dados Pessoais
 
 [![Status](https://img.shields.io/badge/Status-Produção-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
-[![Versão](https://img.shields.io/badge/Versão-9.2-blue)](./backend/README.md)
+[![Versão](https://img.shields.io/badge/Versão-9.4-blue)](./backend/README.md)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)](https://react.dev/)
 [![F1--Score](https://img.shields.io/badge/F1--Score-1.0000-success)](./backend/benchmark.py)
@@ -9,7 +9,9 @@
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade com LGPD e LAI em manifestações do Participa DF.
 > 
-> � **v9.2**: Sistema otimizado com **F1-Score = 1.0000** (100% precisão e sensibilidade) em benchmark de 303 casos LGPD.
+> 🎉 **v9.4**: Sistema otimizado com **F1-Score = 1.0000** (100% precisão e sensibilidade) em benchmark de 303 casos LGPD.
+> 
+> 🆕 **Novidades v9.4**: Telefones internacionais, allow_list centralizado (375 termos), contadores globais, menu hambúrguer mobile.
 
 | 🌐 **Links de Produção** | URL |
 |--------------------------|-----|
@@ -60,7 +62,7 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 │                 BACKEND (FastAPI + Python)                  │
 │           HuggingFace Spaces / Docker                       │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │ Motor Híbrido de Detecção PII (v9.2 - 2100+ linhas)    │ │
+│  │ Motor Híbrido de Detecção PII (v9.4 - 2000+ linhas)    │ │
 │  │                                                         │ │
 │  │ 1. REGEX + Validação DV (CPF, CNPJ, PIS, CNS, CNH)    │ │
 │  │ 2. BERT NER Multilíngue (detector primário de nomes)   │ │
@@ -94,7 +96,7 @@ desafio-participa-df/
 │   │   └── main.py               ← FastAPI: endpoints /analyze e /health
 │   │
 │   ├── src/
-│   │   ├── detector.py           ← Motor híbrido PII v9.2 (2100+ linhas)
+│   │   ├── detector.py           ← Motor híbrido PII v9.4 (2000+ linhas)
 │   │   ├── allow_list.py         ← Lista de termos seguros (GDF, órgãos)
 │   │   └── confidence/           ← Módulo de confiança probabilística
 │   │       ├── types.py          ← Dataclasses: PIIEntity, DocumentConfidence
@@ -477,7 +479,7 @@ def _detectar_ner(self, texto: str) -> List[PIIFinding]:
 
 **Por que dois modelos?** A estratégia Ensemble OR garante que se o BERT perder um nome (ex: grafia incomum), o spaCy pode capturá-lo, e vice-versa. Isso maximiza recall, essencial para conformidade LGPD/LAI.
 
-#### Sistema de Confiança Probabilística (v9.2)
+#### Sistema de Confiança Probabilística (v9.4)
 
 O sistema calcula confiança usando **Calibração Isotônica** + **Log-Odds (Naive Bayes)**:
 

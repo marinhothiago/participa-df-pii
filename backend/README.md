@@ -12,11 +12,11 @@ pinned: false
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![spaCy](https://img.shields.io/badge/spaCy-3.8.0-09A3D5?logo=spacy)](https://spacy.io/)
-[![Versão](https://img.shields.io/badge/Versão-9.2-blue)](./src/detector.py)
+[![Versão](https://img.shields.io/badge/Versão-9.4-blue)](./src/detector.py)
 [![F1--Score](https://img.shields.io/badge/F1--Score-1.0000-success)](./benchmark.py)
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade LGPD/LAI em manifestações do Participa DF.
-> 🏆 **v9.2 - F1-Score = 1.0000** (100% precisão, 100% sensibilidade) em benchmark de 303 casos LGPD.
+> 🏆 **v9.4 - F1-Score = 1.0000** (100% precisão, 100% sensibilidade) em benchmark de 303 casos LGPD.
 
 | 🌐 **Links de Produção** | URL |
 |--------------------------|-----|
@@ -38,7 +38,7 @@ Detectar, classificar e avaliar o risco de vazamento de dados pessoais em textos
 ### Funcionalidades Principais
 
 - ✅ **Rastreabilidade Total:** Preserva o ID original do e-SIC em todo o fluxo
-- ✅ **Motor Híbrido v9.2:** Ensemble de Regex + BERT NER + spaCy + Regras de Negócio
+- ✅ **Motor Híbrido v9.4:** Ensemble de Regex + BERT NER + spaCy + Regras de Negócio
 - ✅ **Confiança Probabilística:** Calibração isotônica + combinação log-odds
 - ✅ **Três Formas de Uso:** API REST, Interface CLI (lote) e integração com Dashboard Web
 - ✅ **Validação de Documentos:** CPF, CNPJ, PIS, CNS com dígito verificador
@@ -62,7 +62,7 @@ backend/
 │
 ├── src/
 │   ├── __init__.py           ← Marca como módulo Python
-│   ├── detector.py           ← Motor híbrido PII v9.2
+│   ├── detector.py           ← Motor híbrido PII v9.4
 │   │                           (2100+ linhas com comentários explicativos)
 │   │                           - Classe PIIDetector: ensemble de detectores
 │   │                           - Classe ValidadorDocumentos: validação DV
@@ -275,6 +275,37 @@ docker-compose up backend
 ---
 
 ## 📊 Formato de Dados
+
+### Endpoints Disponíveis
+
+| Endpoint | Método | Descrição |
+|----------|--------|-----------|
+| `/analyze` | POST | Analisa texto para detecção de PII |
+| `/health` | GET | Verifica status da API |
+| `/stats` | GET | Retorna estatísticas globais de uso |
+| `/stats/visit` | POST | Registra uma visita ao site |
+
+### Estatísticas Globais (v9.4)
+
+**GET /stats** - Retorna contadores globais:
+```json
+{
+  "site_visits": 1234,
+  "classification_requests": 5678,
+  "last_updated": "2026-01-16T10:30:00"
+}
+```
+
+**POST /stats/visit** - Registra visita (chamado 1x por sessão do frontend):
+```json
+{
+  "site_visits": 1235,
+  "classification_requests": 5678,
+  "last_updated": "2026-01-16T10:31:00"
+}
+```
+
+> **Nota:** O contador `classification_requests` é incrementado automaticamente a cada chamada ao `/analyze`.
 
 ### Entrada (POST /analyze)
 
@@ -662,7 +693,7 @@ const LOCAL_API_URL = 'http://localhost:7860';
 
 ---
 
-## 🎯 Sistema de Confiança Probabilística (v9.2)
+## 🎯 Sistema de Confiança Probabilística (v9.4)
 
 O backend inclui um sistema sofisticado de cálculo de confiança baseado em práticas de produção de grandes empresas (Google, Microsoft, Meta) e bancos brasileiros.
 

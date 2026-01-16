@@ -23,6 +23,8 @@ Disponibilizar uma interface web intuitiva e acessível para:
 - ✅ **Dashboard de Métricas:** KPIs e histórico de análises realizadas
 - ✅ **Exportação de Dados:** Download de resultados em JSON
 - ✅ **Design DSGOV:** Interface seguindo padrão federal brasileiro (Gov.br)
+- ✅ **Responsivo (v9.4):** Menu hambúrguer em dispositivos móveis
+- ✅ **Estatísticas Globais (v9.4):** Contadores de acessos e requisições sincronizados via backend
 
 ---
 
@@ -63,6 +65,8 @@ Disponibilizar uma interface web intuitiva e acessível para:
                          │
                   POST /analyze
                   GET /health
+                  GET /stats
+                  POST /stats/visit
                          │
                          ▼
               Backend (FastAPI)
