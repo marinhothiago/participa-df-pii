@@ -241,10 +241,20 @@ python main_cli.py --input data/input/manifestacoes.xlsx --output data/output/re
 | `--input` | string | ✅ | Caminho do arquivo CSV ou XLSX |
 | `--output` | string | ✅ | Nome base dos arquivos de saída |
 
-**Arquivos gerados:**
-- `resultado.json` - Dados estruturados para integração
-- `resultado.csv` - Planilha simples UTF-8
-- `resultado.xlsx` - Excel com formatação de cores por risco
+**Arquivos gerados (todos com mesma estrutura de colunas):**
+| Arquivo | Formato | Uso |
+|---------|---------|-----|
+| `resultado.json` | JSON | Integração com sistemas, APIs |
+| `resultado.csv` | CSV UTF-8 | Importação em outras ferramentas |
+| `resultado.xlsx` | Excel | Análise visual com cores por risco |
+
+**Colunas de saída (ordem padronizada):**
+1. `ID` - Identificador original do registro
+2. `Texto Mascarado` - Texto analisado
+3. `Classificação` - ✅ PÚBLICO ou ❌ NÃO PÚBLICO
+4. `Confiança` - Percentual de certeza (ex: 98.5%)
+5. `Nível de Risco` - SEGURO, BAIXO, MODERADO, ALTO, CRÍTICO
+6. `Identificadores` - Lista de PIIs detectados
 
 ### 2.3 Execução com Docker
 
@@ -317,11 +327,33 @@ man_002,"Meu CPF é 529.982.247-25 e telefone (61) 98765-4321."
 man_003,"Reclamação contra o servidor João Silva do DETRAN."
 ```
 
-**Saída do CLI:**
+**Saída do CLI (mesma estrutura nos 3 formatos):**
+
 ```csv
 ID,Texto Mascarado,Classificação,Confiança,Nível de Risco,Identificadores
 man_001,"Solicito informações...","✅ PÚBLICO","100.0%","SEGURO","[]"
 man_002,"Meu CPF é 529.982.247-25...","❌ NÃO PÚBLICO","98.0%","CRÍTICO","['CPF: 529.982.247-25', 'TELEFONE: (61) 98765-4321']"
+```
+
+```json
+[
+  {
+    "id": "man_001",
+    "texto_mascarado": "Solicito informações...",
+    "classificacao": "✅ PÚBLICO",
+    "confianca": "100.0%",
+    "nivel_risco": "SEGURO",
+    "identificadores": "[]"
+  },
+  {
+    "id": "man_002",
+    "texto_mascarado": "Meu CPF é 529.982.247-25...",
+    "classificacao": "❌ NÃO PÚBLICO",
+    "confianca": "98.0%",
+    "nivel_risco": "CRÍTICO",
+    "identificadores": "['CPF: 529.982.247-25', 'TELEFONE: (61) 98765-4321']"
+  }
+]
 ```
 
 ---

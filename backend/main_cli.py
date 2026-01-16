@@ -44,18 +44,27 @@ def main():
 
     output_base = args.output.replace('.xlsx', '').replace('.csv', '').replace('.json', '')
 
-    # 1. SALVAR JSON (Preservando o ID original da planilha)
+    # ORDEM PADRONIZADA DAS COLUNAS DE RESULTADO:
+    # 1. ID | 2. Texto Mascarado | 3. Classificação | 4. Confiança | 5. Nível de Risco | 6. Identificadores
+    
+    # Reorganiza o DataFrame para ter as colunas na ordem correta
+    colunas_base = [col for col in df.columns if col not in ['Classificação', 'Confiança', 'Nível de Risco', 'Identificadores']]
+    colunas_resultado = ['Classificação', 'Confiança', 'Nível de Risco', 'Identificadores']
+    df = df[colunas_base + colunas_resultado]
+
+    # 1. SALVAR JSON (Mesma estrutura e ordem do CSV/XLSX)
     json_output = []
-    for index, r in enumerate(results):
-        # Tenta pegar o valor da coluna 'ID' se ela existir, senão usa o índice
-        original_id = df['ID'].iloc[index] if 'ID' in df.columns else index
+    for index, row in df.iterrows():
+        # Pega o ID original se existir, senão usa o índice
+        original_id = row['ID'] if 'ID' in df.columns else index
         
         json_output.append({
-            "id": str(original_id), # Garante o ID no JSON
-            "classificacao": "NAO_PUBLICO" if r[0] else "PUBLICO",
-            "confianca": f"{r[3] * 100:.1f}%",
-            "risco": r[2],
-            "detalhes": r[1]
+            "id": str(original_id),
+            "texto_mascarado": row[coluna] if coluna in df.columns else "",
+            "classificacao": row['Classificação'],
+            "confianca": row['Confiança'],
+            "nivel_risco": row['Nível de Risco'],
+            "identificadores": row['Identificadores']
         })
     with open(f"{output_base}.json", 'w', encoding='utf-8') as f:
         json.dump(json_output, f, indent=4, ensure_ascii=False)

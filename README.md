@@ -319,10 +319,14 @@ cd backend
 python main_cli.py --input data/input/manifestacoes.xlsx --output data/output/resultado
 ```
 
-**Saídas geradas:**
-- `resultado.json` - Dados estruturados
-- `resultado.csv` - Planilha simples
-- `resultado.xlsx` - Excel com formatação de cores
+**Saídas geradas (mesma estrutura de colunas nos 3 formatos):**
+| Arquivo | Formato | Uso |
+|---------|---------|-----|
+| `resultado.json` | JSON | Integração com sistemas |
+| `resultado.csv` | CSV | Importação em ferramentas |
+| `resultado.xlsx` | Excel | Análise visual com cores |
+
+**Colunas:** ID → Texto Mascarado → Classificação → Confiança → Nível de Risco → Identificadores
 
 ### 2.2 Execução com Docker
 
