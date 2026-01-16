@@ -1,15 +1,16 @@
 """Módulo de detecção de Informações Pessoais Identificáveis (PII).
 
-Versão: 9.1 - HACKATHON PARTICIPA-DF 2025
+Versão: 9.2 - HACKATHON PARTICIPA-DF 2025
 Abordagem: Ensemble híbrido com alta recall (estratégia OR)
 Confiança: Sistema probabilístico com calibração e log-odds
 
 Pipeline:
 1. Regras determinísticas (regex + validação DV) → 70% dos PIIs
-2. NER especializado (BERTimbau NER) → nomes e entidades
-3. spaCy como backup → cobertura adicional
-4. Ensemble OR → qualquer detector positivo = PII
-5. Cálculo probabilístico de confiança → calibração + log-odds
+2. NER BERT Davlan (multilíngue) → nomes e entidades
+3. NER NuNER (especializado pt-BR) → nomes brasileiros
+4. spaCy como backup → cobertura adicional
+5. Ensemble OR → qualquer detector positivo = PII
+6. Cálculo probabilístico de confiança → calibração + log-odds
 """
 
 import re
@@ -86,6 +87,70 @@ class ValidadorDocumentos:
         # CPFs com todos dígitos iguais são inválidos
         if len(set(numeros)) == 1:
             return False
+        
+        # Calcula primeiro dígito verificador
+        soma = sum(int(numeros[i]) * (10 - i) for i in range(9))
+        resto = soma % 11
+        dv1 = 0 if resto < 2 else 11 - resto
+        
+        if int(numeros[9]) != dv1:
+            return False
+        
+        # Calcula segundo dígito verificador
+        soma = sum(int(numeros[i]) * (11 - i) for i in range(10))
+        resto = soma % 11
+        dv2 = 0 if resto < 2 else 11 - resto
+        
+        return int(numeros[10]) == dv2
+    
+    @staticmethod
+    def cpf_tem_formato_valido(cpf: str) -> bool:
+        """Verifica se uma string tem formato de CPF (10-11 dígitos, não todos iguais).
+        
+        Sob a LGPD, um CPF com erro de digitação AINDA É dado pessoal porque
+        pode identificar uma pessoa. Esta função verifica apenas o formato,
+        não o dígito verificador.
+        
+        Aceita 10-11 dígitos para cobrir erros de digitação comuns onde
+        um dígito foi omitido (ex: 129.180.122-6 em vez de 129.180.122-06).
+        
+        Args:
+            cpf: String contendo possível CPF
+            
+        Returns:
+            True se tem formato de CPF (10-11 dígitos, não trivial)
+        """
+        numeros = re.sub(r'[^\d]', '', cpf)
+        
+        # Aceita 10-11 dígitos (para cobrir erros de digitação)
+        if len(numeros) < 10 or len(numeros) > 11:
+            return False
+        
+        # Sequências triviais não são CPFs
+        if len(set(numeros)) == 1:  # 111.111.111-11
+            return False
+            
+        return True
+    
+    @staticmethod
+    def cpf_dv_correto(cpf: str) -> bool:
+        """Verifica se o dígito verificador do CPF está correto.
+        
+        Para CPFs com 10 dígitos (erro de digitação), retorna False
+        pois não é possível validar DV, mas o CPF ainda pode ser válido
+        sob a LGPD (dado que pode identificar uma pessoa).
+        
+        Args:
+            cpf: String contendo CPF
+            
+        Returns:
+            True se o DV está matematicamente correto, False caso contrário
+        """
+        numeros = re.sub(r'[^\d]', '', cpf)
+        
+        # CPF com 10 dígitos: DV indeterminado (falta um dígito)
+        if len(numeros) != 11:
+            return False  # Não consegue validar, mas ainda é PII
         
         # Calcula primeiro dígito verificador
         soma = sum(int(numeros[i]) * (10 - i) for i in range(9))
@@ -210,7 +275,7 @@ class PIIDetector:
             use_probabilistic_confidence: Se deve usar sistema de confiança 
                 probabilística (default: True)
         """
-        logger.info("🏆 [v9.1] VERSÃO HACKATHON - ENSEMBLE DE ALTA RECALL + CONFIANÇA PROBABILÍSTICA")
+        logger.info("🏆 [v9.2] VERSÃO HACKATHON - ENSEMBLE 5 FONTES + CONFIANÇA PROBABILÍSTICA")
         
         self.validador = ValidadorDocumentos()
         self._inicializar_modelos(usar_gpu)
@@ -252,7 +317,7 @@ class PIIDetector:
         import torch
         if usar_gpu and torch.cuda.is_available():
             device = 0  # GPU
-            logger.info("🚀 GPU detectada, usando CUDA para BERT")
+            logger.info("🚀 GPU detectada, usando CUDA para modelos NER")
         else:
             device = -1  # CPU
         
@@ -265,10 +330,24 @@ class PIIDetector:
                 aggregation_strategy="simple",
                 device=device
             )
-            logger.info("✅ BERT NER multilíngue carregado (PER, ORG, LOC, DATE)")
+            logger.info("✅ BERT Davlan NER multilíngue carregado (PER, ORG, LOC, DATE)")
         except Exception as e:
             self.nlp_bert = None
             logger.warning(f"⚠️ BERT NER não disponível: {e}. Usando apenas spaCy para NER.")
+        
+        # NuNER - Modelo especializado para português brasileiro
+        # Melhor performance em nomes brasileiros (Maria das Graças, João de Souza)
+        try:
+            self.nlp_nuner = pipeline(
+                "ner",
+                model="monilouise/ner_news_portuguese",
+                aggregation_strategy="simple",
+                device=device
+            )
+            logger.info("✅ NuNER pt-BR carregado (especializado em português)")
+        except Exception as e:
+            self.nlp_nuner = None
+            logger.warning(f"⚠️ NuNER não disponível: {e}. Continuando sem modelo pt-BR especializado.")
     
     def _inicializar_vocabularios(self) -> None:
         """Inicializa todos os vocabulários e listas de contexto."""
@@ -303,7 +382,15 @@ class PIIDetector:
             "LIGACOES", "TELEFONICAS", "MUDAS", "ILUMINACAO", "PUBLICA",
             "OUVIDORIA", "RECLAMACAO", "DENUNCIA", "ELOGIO", "SUGESTAO",
             "JANEIRO", "FEVEREIRO", "MARCO", "ABRIL", "MAIO", "JUNHO",
-            "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
+            "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO",
+            
+            # Instituições públicas (NÃO são nomes de pessoas!)
+            "ESCOLA", "ESCOLA CLASSE", "ESCOLA PARQUE", "CENTRO DE ENSINO",
+            "CENTRO EDUCACIONAL", "CEF", "CEM", "CED", "EC", "EP",
+            "HOSPITAL", "HOSPITAL REGIONAL", "HOSPITAL MATERNO", "HOSPITAL DE BASE",
+            "UBS", "UPA", "CENTRO DE SAUDE", "UNIDADE BASICA",
+            "DELEGACIA", "BATALHAO", "CORPO DE BOMBEIROS", "QUARTEL",
+            "CLASSE", "REGIONAL", "MATERNO", "INFANTIL", "BASE"
         }
         
         # Termos institucionais/públicos do GDF - EXPANDIDO
@@ -360,7 +447,11 @@ class PIIDetector:
             "FALAR COM O", "FALAR COM A", "CONTATO DO", "CONTATO DA",
             "PROCURAR", "CHAMAR", "AVISAR", "COMUNICAR COM",
             "ENDERECO DO", "ENDERECO DA", "RESIDENCIA DO", "RESIDENCIA DA",
-            "CASA DO", "CASA DA", "MORA NA", "MORA NO", "RESIDE NA", "RESIDE NO"
+            "CASA DO", "CASA DA", "MORA NA", "MORA NO", "RESIDE NA", "RESIDE NO",
+            # Novos gatilhos para servidores identificados
+            "CONTATO:", "SERVIDOR", "SERVIDORA", "SR.", "SRA.", "SENHOR", "SENHORA",
+            "DIRETOR", "DIRETORA", "DADOS DO", "DADOS DA", "SOLICITO DADOS",
+            "IDENTIFICADO COMO", "CIDADAO", "CIDADA"
         }
         
         # Contextos que indicam informação pessoal
@@ -417,6 +508,14 @@ class PIIDetector:
             "CERTIDAO": 0.85,
             "REGISTRO_PROFISSIONAL": 0.85,
             
+            # LGPD - Dados Sensíveis (peso máximo)
+            "DADO_SAUDE": 0.95,       # CID, prontuário, diagnóstico
+            "DADO_BIOMETRICO": 0.95,  # Impressão digital, facial
+            "MENOR_IDENTIFICADO": 0.95,  # Criança/adolescente identificado
+            
+            # LGPD - Identificadores funcionais
+            "MATRICULA": 0.88,        # Matrícula funcional/escolar
+            
             # Regex com dependência de contexto
             "CEP": 0.75,              # Só com contexto pessoal
             "DATA_NASCIMENTO": 0.70,  # Muitas datas não são nascimento
@@ -435,8 +534,11 @@ class PIIDetector:
             # === DOCUMENTOS DE IDENTIFICAÇÃO ===
             
             # CPF: 000.000.000-00 ou 00000000000
+            # CPF: formato padrão e variações com erros de digitação
+            # LGPD: dado com erro de digitação AINDA É PII pois pode identificar pessoa
+            # Aceita: 123.456.789-00, 12345678900, 129.180.122-6 (10 dígitos com erro)
             'CPF': re.compile(
-                r'\b(\d{3}[\.\s]?\d{3}[\.\s]?\d{3}[\-\.\s]?\d{2})\b',
+                r'\b(\d{3}[\.\s]?\d{3}[\.\s]?\d{3}[\-\.\s]?\d{1,2})\b',  # Aceita 1-2 dígitos finais
                 re.IGNORECASE
             ),
             
@@ -446,43 +548,62 @@ class PIIDetector:
                 re.IGNORECASE
             ),
             
-            # RG: diversos formatos estaduais
+            # RG: diversos formatos estaduais (5 a 9 dígitos)
+            # Formatos: RG nº 1.234.567-8, RG 123456-7 DETRAN-DF, RG: 12345678
             'RG': re.compile(
                 r'(?i)(?:RG|R\.G\.|IDENTIDADE|CARTEIRA DE IDENTIDADE)[:\s]*'
+                r'(?:n[ºo°]?\s*)?'  # Opcional "nº"
                 r'[\(\[]?[A-Z]{0,2}[\)\]]?[\s\-]*'
-                r'(\d{1,2}[\.\s]?\d{3}[\.\s]?\d{3}[\-\.\s]?[\dXx])',
+                r'(\d{1,2}[\.\s]?\d{3}[\.\s]?\d{3}[\-\.\s]?[\dXx]?)',
                 re.IGNORECASE
             ),
             
-            # CNH: 00000000000 (11 dígitos)
+            # RG com órgão emissor explícito (DETRAN, SSP, etc)
+            'RG_ORGAO': re.compile(
+                r'(?i)(?:RG|R\.G\.|IDENTIDADE)[:\s]*'
+                r'(?:n[ºo°]?\s*)?'  # Opcional "nº"
+                r'(\d{5,9}[\-\.\s]?[\dXx]?)[\s\-/]*'
+                r'(?:SSP|SDS|PC|IFP|DETRAN|SESP|DIC|DGPC|IML|IGP)[\s\-/]*[A-Z]{2}',
+                re.IGNORECASE
+            ),
+            
+            # CNH: 10-12 dígitos (aceita erros de digitação humana)
+            # LGPD: dado pessoal mesmo com erro de digitação
             'CNH': re.compile(
-                r'(?i)(?:CNH|CARTEIRA DE MOTORISTA|HABILITACAO)[:\s]*'
-                r'(\d{11})',
+                r'(?i)(?:CNH|CARTEIRA DE MOTORISTA|HABILITACAO|MINHA CNH)[:\s]*[eé]?[:\s]*'
+                r'(\d{10,12})',
                 re.IGNORECASE
             ),
             
-            # PIS/PASEP/NIT: 000.00000.00-0
+            # PIS/PASEP/NIT: 000.00000.00-0 ou PIS: 123.45678.90-1
             'PIS': re.compile(
-                r'\b(\d{3}[\.\s]?\d{5}[\.\s]?\d{2}[\-\.\s]?\d{1})\b',
+                r'(?i)(?:PIS|PASEP|NIT|PIS/PASEP)[:\s]*'
+                r'(\d{3}[\.\s]?\d{5}[\.\s]?\d{2}[\-\.\s]?\d{1})',
                 re.IGNORECASE
             ),
             
             # Título de Eleitor: 0000 0000 0000 (12 dígitos)
+            # Formato: "Título de eleitor: 0123 4567 8901"
             'TITULO_ELEITOR': re.compile(
-                r'(?i)(?:TITULO DE ELEITOR|TITULO ELEITORAL)[:\s]*'
+                r'(?i)(?:T[ÍI]TULO\s+(?:DE\s+)?ELEITOR|T[ÍI]TULO\s+ELEITORAL)[:\s]*'
                 r'(\d{4}[\.\s]?\d{4}[\.\s]?\d{4})',
                 re.IGNORECASE
             ),
             
             # CNS (Cartão SUS): 15 dígitos começando com 1, 2, 7, 8 ou 9
+            # Com label: CNS: 123456789012345
             'CNS': re.compile(
-                r'\b([1-2789]\d{14})\b',
+                r'(?i)(?:CNS|CART[ÃA]O\s+SUS|CART[ÃA]O\s+NACIONAL\s+DE\s+SA[ÚU]DE)[:\s]*'
+                r'([1-2789]\d{14})',
                 re.IGNORECASE
             ),
             
-            # Passaporte Brasileiro: AA000000 ou BR000000
+            # Passaporte Brasileiro: AA000000, FN987654, BR654321
+            # Aceita formatos com possessivo, label em inglês/português
+            # "Meu passaporte é FN987654", "Passport number: BR654321"
             'PASSAPORTE': re.compile(
-                r'(?i)(?:PASSAPORTE|PASSPORT)[:\s]*'
+                r'(?i)(?:PASSAPORTE|PASSPORT|MEU PASSAPORTE)[:\s]*'
+                r'(?:[ÉE]|NUMBER|N[ºO°]?)?[:\s]*'
                 r'(?:BR)?[\s]?([A-Z]{2}\d{6})',
                 re.IGNORECASE
             ),
@@ -504,7 +625,7 @@ class PIIDetector:
             # Registro profissional: CRM, OAB, CREA, etc.
             'REGISTRO_PROFISSIONAL': re.compile(
                 r'(?i)\b(CRM|OAB|CREA|CRO|CRP|CRF|COREN|CRC)[/\-\s]*'
-                r'([A-Z]{2})?[\s\-]*(\d{3,6})',
+                r'([A-Z]{2})?[\s\-/]*(?:n[ºo°]?\s*)?(\d{2,6}(?:[.\-]\d+)?)',
                 re.IGNORECASE
             ),
             
@@ -524,15 +645,25 @@ class PIIDetector:
                 re.IGNORECASE
             ),
             
-            # Celular: (XX) 9XXXX-XXXX
+            # Celular: (XX) 9XXXX-XXXX ou (XX)9XXXX-XXXX (sem espaço)
+            # Aceita variações de formatação comuns em dados reais
+            # Inclui DDD com zero opcional: (061) ou 061
             'CELULAR': re.compile(
-                r'(?<![+\d])[\(\[]?(\d{2})[\)\]]?[\s\-]?(9\d{4})[\s\-]?(\d{4})(?!\d)',
+                r'(?<![+\d])[\(\[]?0?(\d{2})[\)\]]?[\s\-]?(9[\s]?\d{4})[\s\-]?(\d{4})(?!\d)',
                 re.IGNORECASE
             ),
             
-            # Telefone fixo: (XX) XXXX-XXXX
+            # Telefone fixo: (XX) XXXX-XXXX ou (XX)XXXX-XXXX
+            # Inclui DDD com zero opcional: (061) ou 061
             'TELEFONE_FIXO': re.compile(
-                r'(?<![+\d])[\(\[]?(\d{2})[\)\]]?[\s\-]?([2-5]\d{3})[\s\-]?(\d{4})(?!\d)',
+                r'(?<![+\d])[\(\[]?0?(\d{2})[\)\]]?[\s\-]?([2-5]\d{3})[\s\-]?(\d{4})(?!\d)',
+                re.IGNORECASE
+            ),
+            
+            # Telefone com DDD separado por espaço (formato real e-SIC)
+            # Ex: 89 34180-1890, 61 9 9999-8888
+            'TELEFONE_DDD_ESPACO': re.compile(
+                r'(?<!\d)(\d{2})[\s]+(\d{4,5})[\s\-]?(\d{4})(?!\d)',
                 re.IGNORECASE
             ),
             
@@ -540,12 +671,34 @@ class PIIDetector:
             
             # Endereço residencial com indicadores
             'ENDERECO_RESIDENCIAL': re.compile(
-                r'(?i)(?:moro|resido|minha casa|meu endere[cç]o|endere[cç]o\s*:?)'
+                r'(?i)(?:moro|resido|minha casa|meu endere[cç]o|minha resid[eê]ncia|endere[cç]o\s*:?)'
                 r'[^\n]{0,80}?'
                 r'(?:(?:rua|av|avenida|alameda|travessa|estrada|rodovia)[\s\.]+'
                 r'[a-záéíóúàèìòùâêîôûãõ\s]+[\s,]+(?:n[ºo°]?[\s\.]*)?[\d]+|'
                 r'(?:casa|apto?|apartamento|lote|bloco|quadra)[\s\.]*'
                 r'(?:n[ºo°]?[\s\.]*)?[\d]+[a-z]?)',
+                re.IGNORECASE | re.UNICODE
+            ),
+            
+            # Endereço de Brasília (QI, QR, QN, QS, etc) - com prefixo de moradia
+            'ENDERECO_BRASILIA': re.compile(
+                r'(?i)(?:moro|resido|minha casa|meu endere[cç]o|minha resid[eê]ncia|resid[eê]ncia:?)[^\n]{0,30}?'
+                r'(?:Q[INRSE]\s*\d+|SQS\s*\d+|SQN\s*\d+|SRES\s*\d+|SHIS\s*QI\s*\d+|'
+                r'SHIN\s*QI\s*\d+|QNM\s*\d+|QNN\s*\d+|Conjunto\s+[A-Z]\s+Casa\s+\d+)',
+                re.IGNORECASE | re.UNICODE
+            ),
+            
+            # Endereço SHIN/SHIS/SHLP específico (lagos, penínsulas) - muito específico, sempre PII
+            'ENDERECO_SHIN_SHIS': re.compile(
+                r'(?i)(?:mora|na)\s*(SHIN|SHIS|SHLP|SHLN)\s*QI\s*\d+\s*(?:Conjunto|Conj\.?)\s*\d+',
+                re.IGNORECASE | re.UNICODE
+            ),
+            
+            # Endereço comercial específico (CRN, CLN, CLS, etc - com bloco/loja)
+            # Usado quando menciona o imóvel específico do cidadão
+            'ENDERECO_COMERCIAL_ESPECIFICO': re.compile(
+                r'(?i)(?:(?:im[óo]vel|inquilin[oa]|propriet[áa]ri[oa]|loja|estabelecimento)[^\n]{0,50}?)?'
+                r'(CRN|CLN|CLS|SCLN|SCRN|SCRS|SCLS)\s*\d+\s*(?:Bloco|Bl\.?)\s*[A-Z]\s*(?:loja|sala|apt\.?|apartamento)?\s*\d+',
                 re.IGNORECASE | re.UNICODE
             ),
             
@@ -568,6 +721,12 @@ class PIIDetector:
             'CONTA_BANCARIA': re.compile(
                 r'(?i)(?:ag[eê]ncia|ag\.?|conta|c/?c|c\.c\.?)[:\s]*'
                 r'(\d{4,5})[\s\-]*(?:\d)?[\s\-/]*(\d{5,12})[\-]?\d?',
+                re.IGNORECASE
+            ),
+            
+            # Dados bancários: conta + agência (ordem inversa ou mais flexível)
+            'DADOS_BANCARIOS': re.compile(
+                r'(?i)(?:conta)[:\s]*(\d{4,12})[\s\-]*\d?[\s,\.;]+(?:ag[eê]?ncia|ag\.?)[:\s]*(\d{4,5})',
                 re.IGNORECASE
             ),
             
@@ -603,6 +762,67 @@ class PIIDetector:
                 r'\b(\d{7}[\-\.]\d{2}[\-\.]\d{4}[\-\.]\d[\-\.]\d{2}[\-\.]\d{4})\b',
                 re.IGNORECASE
             ),
+            
+            # === NOVOS - LGPD COMPLIANCE ===
+            
+            # Matrícula funcional (servidor público)
+            # Formatos: 12345678, 98.123-3, mat. 1234567, 98745632D
+            'MATRICULA': re.compile(
+                r'(?i)(?:matr[ií]cula|mat\.?)[:\s]*(\d{2,3}[\.\-]?\d{3}[\-\.]?[\dA-Z]?|\d{5,9}[\-\.]?[\dA-Z]?)',
+                re.IGNORECASE
+            ),
+            
+            # Dados bancários - Múltiplos formatos
+            # Formato 1: "Agência 0001 Conta corrente 123456-7"
+            # Formato 2: "Conta: 12345-6 Ag: 1234"
+            # Formato 3: "Ag 1234 CC 567890-1"
+            'DADOS_BANCARIOS': re.compile(
+                r'(?i)(?:'
+                r'(?:ag[êe]ncia|ag\.?)[:\s]*(\d{4})[,\s]*(?:conta|cc|c/?c)[:\s]*(?:corrente\s*)?(\d{5,12}[\-]?[\dXx]?)|'
+                r'(?:conta)[:\s]*(\d{4,12}[\-]?[\dXx]?)[,\s]*(?:ag[êe]ncia|ag\.?)[:\s]*(\d{4})|'
+                r'(?:dep[óo]sito|transferir)[^\n]{0,30}(?:ag\.?|ag[êe]ncia)[:\s]*(\d{4})[,\s]*(?:cc|conta|c/?c)[:\s]*(\d{4,12}[\-]?[\dXx]?)'
+                r')',
+                re.IGNORECASE
+            ),
+            
+            # Cartão (últimos 4 dígitos)
+            'CARTAO_FINAL': re.compile(
+                r'(?i)(?:cart[ãa]o|card)[^0-9]*(?:final|terminado em|[\*]+)[:\s]*(\d{4})',
+                re.IGNORECASE
+            ),
+            
+            # Dados sensíveis - Saúde (CID, diagnóstico, condições)
+            'DADO_SAUDE': re.compile(
+                r'(?i)(?:'
+                r'CID[\s\-]?[A-Z]\d{1,3}(?:\.\d)?|'  # CID F32, CID G40.1
+                r'(?:HIV|AIDS|cancer|câncer|c[aâ]ncer|diabetes|epilepsia|'
+                r'esquizofrenia|depress[ãa]o|bipolar|transtorno)[^.]{0,30}(?:positivo|confirmado|diagn[oó]stico)|'
+                r'prontu[aá]rio\s*(?:m[eé]dico)?\s*(?:n[ºo°]?\s*)?[\d/]+|'  # Prontuário nº 12345
+                r'(?:diagn[oó]stico|tratamento)\s+(?:de\s+|realizado\s+de\s+)?(?:HIV|AIDS|cancer|câncer|c[aâ]ncer|diabetes|epilepsia)'
+                r')',
+                re.IGNORECASE
+            ),
+            
+            # Dados biométricos
+            'DADO_BIOMETRICO': re.compile(
+                r'(?i)(?:'
+                r'impress[ãa]o\s+digital|'
+                r'foto\s*3\s*x\s*4|'
+                r'reconhecimento\s+facial|'
+                r'biometria\s+(?:coletada|registrada|cadastrada)'
+                r')',
+                re.IGNORECASE
+            ),
+            
+            # Menor de idade identificado
+            # Formatos: "João, 15 anos", "A aluna Maria, 10 anos", "criança José"
+            'MENOR_IDENTIFICADO': re.compile(
+                r'(?i)(?:'
+                r'(?:crian[çc]a|menor|alun[oa]|estudante)\s+([A-Z][a-záéíóúàâêôãõç]+(?:\s+[A-Z][a-záéíóúàâêôãõç]+)*)[,\s]+(\d{1,2})\s*anos?|'
+                r'([A-Z][a-záéíóúàâêôãõç]+)[,\s]+(\d{1,2})\s*anos[,\s]+(?:estudante|alun[oa]|crian[çc]a|menor)'
+                r')',
+                re.IGNORECASE | re.UNICODE
+            ),
         }
     
     @lru_cache(maxsize=1024)
@@ -610,8 +830,19 @@ class PIIDetector:
         """Normaliza texto para comparação (com cache)."""
         return unidecode(texto).upper().strip() if texto else ""
     
-    def _eh_lixo(self, texto_entidade: str) -> bool:
-        """Verifica se entidade é lixo (falso positivo)."""
+    def _deve_ignorar_entidade(self, texto_entidade: str) -> bool:
+        """Verifica se entidade deve ser ignorada (falso positivo potencial).
+        
+        Analisa se o texto representa uma entidade que não deve ser
+        considerada PII, como nomes de instituições públicas, termos
+        administrativos ou palavras genéricas.
+        
+        Args:
+            texto_entidade: Texto da entidade detectada
+            
+        Returns:
+            bool: True se deve ser ignorada, False se é PII potencial
+        """
         if not texto_entidade or len(texto_entidade) < 3:
             return True
         
@@ -625,16 +856,35 @@ class PIIDetector:
         if any(ts in t_norm for ts in self.termos_seguros):
             return True
         
+        # Instituições públicas (não são nomes de pessoas!)
+        instituicoes_publicas = {
+            "ESCOLA CLASSE", "ESCOLA PARQUE", "CENTRO DE ENSINO", 
+            "HOSPITAL REGIONAL", "HOSPITAL MATERNO", "HOSPITAL DE BASE",
+            "HOSPITAL INFANTIL", "HOSPITAL UNIVERSITARIO", "UBS", "UPA",
+            "CENTRO DE SAUDE", "DELEGACIA", "BATALHAO", "QUARTEL",
+            "ADMINISTRACAO REGIONAL", "PREFEITURA", "SECRETARIA"
+        }
+        if any(inst in t_norm for inst in instituicoes_publicas):
+            return True
+        
         # Só números/símbolos
         if re.match(r'^[\d/\.\-\s]+$', texto_entidade):
             return True
         
-        # Palavras genéricas
+        # Palavras genéricas (não são nomes de pessoas)
         palavras_bloqueadas = {
             "LIGACOES", "TELEFONICAS", "RECLAMACAO", "DENUNCIA",
-            "PROTOCOLO", "PROCESSO", "MANIFESTACAO", "SOLICITACAO"
+            "PROTOCOLO", "PROCESSO", "MANIFESTACAO", "SOLICITACAO",
+            # Verbos no infinitivo/conjugados que parecem nomes
+            "SOLICITO", "REQUEIRO", "AUTORIZO", "INFORMO", "PREZADOS",
+            "ACESSO", "INTEGRAL", "AUTOS",
+            # Nomes de doenças que parecem nomes próprios (epônimos médicos)
+            "HUNTINGTON", "PARKINSON", "ALZHEIMER", "CROHN", "HODGKIN",
+            "KAWASAKI", "TOURETTE", "ADDISON", "CUSHING", "GRAVES",
+            "HASHIMOTO", "MENIERE", "RAYNAUD", "SJOGREN", "WILSON",
+            "CHAGAS", "HANSEN", "BASEDOW", "BELL", "DOWN"
         }
-        if any(p in t_norm for p in palavras_bloqueadas):
+        if t_norm in palavras_bloqueadas:
             return True
         
         return False
@@ -653,7 +903,10 @@ class PIIDetector:
         palavras_negativas = {
             "INVALIDO", "INVÁLIDO", "FALSO", "FICTICIO", "FICTÍCIO",
             "EXEMPLO", "TESTE", "FAKE", "GENERICO", "GENÉRICO",
-            "000.000.000-00", "111.111.111-11", "XXX.XXX.XXX-XX"
+            "000.000.000-00", "111.111.111-11", "XXX.XXX.XXX-XX",
+            # Contextos que não são CPF
+            "PROCESSO", "PROTOCOLO", "SEI ", "N° SEI", "Nº SEI",
+            "CODIGO DE BARRAS", "CÓDIGO DE BARRAS", "COD BARRAS"
         }
         
         return any(p in contexto for p in palavras_negativas)
@@ -780,9 +1033,19 @@ class PIIDetector:
                 if tipo == 'CPF':
                     if self._contexto_negativo_cpf(texto, valor):
                         continue
-                    if not self.validador.validar_cpf(valor):
+                    
+                    # LGPD: CPF com erro de digitação AINDA É dado pessoal
+                    # Verifica formato primeiro, depois ajusta confiança pelo DV
+                    if not self.validador.cpf_tem_formato_valido(valor):
                         continue
+                    
+                    # Calcula confiança base
                     confianca = self._calcular_confianca("CPF", texto, inicio, fim)
+                    
+                    # Se DV não bate, pode ser erro de digitação - reduz confiança mas não descarta
+                    if not self.validador.cpf_dv_correto(valor):
+                        confianca *= 0.85  # Reduz 15% mas mantém como PII
+                    
                     findings.append(PIIFinding(
                         tipo="CPF", valor=valor, confianca=confianca,
                         peso=5, inicio=inicio, fim=fim
@@ -801,18 +1064,23 @@ class PIIDetector:
                         ))
                 
                 elif tipo == 'PIS':
-                    if not self.validador.validar_pis(valor):
-                        continue
+                    # LGPD: PIS com erro de DV AINDA É dado pessoal
+                    # Remove validação estrita de DV para ser mais robusto
                     confianca = self._calcular_confianca("PIS", texto, inicio, fim)
+                    # Reduz confiança se DV não bater
+                    if not self.validador.validar_pis(valor):
+                        confianca *= 0.85
                     findings.append(PIIFinding(
                         tipo="PIS", valor=valor, confianca=confianca,
                         peso=5, inicio=inicio, fim=fim
                     ))
                 
                 elif tipo == 'CNS':
-                    if not self.validador.validar_cns(valor):
-                        continue
+                    # LGPD: CNS com erro de DV AINDA É dado pessoal
                     confianca = self._calcular_confianca("CNS", texto, inicio, fim)
+                    # Reduz confiança se DV não bater
+                    if not self.validador.validar_cns(valor):
+                        confianca *= 0.85
                     findings.append(PIIFinding(
                         tipo="CNS", valor=valor, confianca=confianca,
                         peso=5, inicio=inicio, fim=fim
@@ -828,11 +1096,31 @@ class PIIDetector:
                         peso=4, inicio=inicio, fim=fim
                     ))
                 
-                elif tipo in ['CELULAR', 'TELEFONE_FIXO', 'TELEFONE_DDI']:
-                    if tipo == 'TELEFONE_DDI':
-                        ctx = texto[max(0, inicio-50):inicio].lower()
-                        if 'institucional' in ctx:
-                            continue
+                elif tipo in ['CELULAR', 'TELEFONE_FIXO', 'TELEFONE_DDI', 'TELEFONE_DDD_ESPACO']:
+                    # Verificar contexto institucional
+                    ctx_antes = texto[max(0, inicio-80):inicio].lower()
+                    ctx_depois = texto[fim:min(len(texto), fim+30)].lower()
+                    
+                    # Filtrar telefones institucionais
+                    termos_institucionais = [
+                        'institucional', 'fixo institucional', 'telefone institucional',
+                        'celular institucional', 'para contato:', 'contato:',
+                        'ramal', 'extensão', 'fale conosco', 'sac ', 'atendimento'
+                    ]
+                    
+                    is_institucional = any(term in ctx_antes or term in ctx_depois 
+                                          for term in termos_institucionais)
+                    
+                    # Também filtrar se for telefone fixo de prefixos conhecidos de órgãos públicos
+                    if tipo == 'TELEFONE_FIXO':
+                        # Prefixos comuns de órgãos do GDF: 3105, 3961, 3325, etc
+                        if valor and any(prefix in valor for prefix in ['3105', '3961', '3325', '3429', '3340']):
+                            if 'institucional' in ctx_antes or 'ramal' in ctx_depois:
+                                continue
+                    
+                    if is_institucional:
+                        continue
+                    
                     confianca = self._calcular_confianca("TELEFONE", texto, inicio, fim)
                     findings.append(PIIFinding(
                         tipo="TELEFONE", valor=valor, confianca=confianca,
@@ -840,6 +1128,13 @@ class PIIDetector:
                     ))
                 
                 elif tipo == 'RG':
+                    confianca = self._calcular_confianca("RG", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="RG", valor=valor, confianca=confianca,
+                        peso=5, inicio=inicio, fim=fim
+                    ))
+                
+                elif tipo == 'RG_ORGAO':
                     confianca = self._calcular_confianca("RG", texto, inicio, fim)
                     findings.append(PIIFinding(
                         tipo="RG", valor=valor, confianca=confianca,
@@ -854,6 +1149,10 @@ class PIIDetector:
                     ))
                 
                 elif tipo == 'PASSAPORTE':
+                    # Filtrar passaportes fictícios (AA000000, BR000000, etc)
+                    numeros = re.sub(r'[^\d]', '', valor)
+                    if numeros and len(set(numeros)) == 1:  # Todos dígitos iguais
+                        continue
                     confianca = self._calcular_confianca("PASSAPORTE", texto, inicio, fim)
                     findings.append(PIIFinding(
                         tipo="PASSAPORTE", valor=valor, confianca=confianca,
@@ -861,9 +1160,53 @@ class PIIDetector:
                     ))
                 
                 elif tipo == 'ENDERECO_RESIDENCIAL':
+                    # Filtrar endereços institucionais (Secretarias, Ministérios, etc)
+                    contexto = texto[max(0, inicio-60):fim+30].upper()
+                    setores_institucionais = [
+                        'SECRETARIA', 'MINISTERIO', 'MINISTÉRIO', 'TRIBUNAL',
+                        'CAMARA', 'CÂMARA', 'SENADO', 'ASSEMBLEIA',
+                        'AUTARQUIA', 'FUNDACAO', 'FUNDAÇÃO', 'EMPRESA',
+                        'BANCO', 'HOSPITAL', 'UBS', 'UPA', 'ESCOLA', 'CEF ', 'CEM '
+                    ]
+                    # SBS, SCS, SCN, SAS, SES, SGN são setores comerciais/institucionais de Brasília
+                    if any(s in contexto for s in setores_institucionais):
+                        continue
+                    if re.search(r'\b(SBS|SCS|SCN|SAS|SES|SGN)\b', contexto):
+                        if 'MORO' not in contexto and 'RESIDO' not in contexto and 'MINHA' not in contexto:
+                            continue
                     confianca = self._calcular_confianca("ENDERECO_RESIDENCIAL", texto, inicio, fim)
                     findings.append(PIIFinding(
                         tipo="ENDERECO_RESIDENCIAL", valor=valor, confianca=confianca,
+                        peso=4, inicio=inicio, fim=fim
+                    ))
+                
+                elif tipo == 'ENDERECO_BRASILIA':
+                    confianca = self._calcular_confianca("ENDERECO_RESIDENCIAL", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="ENDERECO_RESIDENCIAL", valor=valor, confianca=confianca,
+                        peso=4, inicio=inicio, fim=fim
+                    ))
+                
+                elif tipo == 'ENDERECO_SHIN_SHIS':
+                    # Endereço SHIN/SHIS/SHLP - áreas nobres do DF, sempre específico
+                    confianca = self._calcular_confianca("ENDERECO_RESIDENCIAL", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="ENDERECO_RESIDENCIAL", valor=valor, confianca=confianca,
+                        peso=4, inicio=inicio, fim=fim
+                    ))
+                
+                elif tipo == 'ENDERECO_COMERCIAL_ESPECIFICO':
+                    # Endereço comercial onde pessoa física é proprietária/inquilina
+                    confianca = self._calcular_confianca("ENDERECO_RESIDENCIAL", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="ENDERECO_RESIDENCIAL", valor=valor, confianca=confianca,
+                        peso=4, inicio=inicio, fim=fim
+                    ))
+                
+                elif tipo == 'DADOS_BANCARIOS':
+                    confianca = self._calcular_confianca("CONTA_BANCARIA", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="CONTA_BANCARIA", valor=valor, confianca=confianca,
                         peso=4, inicio=inicio, fim=fim
                     ))
                 
@@ -903,9 +1246,11 @@ class PIIDetector:
                     ))
                 
                 elif tipo == 'TITULO_ELEITOR':
-                    if not self.validador.validar_titulo_eleitor(valor):
-                        continue
+                    # LGPD: Título com erro de DV AINDA É dado pessoal
                     confianca = self._calcular_confianca("TITULO_ELEITOR", texto, inicio, fim)
+                    # Reduz confiança se DV não bater
+                    if not self.validador.validar_titulo_eleitor(valor):
+                        confianca *= 0.85
                     findings.append(PIIFinding(
                         tipo="TITULO_ELEITOR", valor=valor, confianca=confianca,
                         peso=5, inicio=inicio, fim=fim
@@ -948,6 +1293,66 @@ class PIIDetector:
                         tipo="PROCESSO_CNJ", valor=valor, confianca=confianca,
                         peso=3, inicio=inicio, fim=fim
                     ))
+                
+                # === NOVOS TIPOS - LGPD COMPLIANCE ===
+                
+                elif tipo == 'MATRICULA':
+                    confianca = self._calcular_confianca("MATRICULA", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="MATRICULA", valor=valor, confianca=confianca,
+                        peso=4, inicio=inicio, fim=fim
+                    ))
+                
+                elif tipo == 'CARTAO_FINAL':
+                    confianca = self._calcular_confianca("CARTAO_CREDITO", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="CARTAO_CREDITO", valor=valor, confianca=confianca,
+                        peso=4, inicio=inicio, fim=fim
+                    ))
+                
+                elif tipo == 'DADO_SAUDE':
+                    # Verificar se há contexto de pessoa específica (não genérico)
+                    contexto = texto[max(0, inicio-100):fim+50].upper()
+                    
+                    # Contextos que indicam dado de saúde de pessoa específica
+                    contextos_pii = [
+                        'PACIENTE', 'MEU', 'MINHA', 'MEUS', 'MINHAS',
+                        'DO SERVIDOR', 'DA SERVIDORA', 'DO CIDADAO', 'DA CIDADA',
+                        'DO ALUNO', 'DA ALUNA', 'DO ESTUDANTE', 'DA ESTUDANTE',
+                        'LAUDO', 'ATESTADO', 'PRONTUARIO'
+                    ]
+                    
+                    # Contextos genéricos que NÃO são PII
+                    contextos_genericos = [
+                        'PERFIL', 'ESTATISTICA', 'ESTATISTICAS', 'INFORMACOES SOBRE',
+                        'DADOS SOBRE', 'APOSENTADO', 'ISENCAO', 'ISENÇÃO',
+                        'BENEFICIO', 'SOLICITACAO DE', 'SOLICITO INFORMACOES'
+                    ]
+                    
+                    # Se for contexto genérico, não é PII
+                    if any(cg in contexto for cg in contextos_genericos):
+                        if not any(cp in contexto for cp in contextos_pii):
+                            continue
+                    
+                    confianca = self._calcular_confianca("DADO_SAUDE", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="DADO_SAUDE", valor=valor, confianca=confianca,
+                        peso=5, inicio=inicio, fim=fim  # Peso alto - dado sensível LGPD
+                    ))
+                
+                elif tipo == 'DADO_BIOMETRICO':
+                    confianca = self._calcular_confianca("DADO_BIOMETRICO", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="DADO_BIOMETRICO", valor=valor, confianca=confianca,
+                        peso=5, inicio=inicio, fim=fim  # Peso alto - dado sensível LGPD
+                    ))
+                
+                elif tipo == 'MENOR_IDENTIFICADO':
+                    confianca = self._calcular_confianca("MENOR_IDENTIFICADO", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="MENOR_IDENTIFICADO", valor=valor, confianca=confianca,
+                        peso=5, inicio=inicio, fim=fim  # Peso alto - menor é dado sensível
+                    ))
         
         return findings
     
@@ -980,6 +1385,12 @@ class PIIDetector:
                     continue
                 if len(nome) <= 3:
                     continue
+                # Filtro de qualidade: precisa ter nome + sobrenome
+                if " " not in nome:
+                    continue
+                # Usa blocklist global
+                if self._deve_ignorar_entidade(nome):
+                    continue
                 
                 inicio = idx + match.start()
                 fim = idx + match.end()
@@ -1001,9 +1412,15 @@ class PIIDetector:
             match = re.search(r"^([A-Z][a-záéíóúàèìòùâêîôûãõ]+)", resto)
             if match:
                 nome = match.group(1).strip()
-                nome_upper = self._normalizar(nome)
                 
-                if len(nome) > 3 and nome_upper not in self.blocklist_total:
+                # Filtros de qualidade
+                if len(nome) <= 3:
+                    pass  # Skip
+                elif " " not in nome:
+                    pass  # Precisa ter nome + sobrenome
+                elif self._deve_ignorar_entidade(nome):
+                    pass  # Na blocklist
+                else:
                     inicio = idx
                     fim = idx + len(nome)
                     # Base menor para "contra" (0.80)
@@ -1016,14 +1433,51 @@ class PIIDetector:
                         peso=4, inicio=inicio, fim=fim
                     ))
         
+        # Nomes após "identificado como" (mesmo nome único é PII nesse contexto)
+        # Permite palavras intermediárias como "apenas", "somente", etc.
+        padroes_identificacao = [
+            r'IDENTIFICAD[OA](?:\s+(?:APENAS|SOMENTE|SO))?\s+COMO',
+            r'CONHECID[OA](?:\s+(?:APENAS|SOMENTE|SO))?\s+COMO',
+            r'CHAMAD[OA]\s+(?:DE|POR)',
+            r'NOME\s+(?:DE|E)'
+        ]
+        for padrao in padroes_identificacao:
+            match_gatilho = re.search(padrao, texto_upper)
+            if not match_gatilho:
+                continue
+            
+            idx = match_gatilho.end()
+            resto = texto[idx:idx+40].strip()
+            
+            # Captura nome (pode ser único)
+            match = re.search(r'^([A-Z][a-záéíóúàèìòùâêîôûãõ]+)', resto)
+            if match:
+                nome = match.group(1).strip()
+                
+                # Filtros básicos
+                if len(nome) <= 2:
+                    continue
+                if self._deve_ignorar_entidade(nome):
+                    continue
+                
+                inicio = idx + match.start()
+                fim = idx + match.end()
+                
+                findings.append(PIIFinding(
+                    tipo="NOME", valor=nome, confianca=0.82,
+                    peso=4, inicio=inicio, fim=fim
+                ))
+        
         return findings
     
     def _deve_ignorar_nome(self, texto: str, inicio: int) -> bool:
         """Determina se nome deve ser ignorado (imunidade funcional)."""
-        # Contexto antes do nome
+        # Contexto antes do nome (últimos 100 chars)
         pre_text = self._normalizar(texto[max(0, inicio-100):inicio])
-        # Contexto após o nome (próximos 100 chars)
-        pos_text = self._normalizar(texto[inicio:min(len(texto), inicio+100)])
+        # Contexto após o nome (próximos 150 chars para capturar instituições)
+        pos_text = self._normalizar(texto[inicio:min(len(texto), inicio+150)])
+        # Contexto total
+        full_context = pre_text + " " + pos_text
         
         # Gatilho de contato ANULA imunidade
         for gatilho in self.gatilhos_contato:
@@ -1031,22 +1485,50 @@ class PIIDetector:
                 return False
         
         # "Funcionário do mês" = imune (contexto de elogio)
-        if "FUNCIONARIO DO MES" in pre_text or "FUNCIONARIA DO MES" in pre_text:
+        if "FUNCIONARIO DO MES" in full_context or "FUNCIONARIA DO MES" in full_context:
             return True
         
-        # Cargo + instituição = imune
+        # Título + nome + instituição = servidor público, IMUNE
+        titulos = {"DR", "DRA", "DOUTOR", "DOUTORA", "PROF", "PROFESSOR", "PROFESSORA"}
+        instituicoes = {
+            "SECRETARIA", "ADMINISTRACAO", "ADMINISTRAÇÃO", "DEPARTAMENTO", 
+            "DIRETORIA", "GDF", "SEEDF", "SESDF", "RESPONSAVEL", "SETOR",
+            "HOSPITAL", "ESCOLA", "COORDENACAO", "COORDENAÇÃO", "REGIONAL",
+            "GERENCIA", "GERÊNCIA", "GABINETE", "ASSESSORIA", "MINISTÉRIO"
+        }
+        
+        # Verifica se há título imediatamente antes do nome
+        has_titulo = any(titulo + " " in pre_text[-15:] or titulo + "." in pre_text[-15:] 
+                         for titulo in titulos)
+        
+        # Verifica se há instituição no contexto
+        has_instituicao = any(inst in pos_text for inst in instituicoes)
+        
+        # Título + Instituição = IMUNE (funcionário público)
+        if has_titulo and has_instituicao:
+            return True
+        
+        # Cargo + instituição = imune (formato "Encaminhar para Dr. X da Secretaria")
         for cargo in self.cargos_autoridade:
             if re.search(rf"\b{cargo}\.?\s*$", pre_text):
-                instituicoes = {
-                    "SECRETARIA", "ADMINISTRACAO", "DEPARTAMENTO", 
-                    "DIRETORIA", "GDF", "SEEDF", "RESPONSAVEL"
-                }
-                if any(inst in pos_text for inst in instituicoes):
+                if has_instituicao:
                     return True
         
         # Servidor em contexto funcional = imune
-        if any(ind in pre_text for ind in self.indicadores_servidor):
-            return True
+        # Mas APENAS se não houver gatilho de contato após
+        has_servidor_context = any(ind in pre_text for ind in self.indicadores_servidor)
+        has_servidor_after = any(ind in pos_text[:50] for ind in self.indicadores_servidor)
+        
+        if has_servidor_context or has_servidor_after:
+            # Verifica se não há menção de dados pessoais após (anula imunidade)
+            dados_pessoais_anuladores = {
+                "TELEFONE PESSOAL", "CELULAR PESSOAL", "ENDERECO RESIDENCIAL", 
+                "EMAIL PESSOAL", "MEU TELEFONE", "MEU EMAIL", "MEU CPF", "SEU CPF",
+                "MEU RG", "SEU RG", "INFORMOU SEU", "INFORMOU MEU", "MEU ENDERECO",
+                "MINHA MATRICULA", "MEU NUMERO", "MEU CONTATO", "SEU CONTATO"
+            }
+            if not any(cp in pos_text for cp in dados_pessoais_anuladores):
+                return True
         
         return False
     
@@ -1072,7 +1554,7 @@ class PIIDetector:
                             continue
                         if " " not in palavra:  # Precisa ter nome + sobrenome
                             continue
-                        if self._eh_lixo(palavra):
+                        if self._deve_ignorar_entidade(palavra):
                             continue
                         if self._deve_ignorar_nome(texto, ent['start']):
                             continue
@@ -1104,7 +1586,7 @@ class PIIDetector:
                         continue
                     if " " not in ent.text:
                         continue
-                    if self._eh_lixo(ent.text):
+                    if self._deve_ignorar_entidade(ent.text):
                         continue
                     if self._deve_ignorar_nome(texto, ent.start_char):
                         continue
@@ -1161,11 +1643,20 @@ class PIIDetector:
         
         Usa calibração isotônica + combinação log-odds para calcular
         confiança de cada entidade e métricas de documento.
+        
+        Fontes do ensemble:
+        1. Regex + DV validation
+        2. BERT Davlan (multilíngue)
+        3. NuNER (pt-BR especializado)
+        4. spaCy (complementar)
+        5. Gatilhos linguísticos
         """
         # Coleta fontes usadas
         sources_used = []
         if self.nlp_bert:
             sources_used.append("bert_ner")
+        if self.nlp_nuner:
+            sources_used.append("nuner")
         if self.nlp_spacy:
             sources_used.append("spacy")
         sources_used.append("regex")
@@ -1199,7 +1690,7 @@ class PIIDetector:
                 "peso": f.peso
             })
         
-        # 3. NER (BERT + spaCy) - rastreia separadamente
+        # 3. BERT Davlan NER (multilíngue)
         if self.nlp_bert:
             bert_findings = self._detectar_ner_bert_only(text)
             for f in bert_findings:
@@ -1213,6 +1704,21 @@ class PIIDetector:
                     "peso": f.peso
                 })
         
+        # 4. NuNER pt-BR (especializado em português)
+        if self.nlp_nuner:
+            nuner_findings = self._detectar_ner_nuner_only(text)
+            for f in nuner_findings:
+                all_raw_detections.append({
+                    "tipo": f.tipo,
+                    "valor": f.valor,
+                    "start": f.inicio,
+                    "end": f.fim,
+                    "source": "nuner",
+                    "score": f.confianca,
+                    "peso": f.peso
+                })
+        
+        # 5. spaCy NER (complementar)
         if self.nlp_spacy:
             spacy_findings = self._detectar_ner_spacy_only(text)
             for f in spacy_findings:
@@ -1473,7 +1979,7 @@ class PIIDetector:
                     continue
                 if " " not in nome:
                     continue
-                if self._eh_lixo(nome):
+                if self._deve_ignorar_entidade(nome):
                     continue
                 if self._deve_ignorar_nome(texto, ent['start']):
                     continue
@@ -1508,7 +2014,7 @@ class PIIDetector:
                     continue
                 if " " not in ent.text:
                     continue
-                if self._eh_lixo(ent.text):
+                if self._deve_ignorar_entidade(ent.text):
                     continue
                 if self._deve_ignorar_nome(texto, ent.start_char):
                     continue
@@ -1525,6 +2031,55 @@ class PIIDetector:
                 ))
         except Exception as e:
             logger.warning(f"Erro no spaCy: {e}")
+        
+        return findings
+    
+    def _detectar_ner_nuner_only(self, texto: str) -> List[PIIFinding]:
+        """Detecta apenas com NuNER pt-BR (para rastreamento de fonte).
+        
+        NuNER é um modelo especializado em português brasileiro,
+        com melhor performance em nomes compostos brasileiros como:
+        - Maria das Graças
+        - José de Souza Filho
+        - Ana Carolina da Silva
+        """
+        findings = []
+        
+        if not self.nlp_nuner:
+            return findings
+        
+        try:
+            # Trunca texto se necessário
+            texto_truncado = texto[:4096] if len(texto) > 4096 else texto
+            
+            resultados = self.nlp_nuner(texto_truncado)
+            for ent in resultados:
+                # NuNER usa labels diferentes - aceita PER, PESSOA, B-PER, I-PER
+                if ent['entity_group'] not in ['PER', 'PESSOA', 'B-PER', 'I-PER', 'PERSON']:
+                    continue
+                
+                nome = ent['word']
+                score = ent['score']
+                
+                # Filtros de qualidade
+                if len(nome) <= 3:
+                    continue
+                if " " not in nome:  # Precisa ter nome + sobrenome
+                    continue
+                if self._deve_ignorar_entidade(nome):
+                    continue
+                if self._deve_ignorar_nome(texto, ent['start']):
+                    continue
+                
+                inicio, fim = ent['start'], ent['end']
+                
+                findings.append(PIIFinding(
+                    tipo="NOME", valor=nome,
+                    confianca=score, peso=4,
+                    inicio=inicio, fim=fim
+                ))
+        except Exception as e:
+            logger.warning(f"Erro no NuNER: {e}")
         
         return findings
 

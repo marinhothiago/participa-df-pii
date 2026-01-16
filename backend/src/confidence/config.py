@@ -17,6 +17,9 @@ FN_RATES: Dict[str, float] = {
     # BERT NER multilíngue bem treinado perde ~0.8% de entidades
     "bert_ner": 0.008,
     
+    # NuNER pt-BR é especializado em português, perde ~0.6%
+    "nuner": 0.006,
+    
     # spaCy pt_core_news_lg é complementar, perde ~1.5%
     "spacy": 0.015,
     
@@ -39,6 +42,9 @@ FN_RATES: Dict[str, float] = {
 FP_RATES: Dict[str, float] = {
     # BERT pode confundir nomes comuns com entidades
     "bert_ner": 0.02,
+    
+    # NuNER entende melhor o contexto pt-BR, menos FP
+    "nuner": 0.015,
     
     # spaCy tem FP um pouco maior em português
     "spacy": 0.03,

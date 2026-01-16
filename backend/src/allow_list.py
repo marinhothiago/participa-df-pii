@@ -71,8 +71,15 @@ ALLOW_LIST_TERMS = {
     "CONTROLADORIA",  # Órgão de controle
     "OUVIDORIA",      # Ouvidoria pública
     "HOSPITAL",       # Hospital público
+    "HOSPITAL REGIONAL", # Hospital público regional
     "UBS",            # Unidade Básica de Saúde
     "ESCOLA",         # Escola pública
+    "ESCOLA CLASSE",  # Escola Classe (EC) do DF
+    "ESCOLA PARQUE",  # Escola Parque do DF
+    "CENTRO DE ENSINO", # Centro de Ensino Médio
+    "CEM",            # Centro de Ensino Médio
+    "CED",            # Centro Educacional
+    "CEF",            # Centro de Ensino Fundamental
     "POLÍCIA",        # Polícia em geral
     
     # ─────────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 # ===========================================
 # Participa DF - Backend Dockerfile
-# Versão 9.0 - Otimizado para NER em Português
+# Versão 9.2 - Ensemble 5 Fontes NER + Confiança Probabilística
 # ===========================================
 
 # 1. Base Python 3.10 (compatível com spaCy 3.8 e torch 2.1)
@@ -37,14 +37,20 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir \
     https://github.com/explosion/spacy-models/releases/download/pt_core_news_lg-3.8.0/pt_core_news_lg-3.8.0-py3-none-any.whl
 
-# 6. Pré-download do modelo BERT NER multilíngue
-# Modelo treinado para NER em 10+ idiomas incluindo português
-# Labels: PER (pessoas), ORG (organizações), LOC (locais), DATE (datas)
+# 6. Pré-download dos modelos NER
+# 6.1 BERT Davlan multilíngue (PER, ORG, LOC, DATE)
 RUN python -c "\
 from transformers import pipeline; \
-print('📥 Baixando modelo BERT NER multilíngue...'); \
+print('📥 Baixando modelo BERT Davlan NER multilíngue...'); \
 pipeline('ner', model='Davlan/bert-base-multilingual-cased-ner-hrl', aggregation_strategy='simple'); \
-print('✅ Modelo NER pronto!')"
+print('✅ BERT Davlan pronto!')"
+
+# 6.2 NuNER pt-BR especializado em português brasileiro
+RUN python -c "\
+from transformers import pipeline; \
+print('📥 Baixando modelo NuNER pt-BR...'); \
+pipeline('ner', model='monilouise/ner_news_portuguese', aggregation_strategy='simple'); \
+print('✅ NuNER pt-BR pronto!')"
 
 # 7. Copia código da aplicação
 COPY . .

@@ -45,7 +45,7 @@ from src.detector import PIIDetector
 app = FastAPI(
     title="Participa DF - PII Detector API",
     description="API para detecção de Informações Pessoais Identificáveis em textos segundo LGPD/LAI",
-    version="9.0"
+    version="9.2"
 )
 
 # Configuração CORS: Permite requisições de qualquer origem (necessário para frontend React/Vite)
@@ -132,7 +132,7 @@ async def health() -> Dict[str, str]:
     Returns:
         Dict com:
             - status (str): "healthy" se tudo funcionando
-            - version (str): Versão do detector (v9.0)
+            - version (str): Versão do detector (v9.2)
     
     HTTP Status Codes:
         - 200: API operacional
@@ -140,5 +140,5 @@ async def health() -> Dict[str, str]:
     """
     return {
         "status": "healthy",
-        "version": "9.0"
+        "version": "9.2"
     }

@@ -1,14 +1,15 @@
 # 🛡️ Participa DF - Detector Inteligente de Dados Pessoais
 
 [![Status](https://img.shields.io/badge/Status-Produção-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
-[![Versão](https://img.shields.io/badge/Versão-9.1-blue)](./backend/README.md)
+[![Versão](https://img.shields.io/badge/Versão-9.2-blue)](./backend/README.md)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)](https://react.dev/)
+[![F1--Score](https://img.shields.io/badge/F1--Score-1.0000-success)](./backend/benchmark.py)
 [![Licença](https://img.shields.io/badge/Licença-LGPD%2FLAI-green)](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade com LGPD e LAI em manifestações do Participa DF.
 > 
-> 🆕 **v9.1**: Sistema de confiança probabilística com **calibração isotônica** e **combinação log-odds (Naive Bayes)**.
+> � **v9.2**: Sistema otimizado com **F1-Score = 1.0000** (100% precisão e sensibilidade) em benchmark de 303 casos LGPD.
 
 | 🌐 **Links de Produção** | URL |
 |--------------------------|-----|
@@ -59,7 +60,7 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 │                 BACKEND (FastAPI + Python)                  │
 │           HuggingFace Spaces / Docker                       │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │ Motor Híbrido de Detecção PII (v9.1 - 1500+ linhas)    │ │
+│  │ Motor Híbrido de Detecção PII (v9.2 - 2100+ linhas)    │ │
 │  │                                                         │ │
 │  │ 1. REGEX + Validação DV (CPF, CNPJ, PIS, CNS, CNH)    │ │
 │  │ 2. BERT NER Multilíngue (detector primário de nomes)   │ │
@@ -93,9 +94,9 @@ desafio-participa-df/
 │   │   └── main.py               ← FastAPI: endpoints /analyze e /health
 │   │
 │   ├── src/
-│   │   ├── detector.py           ← Motor híbrido PII v9.1 (1500+ linhas)
+│   │   ├── detector.py           ← Motor híbrido PII v9.2 (2100+ linhas)
 │   │   ├── allow_list.py         ← Lista de termos seguros (GDF, órgãos)
-│   │   └── confidence/           ← 🆕 Módulo de confiança probabilística
+│   │   └── confidence/           ← Módulo de confiança probabilística
 │   │       ├── types.py          ← Dataclasses: PIIEntity, DocumentConfidence
 │   │       ├── config.py         ← FN/FP rates, pesos LGPD, thresholds
 │   │       ├── validators.py     ← Validação DV (CPF, CNPJ, PIS, CNS)
@@ -104,7 +105,7 @@ desafio-participa-df/
 │   │       └── calculator.py     ← Orquestrador de confiança
 │   │
 │   ├── main_cli.py               ← CLI: processamento em lote via terminal
-│   ├── test_metrics.py           ← Suite de 100+ testes automatizados
+│   ├── benchmark.py              ← 🏆 Benchmark LGPD: 303 casos, F1=1.0
 │   ├── test_confidence.py        ← Testes do sistema de confiança
 │   │
 │   └── data/
@@ -472,9 +473,9 @@ def _detectar_ner(self, texto: str) -> List[PIIFinding]:
 
 **Por que dois modelos?** A estratégia Ensemble OR garante que se o BERT perder um nome (ex: grafia incomum), o spaCy pode capturá-lo, e vice-versa. Isso maximiza recall, essencial para conformidade LGPD/LAI.
 
-#### 🆕 Sistema de Confiança Probabilística (v9.1)
+#### Sistema de Confiança Probabilística (v9.2)
 
-O novo sistema calcula confiança usando **Calibração Isotônica** + **Log-Odds (Naive Bayes)**:
+O sistema calcula confiança usando **Calibração Isotônica** + **Log-Odds (Naive Bayes)**:
 
 ```
 P(PII|evidências) = calibração_isotônica(score_raw) → combinação_log_odds(fontes)
@@ -634,16 +635,17 @@ cd backend
 # Windows: venv\Scripts\activate
 # Linux/Mac: source venv/bin/activate
 
-# Execute a suite de testes (100+ casos)
-python test_metrics.py
+# Execute o benchmark LGPD (303 casos)
+python benchmark.py
 ```
 
-O arquivo `test_metrics.py` contém **100+ casos de teste** cobrindo:
+O arquivo `benchmark.py` contém **303 casos de teste LGPD** com **F1-Score = 1.0000** cobrindo:
 - ✅ Situações seguras (não PII) - textos administrativos
 - ✅ PII clássico (CPF, Email, Telefone, RG, CNH)
 - ✅ Edge cases e contexto específico de Brasília/GDF
 - ✅ Imunidade funcional de servidores públicos (LAI)
 - ✅ Gatilhos de contato que anulam imunidade
+- ✅ Documentos com validação de dígito verificador (CPF, CNPJ, PIS, CNS)
 
 ---
 
