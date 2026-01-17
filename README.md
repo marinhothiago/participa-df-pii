@@ -738,8 +738,6 @@ git push origin main
 
 ---
 
-
-
 ---
 
 ## 👥 Equipe & Contato
