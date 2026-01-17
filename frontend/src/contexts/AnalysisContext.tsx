@@ -243,7 +243,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
   const addBatchResults = useCallback((results: BatchResult[]) => {
     const now = new Date();
-    let currentCounter = requestCounter;
+    const currentCounter = requestCounter;
     
     const newItems: AnalysisHistoryItem[] = results.map((result, index) => {
       const itemTime = new Date(now.getTime() + index);

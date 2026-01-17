@@ -14,7 +14,14 @@ interface RiskThermometerProps {
   total: number;
 }
 
+
 export function RiskThermometer({ distribution, total }: RiskThermometerProps) {
+  // Hooks sempre no topo
+  const [animate, setAnimate] = useState(false);
+  useEffect(() => {
+    setAnimate(true);
+  }, [distribution, total]);
+
   // Defensive: fallback if distribution or total is missing or malformed
   const safeDist = distribution && typeof distribution === 'object' ? distribution : {
     critical: 0, high: 0, moderate: 0, low: 0, safe: 0
@@ -51,12 +58,6 @@ export function RiskThermometer({ distribution, total }: RiskThermometerProps) {
       </div>
     );
   }
-
-  // Animation state to trigger thermometer bar fill after mount
-  const [animate, setAnimate] = useState(false);
-  useEffect(() => {
-    setAnimate(true);
-  }, [distribution, total]);
 
   return (
     <div className="gov-card animate-slide-up h-full flex flex-col">

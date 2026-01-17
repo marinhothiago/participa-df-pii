@@ -6,7 +6,14 @@ interface RiskDistributionChartProps {
   distribution: RiskDistribution;
 }
 
+
 export function RiskDistributionChart({ distribution }: RiskDistributionChartProps) {
+  // Hooks sempre no topo
+  const [animate, setAnimate] = useState(false);
+  useEffect(() => {
+    setAnimate(true);
+  }, [distribution]);
+
   // Defensive: fallback if distribution is missing or malformed
   const safeDist = distribution && typeof distribution === 'object' ? distribution : {
     critical: 0, high: 0, moderate: 0, low: 0, safe: 0
@@ -32,12 +39,6 @@ export function RiskDistributionChart({ distribution }: RiskDistributionChartPro
       </div>
     );
   }
-
-  // Animation state to trigger donut animation after mount
-  const [animate, setAnimate] = useState(false);
-  useEffect(() => {
-    setAnimate(true);
-  }, [distribution]);
 
   return (
     <div className="gov-card animate-slide-up h-full flex flex-col">
