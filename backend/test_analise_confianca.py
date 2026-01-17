@@ -33,9 +33,3 @@ def test_filtragem_baixa_confianca(mock_dados):
     abaixo_50 = [d for d in mock_dados if float(d['confianca']) < 50]
     assert len(abaixo_50) == 1
     assert abaixo_50[0]['id'] == 3
-with open(output_file, 'r', encoding='utf-8') as f:
-    dados = json.load(f)
-for d in dados:
-    conf = float(d['confianca'].replace('%', ''))
-    if conf < 50:
-        print(f'ID {d["id"]}: {conf:.1f}% - {d["identificadores"][:80]}...')

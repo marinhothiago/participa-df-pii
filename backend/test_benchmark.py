@@ -2,7 +2,11 @@
 import pytest
 from src.detector import PIIDetector
 
-# Instancia o detector uma vez para todos os testes
+detector = PIIDetector()
+
+# Formato: (texto, contem_pii, descricao, categoria)
+DATASET_LGPD = [
+DATASET_LGPD: List[Tuple[str, bool, str, str]] = [
 detector = PIIDetector()
 
 # Teste unitário parametrizado para todo o dataset
@@ -10,13 +14,6 @@ detector = PIIDetector()
 def test_pii_detector_dataset(texto, contem_pii, descricao, categoria):
     resultado, findings, risco, confianca = detector.detect(texto)
     assert resultado == contem_pii, f"Texto: {texto}\nDescrição: {descricao}\nCategoria: {categoria}\nEsperado: {contem_pii}\nObtido: {resultado}"
-
-# =============================================================================
-# DATASET LGPD - 500+ CASOS COM GROUND TRUTH
-# =============================================================================
-
-# Formato: (texto, contem_pii, descricao, categoria)
-DATASET_LGPD: List[Tuple[str, bool, str, str]] = [
     
     # =========================================================================
     # GRUPO 1: TEXTOS REAIS DO e-SIC SEM PII (esperado: False)
