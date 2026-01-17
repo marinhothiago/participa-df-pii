@@ -4,9 +4,8 @@ from src.detector import PIIDetector
 
 detector = PIIDetector()
 
-# Formato: (texto, contem_pii, descricao, categoria)
+ # Formato: (texto, contem_pii, descricao, categoria)
 DATASET_LGPD = [
-DATASET_LGPD: List[Tuple[str, bool, str, str]] = [
 detector = PIIDetector()
 
 # Teste unitário parametrizado para todo o dataset
@@ -38,6 +37,7 @@ def test_pii_detector_dataset(texto, contem_pii, descricao, categoria):
     # GRUPO 2: TEXTOS REAIS DO e-SIC COM PII (esperado: True)
     # =========================================================================
     # Casos REAIS extraídos da amostra - contêm dados pessoais identificáveis
+    # ...demais exemplos...
     
     ("Venho solicitar junto a Caesb o histórico de consumo da inscrição:157028-1, sob o CPF: 129.180.122-6, Júlio Cesar Alves da Rosa.", True, "CPF + Nome real e-SIC", "e-SIC Real PII"),
     ("Histórico de consumo da Inscrição: 00569848-9, sob o CPF: 210.201.140-24, Maria Martins Mota Silva.", True, "CPF + Nome real e-SIC", "e-SIC Real PII"),
@@ -78,6 +78,8 @@ def test_pii_detector_dataset(texto, contem_pii, descricao, categoria):
     # =========================================================================
     # CPFs válidos matematicamente
     ("Meu CPF é 529.982.247-25", True, "CPF válido com possessivo", "CPF Válido"),
+    # ...demais exemplos do dataset...
+]
     ("CPF: 111.444.777-35", True, "CPF válido com label", "CPF Válido"),
     ("O contribuinte de CPF 123.456.789-09 solicitou...", True, "CPF válido em contexto", "CPF Válido"),
     ("Cadastro sob CPF nº 987.654.321-00", True, "CPF válido formal", "CPF Válido"),
