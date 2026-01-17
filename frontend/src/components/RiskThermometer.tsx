@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Thermometer, AlertTriangle, AlertCircle, CheckCircle, ShieldX, Shield } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { RiskDistribution, getRiskLabel, getRiskBgClass } from '@/contexts/AnalysisContext';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { RiskDistribution } from '@/contexts/AnalysisContext';
+import { cn } from '@/lib/utils';
+import { AlertCircle, AlertTriangle, CheckCircle, Shield, ShieldX, Thermometer } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface RiskThermometerProps {
   distribution: RiskDistribution;
@@ -19,7 +19,7 @@ export function RiskThermometer({ distribution, total }: RiskThermometerProps) {
   const safeDist = distribution && typeof distribution === 'object' ? distribution : {
     critical: 0, high: 0, moderate: 0, low: 0, safe: 0
   };
-  const safeNumber = (v: any) => (typeof v === 'number' && !isNaN(v) ? v : 0);
+  const safeNumber = (v: unknown) => (typeof v === 'number' && !isNaN(v) ? v : 0);
   const safeTotal = safeNumber(total);
   const allLevels = [
     { key: 'critical' as const, label: 'Crítico', range: 'Risco máximo', icon: ShieldX, bgClass: 'bg-red-800', textClass: 'text-red-800', count: safeNumber(safeDist.critical) },
@@ -31,7 +31,7 @@ export function RiskThermometer({ distribution, total }: RiskThermometerProps) {
 
   // Ordenar por quantidade (maior para menor) para exibição na legenda
   const sortedLevels = [...allLevels].sort((a, b) => b.count - a.count);
-  
+
   // Invertido para a barra (menor para maior)
   const reversedLevels = [...sortedLevels].reverse();
 

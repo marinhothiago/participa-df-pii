@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { RiskDistribution, getRiskLabel, getRiskColor } from '@/contexts/AnalysisContext';
+import { RiskDistribution, getRiskColor } from '@/contexts/AnalysisContext';
+import { useEffect, useState } from 'react';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface RiskDistributionChartProps {
   distribution: RiskDistribution;
@@ -11,7 +11,7 @@ export function RiskDistributionChart({ distribution }: RiskDistributionChartPro
   const safeDist = distribution && typeof distribution === 'object' ? distribution : {
     critical: 0, high: 0, moderate: 0, low: 0, safe: 0
   };
-  const safeNumber = (v: any) => (typeof v === 'number' && !isNaN(v) ? v : 0);
+  const safeNumber = (v: unknown) => (typeof v === 'number' && !isNaN(v) ? v : 0);
   const data = [
     { name: 'Crítico', value: safeNumber(safeDist.critical), color: getRiskColor('critical') },
     { name: 'Alto', value: safeNumber(safeDist.high), color: getRiskColor('high') },

@@ -57,7 +57,7 @@ export async function validateBatchFile(file: File): Promise<BatchFileValidation
   }
 
   // 4. Converte para JSON
-  const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+  const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
   if (!rows.length) {
     return {
       valid: false,

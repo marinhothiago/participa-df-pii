@@ -118,5 +118,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate")], // Para ESM: use import('tailwindcss-animate') se necessário
 } satisfies Config;
