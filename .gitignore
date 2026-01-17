@@ -1,4 +1,3 @@
-
 # ===== IGNORA TUDO QUE NÃO É ESSENCIAL PARA O GIT/DEPLOY =====
 
 # === SISTEMA/OS ===
@@ -82,4 +81,10 @@ scripts/
 # === OUTROS ===
 package-lock.json
 bun.lockb
+
+# === DADOS DE ROTAÇÃO ===
+backend/data/stats.json
+
+# Nunca excluir ou sobrescrever este arquivo!
+!/backend/data/input/AMOSTRA_e-SIC.xlsx
 

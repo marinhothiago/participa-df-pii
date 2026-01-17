@@ -189,11 +189,9 @@ class ValidadorDocumentos:
             True se tem formato de CPF (10-11 dígitos, não trivial)
         """
         numeros = re.sub(r'[^\d]', '', cpf)
-        
-        # Aceita 10-11 dígitos (para cobrir erros de digitação)
-        if len(numeros) < 10 or len(numeros) > 11:
+        # Aceita apenas 11 dígitos (10 dígitos não é mais considerado PII)
+        if len(numeros) != 11:
             return False
-        
         # Sequências triviais não são CPFs
         if len(set(numeros)) == 1:  # 111.111.111-11
             return False
@@ -471,7 +469,7 @@ class PIIDetector:
             
             # CPF: 000.000.000-00 ou 00000000000
             # CPF: formato padrão e variações com erros de digitação
-            # LGPD: dado com erro de digitação AINDA É PII pois pode identificar pessoa
+            # LGPD: dado com erro de digitação AINDA É dado pessoal pois pode identificar pessoa
             # Aceita: 123.456.789-00, 12345678900, 129.180.122-6 (10 dígitos com erro)
             'CPF': re.compile(
                 r'\b(\d{3}[\.\s\-]?\d{3}[\.\s\-]?\d{3}[\-\.\s]?\d{1,2})\b',  # Aceita hífen, espaço, ponto em qualquer posição
@@ -480,7 +478,7 @@ class PIIDetector:
             
             # CNPJ: 00.000.000/0000-00 ou 00000000000000
             'CNPJ': re.compile(
-                r'\b(\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[/\.\s]?\d{4}[\-\.\s]?\d{2})\b',
+                r'(\b\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[/\.\s]?\d{4}[\-\.\s]?\d{2}\b|\b\d{14}\b)',
                 re.IGNORECASE
             ),
             
@@ -506,7 +504,7 @@ class PIIDetector:
             # CNH: 10-12 dígitos (aceita erros de digitação humana)
             # LGPD: dado pessoal mesmo com erro de digitação
             'CNH': re.compile(
-                r'(?i)(?:CNH|CARTEIRA DE MOTORISTA|HABILITACAO|MINHA CNH)[:\s]*[eé]?[:\s]*'
+                r'(?i)(?:CNH|CARTEIRA DE MOTORISTA|HABILITACAO|MINHA CNH)[:\s]*'
                 r'(\d{10,12})',
                 re.IGNORECASE
             ),
@@ -589,21 +587,30 @@ class PIIDetector:
             ),
             
             # Celular: cobre todos formatos reais e-SIC, inclusive espaço entre o 9 e o número, sem hífen, sem espaço, DDD com/sem zero, blocos compactos
+
             'CELULAR': re.compile(
                 r'(?<!\d)(?:0?(\d{2})[\s\-\)]*9[\s\-]?\d{4}[\s\-]?\d{4})(?!\d)',
                 re.IGNORECASE
             ),
 
+            # Telefone curto: 91234-5678, 1234-5678, 2345-6789 (sem DDD, 8 ou 9 dígitos, hífen obrigatório)
+            'TELEFONE_CURTO': re.compile(
+                r'(?<!\d)(9?\d{4})-(\d{4})(?!\d)',
+                re.IGNORECASE
+            ),
+
             # Telefone fixo: cobre formatos compactos, DDD com/sem zero, sem hífen/sem espaço
             'TELEFONE_FIXO': re.compile(
-                r'(?<![+\d])[\(\[]?0?(\d{2})[\)\]]?[\s\-]*([2-5]\d{3})[\s\-]*\d{4}(?!\d)',
+                # Exige separador claro (hífen, espaço, parênteses) entre DDD e número, não aceita tudo junto
+                r'(?<![+\d])([\(\[]?0?(\d{2})[\)\]]?[\s\-]+([2-5]\d{3})[\s\-]?\d{4})(?!\d)',
                 re.IGNORECASE
             ),
             
             # Telefone com DDD separado por espaço (formato real e-SIC)
             # Ex: 89 34180-1890, 61 9 9999-8888
             'TELEFONE_DDD_ESPACO': re.compile(
-                r'(?<!\d)(\d{2})[\s]+(\d{4,5})[\s\-]?(\d{4})(?!\d)',
+                # Exige pelo menos um espaço ou hífen entre DDD e número, não aceita tudo junto
+                r'(?<!\d)(\d{2})[\s]+(\d{4,5})[\s\-](\d{4})(?!\d)',
                 re.IGNORECASE
             ),
             
@@ -648,25 +655,26 @@ class PIIDetector:
                 re.IGNORECASE
             ),
 
-                        # === PADRÕES GDF ===
-                        # Processo SEI: 12345-1234567/2024-12
+                        # === PADRÕES GDF (refino para máxima cobertura benchmark) ===
+                        # Processo SEI: 12345-1234567/2024-12, 1234-123456/2024, 12345-1234567/2024, aceita 5 a 8 dígitos e sufixo -12
                         'PROCESSO_SEI': re.compile(
-                            r'\b\d{4,5}-\d{6,8}/\d{4}(?:-\d{2})?\b',
+                            r'\b\d{4,5}-\d{5,8}/\d{4}(?:-\d{2})?\b',
                             re.IGNORECASE
                         ),
-                        # Protocolo LAI: LAI-12345/2024 ou LAI-123456/2024
+                        # Protocolo LAI: LAI-12345/2024, LAI-123456/2024, LAI-1234567/2024, aceita 5 a 8 dígitos
                         'PROTOCOLO_LAI': re.compile(
-                            r'\bLAI-\d{5,7}/\d{4}\b',
+                            r'\bLAI-\d{5,8}/\d{4}\b',
                             re.IGNORECASE
                         ),
-                        # Protocolo OUV: OUV-654321/2022 ou OUV-123456/2022
+                        # Protocolo OUV: OUV-654321/2022, OUV-123456/2022, OUV-1234567/2022, aceita 5 a 8 dígitos
                         'PROTOCOLO_OUV': re.compile(
-                            r'\bOUV-\d{5,7}/\d{4}\b',
+                            r'\bOUV-\d{5,8}/\d{4}\b',
                             re.IGNORECASE
                         ),
-                        # Matrícula servidor: 98.123-3, 12345678A, 12345678, mas não 6 dígitos puros
+                        # Matrícula servidor: 98.123-3, 12345678A, 12345678, 98.123-3A, 1234567A, 1234567, 12345678A, 12345678, 98.123-3, 98.123-3A
+                        # Não captura 6 dígitos puros (evita FP)
                         'MATRICULA_SERVIDOR': re.compile(
-                            r'\b\d{2}\.\d{3}-\d{1}\b|\b\d{7,8}[A-Z]?\b',
+                            r'(\b\d{2}\.\d{3}-\d{1}[A-Z]?\b|\b\d{7,8}[A-Z]?\b)',
                             re.IGNORECASE
                         ),
                         # Ocorrência policial: 20 + 14 a 16 dígitos
@@ -674,9 +682,10 @@ class PIIDetector:
                             r'\b20\d{14,16}\b',
                             re.IGNORECASE
                         ),
-                        # Inscrição imóvel: contexto "inscrição" (com ou sem dois pontos), 6 a 9 dígitos
+                        # Inscrição imóvel: contexto "inscrição" (com ou sem dois pontos, espaço, hífen, etc), 6 a 9 dígitos
+                        # Ex: inscrição:1234567, inscrição 1234567, inscrição-1234567, inscrição : 1234567
                         'INSCRICAO_IMOVEL': re.compile(
-                            r'(?i)inscri[cç][ãa]o\s*:?\s*\d{6,9}\b',
+                            r'(?i)(inscri[cç][ãa]o\s*[:\-]?\s*\d{6,9}\b|\b\d{15}\b)',
                             re.IGNORECASE
                         ),
             
@@ -747,7 +756,8 @@ class PIIDetector:
             # Formato 3: "Ag 1234 CC 567890-1"
             'DADOS_BANCARIOS': re.compile(
                 r'(?i)(?:'
-                r'(?:ag[êe]ncia|ag\.?)[:\s]*(\d{4})[,\s]*(?:conta|cc|c/?c)[:\s]*(?:corrente\s*)?(\d{5,12}[\-]?[\dXx]?)|'
+                r'(?:ag[êe]ncia|ag\.?|conta|c/?c|c\.c\.?)[:\s]*'
+                r'(\d{4,5})[\s\-]*(?:\d)?[\s\-/]*(\d{5,12})[\-]?\d?|'
                 r'(?:conta)[:\s]*(\d{4,12}[\-]?[\dXx]?)[,\s]*(?:ag[êe]ncia|ag\.?)[:\s]*(\d{4})|'
                 r'(?:dep[óo]sito|transferir)[^\n]{0,30}(?:ag\.?|ag[êe]ncia)[:\s]*(\d{4})[,\s]*(?:cc|conta|c/?c)[:\s]*(\d{4,12}[\-]?[\dXx]?)'
                 r')',
@@ -1030,13 +1040,18 @@ class PIIDetector:
                 elif tipo == 'CNPJ':
                     if not self.validador.validar_cnpj(valor):
                         continue
-                    # Só marca se tiver contexto de pessoa física (MEI)
                     contexto = texto[max(0, inicio-50):fim+50].upper()
                     if any(p in contexto for p in ["MEU CNPJ", "MINHA EMPRESA", "SOU MEI", "MEI"]):
                         confianca = self._calcular_confianca("CNPJ_PESSOAL", texto, inicio, fim)
                         findings.append(PIIFinding(
                             tipo="CNPJ_PESSOAL", valor=valor, confianca=confianca,
                             peso=4, inicio=inicio, fim=fim
+                        ))
+                    else:
+                        confianca = self._calcular_confianca("CNPJ", texto, inicio, fim)
+                        findings.append(PIIFinding(
+                            tipo="CNPJ", valor=valor, confianca=confianca,
+                            peso=3, inicio=inicio, fim=fim
                         ))
                 
                 elif tipo == 'PIS':
@@ -1071,8 +1086,38 @@ class PIIDetector:
                         tipo="EMAIL_PESSOAL", valor=valor, confianca=confianca,
                         peso=4, inicio=inicio, fim=fim
                     ))
+                elif tipo == 'PROCESSO_SEI':
+                    confianca = self._calcular_confianca("PROCESSO_SEI", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="PROCESSO_SEI", valor=valor, confianca=confianca,
+                        peso=3, inicio=inicio, fim=fim
+                    ))
+                elif tipo == 'PROTOCOLO_LAI':
+                    confianca = self._calcular_confianca("PROTOCOLO_LAI", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="PROTOCOLO_LAI", valor=valor, confianca=confianca,
+                        peso=3, inicio=inicio, fim=fim
+                    ))
+                elif tipo == 'PROTOCOLO_OUV':
+                    confianca = self._calcular_confianca("PROTOCOLO_OUV", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="PROTOCOLO_OUV", valor=valor, confianca=confianca,
+                        peso=3, inicio=inicio, fim=fim
+                    ))
+                elif tipo == 'MATRICULA_SERVIDOR':
+                    confianca = self._calcular_confianca("MATRICULA_SERVIDOR", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="MATRICULA_SERVIDOR", valor=valor, confianca=confianca,
+                        peso=3, inicio=inicio, fim=fim
+                    ))
+                elif tipo == 'INSCRICAO_IMOVEL':
+                    confianca = self._calcular_confianca("INSCRICAO_IMOVEL", texto, inicio, fim)
+                    findings.append(PIIFinding(
+                        tipo="INSCRICAO_IMOVEL", valor=valor, confianca=confianca,
+                        peso=3, inicio=inicio, fim=fim
+                    ))
                 
-                elif tipo in ['CELULAR', 'TELEFONE_FIXO', 'TELEFONE_DDI', 'TELEFONE_DDD_ESPACO', 'TELEFONE_INTERNACIONAL']:
+                elif tipo in ['CELULAR', 'TELEFONE_FIXO', 'TELEFONE_DDI', 'TELEFONE_DDD_ESPACO', 'TELEFONE_INTERNACIONAL', 'TELEFONE_CURTO']:
                     # Verificar contexto institucional
                     ctx_antes = texto[max(0, inicio-80):inicio].lower()
                     ctx_depois = texto[fim:min(len(texto), fim+30)].lower()
@@ -1374,7 +1419,7 @@ class PIIDetector:
             # Melhorar parsing após "Me chamo" para evitar erro "Braga Gostaria"
             if "ME CHAMO" in gatilho:
                 # Aceita apenas nomes com pelo menos 2 palavras e nenhuma palavra do tipo "GOSTARIA", "QUERO", "PRECISO"
-                match = re.search(r'([A-Z][a-záéíóúàèìòùâêîôûãõ]+(?:\s+[A-Z][a-záéíóúàèìòùâêîôûãõ]+)+)', resto)
+                match = re.search(r'([A-Z][a-záéíóúàèìòùâêîôûãõ]+(?:\s+[A-Z][a-záéíóúàèìòùâêîôûãõ]+)*)', resto)
                 if match:
                     nome = match.group(1).strip()
                     if any(w in nome.upper() for w in ["GOSTARIA", "QUERO", "PRECISO"]):
@@ -1947,6 +1992,7 @@ class PIIDetector:
         all_raw_detections: List[Dict] = []
         
         # 1. Regex com validação de DV
+        regex_weight = self.ensemble_weights.get('regex', 1.0)
         regex_findings = self._detectar_regex(text)
         for f in regex_findings:
             all_raw_detections.append({
@@ -1955,8 +2001,8 @@ class PIIDetector:
                 "start": f.inicio,
                 "end": f.fim,
                 "source": "regex",
-                "score": f.confianca,
-                "peso": f.peso
+                "score": f.confianca * regex_weight,
+                "peso": f.peso * regex_weight
             })
         
         # 2. Nomes após gatilhos

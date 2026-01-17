@@ -7,6 +7,9 @@ de Dados) e LAI (Lei de Acesso à Informação).
 Endpoints:
     POST /analyze: Analisa texto para detecção de PII
     GET /health: Verifica status da API
+    POST /api/lote: Enfileira processamento de lote (CSV/XLSX)
+    GET /api/lote/status/{job_id}: Consulta status do processamento de lote
+    GET /api/lote/download/{job_id}: Faz download do resultado do lote
 
 Contexto:
     - Detecta PII em manifestações de cidadãos (reclamações, sugestões, denúncias)
@@ -29,24 +32,30 @@ Exemplo de uso:
     }
 """
 
+
+
+# Corrige PYTHONPATH para garantir importação do pacote backend
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
+
 from typing import Dict, Optional
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-import os
-import sys
+from celery.result import AsyncResult
+from backend.celery_worker import celery_app
 import json
 import threading
 from datetime import datetime
+import shutil
 
 # Adiciona o diretório backend ao path para importação de módulos locais
-# O arquivo está em backend/api/main.py, então subimos um nível para backend/
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, backend_dir)
 from src.detector import PIIDetector
 
 # === SISTEMA DE CONTADORES GLOBAIS ===
@@ -101,61 +110,71 @@ app.add_middleware(
 detector = PIIDetector()
 
 
+
+from fastapi import Query
+from src.confidence.combiners import merge_spans_custom
+
 @app.post("/analyze")
-async def analyze(data: Dict[str, Optional[str]]) -> Dict:
-    """Analisa texto para detecção de PII com contexto Brasília/GDF.
-    
-    Realiza detecção híbrida usando:
-    - Regex: Padrões estruturados (CPF, Email, Telefone, RG, CNH)
-    - NLP: Reconhecimento de entidades com spaCy + BERT
-    - Regras de Negócio: Contexto de Brasília, imunidade funcional (LAI)
-    - Deduplicação: Mantém apenas PII mais crítico por valor duplicado
-    
-    Args:
-        data: Dicionário contendo:
-            - text (str): Texto a ser analisado (obrigatório)
-            - id (str): ID único para rastreabilidade (opcional)
-    
-    Returns:
-        Dict com:
-            - id (str): ID da requisição (ou None)
-            - classificacao (str): "NÃO PÚBLICO" ou "PÚBLICO"
-            - risco (str): Nível de risco (SEGURO, MODERADO, ALTO, CRÍTICO)
-            - confianca (float): Score de confiança normalizado (0.0 a 1.0) ✅ NORMALIZADO
-            - detalhes (List[Dict]): Lista com detalhes de cada PII encontrado
-    
-    Exemplo de detalhes PII:
-        {
-            "tipo": "CPF",
-            "valor": "123.456.789-09",
-            "contexto": "Meu CPF é 123.456.789-09 e preciso",
-            "confianca": 1.0
-        }
-    
-    Classificações de Risco:
-        - CRÍTICO (5): CPF, RG, CNH (identificação direta)
-        - ALTO (4): Email privado, Telefone, Nome privado, Endereço residencial
-        - MODERADO (3): Entidade nomeada genérica
-        - SEGURO (0): Sem PII detectado
-    
-    Notas de Contexto LGPD/LAI:
-        - Agentes públicos em exercício de função estão imunes a proteção
-          Ex: "Falar com a Dra. Maria na Secretaria de Saúde" = NÃO PII
-        - Gatilhos de contato anulam imunidade funcional
-          Ex: "Falar com o Dr. João sobre isso" = PII (é alvo de contato)
-        - Endereços de setores administrativos (SQS, SQN) = NÃO PII
-        - Endereços residenciais (Casa 45, Apto 101) = PII
+async def analyze(
+    data: Dict[str, Optional[str]],
+    merge_preset: str = Query(
+        default="f1",
+        description="Estratégia de merge de spans: 'recall', 'precision', 'f1', 'custom'."
+    )
+) -> Dict:
     """
-    # Extrai texto e ID da requisição
+    Analisa texto para detecção de PII com contexto Brasília/GDF.
+    Permite selecionar estratégia de merge de spans via parâmetro merge_preset.
+    """
     text = data.get("text", "")
     request_id = data.get("id", None)
-    
+
     # Executa detecção usando detector híbrido
     has_pii, findings, risco, confianca = detector.detect(text)
-    
+
+    # Estratégias de merge
+    if findings:
+        if merge_preset == "recall":
+            criterio = "longest"
+            tie_breaker = "all"
+        elif merge_preset == "precision":
+            criterio = "score"
+            tie_breaker = "leftmost"
+        elif merge_preset == "f1":
+            criterio = "longest"
+            tie_breaker = "leftmost"
+        elif merge_preset == "custom":
+            criterio = "custom"
+            tie_breaker = "leftmost"
+        else:
+            criterio = "longest"
+            tie_breaker = "leftmost"
+
+        # Normaliza findings para dicts com start/end se possível
+        norm_spans = []
+        for f in findings:
+            if all(k in f for k in ("tipo", "valor", "confianca")):
+                # Se já tem start/end, usa
+                if "start" in f and "end" in f:
+                    norm_spans.append(f)
+                else:
+                    # Não tem start/end, não faz merge
+                    norm_spans = findings
+                    break
+            else:
+                norm_spans = findings
+                break
+        if norm_spans and all("start" in f and "end" in f for f in norm_spans):
+            merged = merge_spans_custom(norm_spans, criterio=criterio, tie_breaker=tie_breaker)
+            # Remove campos extras e retorna só tipo, valor, confianca
+            findings = [
+                {"tipo": f["tipo"], "valor": f["valor"], "confianca": f.get("confianca", 1.0)}
+                for f in merged
+            ]
+
     # Incrementa contador de requisições (global)
     increment_stat("classification_requests")
-    
+
     # Retorna resultado em formato padronizado
     return {
         "id": request_id,
@@ -210,3 +229,34 @@ async def health() -> Dict[str, str]:
         "status": "healthy",
         "version": "9.4"
     }
+
+@app.post('/api/lote')
+def submit_lote(file: UploadFile = File(...)):
+    """Enfileira processamento de lote (CSV/XLSX) e retorna job_id."""
+    ext = file.filename.split('.')[-1].lower()
+    tipo_arquivo = 'csv' if ext == 'csv' else 'xlsx' if ext in ['xlsx', 'xls'] else None
+    if not tipo_arquivo:
+        return {"erro": "Arquivo não suportado"}
+    temp_path = f'/tmp/{file.filename}'
+    with open(temp_path, 'wb') as f:
+        shutil.copyfileobj(file.file, f)
+    task = celery_app.send_task('backend.tasks.processar_lote', args=[temp_path, tipo_arquivo])
+    return {"job_id": task.id}
+
+@app.get('/api/lote/status/{job_id}')
+def get_lote_status(job_id: str):
+    """Consulta status do processamento de lote."""
+    res = AsyncResult(job_id, app=celery_app)
+    return {"status": res.status, "result": res.result if res.successful() else None}
+
+@app.get('/api/lote/download/{job_id}')
+def download_lote_result(job_id: str):
+    """Faz download do resultado do lote, se disponível."""
+    res = AsyncResult(job_id, app=celery_app)
+    if not res.successful():
+        return {"erro": "Resultado ainda não disponível"}
+    path = res.result
+    if not os.path.exists(path):
+        return {"erro": "Arquivo não encontrado"}
+    from fastapi.responses import FileResponse
+    return FileResponse(path, filename=os.path.basename(path))

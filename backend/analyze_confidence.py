@@ -36,4 +36,4 @@ with open('backend/data/output/resultado_v94.json', 'r', encoding='utf-8') as f:
 for d in dados:
     conf = float(d['confianca'].replace('%', ''))
     if conf < 50:
-        print(f'ID {d["id"]}: {conf:.1f}% - {d["identificadores"][:80]}...')
+        print(f'ID {d["id"]}: {conf:.1f}% - {d["identificadores"][:80]}...')...existing code from d:\Projetos\desafio-participa-df\analyze_confidence.py...

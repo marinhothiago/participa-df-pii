@@ -413,3 +413,63 @@ class EntityAggregator:
             'sources': sources,
             'peso': best_det.get('peso', 3),
         }
+
+def merge_spans_custom(spans, criterio='longest', fontes_preferidas=None, tie_breaker='leftmost'):
+    """
+    Merge customizável de spans com critérios flexíveis.
+    spans: lista de dicts ou tuplas (start, end, tipo, valor, score, fonte)
+    criterio: 'longest', 'score', 'fonte', 'custom'
+    fontes_preferidas: lista de fontes em ordem de prioridade
+    tie_breaker: 'leftmost', 'rightmost', 'all'
+    Retorna lista de spans pós-merge.
+    """
+    if not spans:
+        return []
+    # Normaliza para dict
+    norm_spans = []
+    for s in spans:
+        if isinstance(s, dict):
+            norm_spans.append(s)
+        else:
+            # (start, end, tipo, valor, score, fonte)
+            d = {'start': s[0], 'end': s[1], 'tipo': s[2] if len(s)>2 else None, 'valor': s[3] if len(s)>3 else None,
+                 'score': s[4] if len(s)>4 else 1.0, 'fonte': s[5] if len(s)>5 else None}
+            norm_spans.append(d)
+    # Ordena por início
+    norm_spans = sorted(norm_spans, key=lambda x: (x['start'], -x['end']))
+    merged = []
+    used = set()
+    for i, s in enumerate(norm_spans):
+        if i in used:
+            continue
+        overlaps = [i]
+        for j in range(i+1, len(norm_spans)):
+            s2 = norm_spans[j]
+            if s2['start'] < s['end'] and s2['end'] > s['start']:
+                overlaps.append(j)
+        if len(overlaps) == 1:
+            merged.append(s)
+            continue
+        # Resolve overlap
+        group = [norm_spans[k] for k in overlaps]
+        if criterio == 'longest':
+            chosen = max(group, key=lambda x: x['end']-x['start'])
+        elif criterio == 'score':
+            chosen = max(group, key=lambda x: x.get('score', 1.0))
+        elif criterio == 'fonte' and fontes_preferidas:
+            chosen = min(group, key=lambda x: fontes_preferidas.index(x.get('fonte', ''))) if any(x.get('fonte') in fontes_preferidas for x in group) else group[0]
+        elif criterio == 'custom' and callable(fontes_preferidas):
+            chosen = fontes_preferidas(group)
+        else:
+            chosen = group[0]
+        merged.append(chosen)
+        for k in overlaps:
+            used.add(k)
+    # Tie-breaker
+    if tie_breaker == 'all':
+        return merged
+    elif tie_breaker == 'leftmost':
+        return sorted(merged, key=lambda x: (x['start'], x['end']))
+    elif tie_breaker == 'rightmost':
+        return sorted(merged, key=lambda x: (-x['end'], -x['start']))
+    return merged

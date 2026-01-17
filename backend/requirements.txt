@@ -27,3 +27,7 @@ accelerate>=0.21.0
 
 # === Utilitários de ambiente ===
 python-dotenv>=1.0.0
+
+# === Celery + Redis ===
+celery[redis]
+redis

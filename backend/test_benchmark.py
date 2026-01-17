@@ -621,7 +621,10 @@ def executar_benchmark():
         print(f"[{status}] {descricao} | Categoria: {categoria}")
         print(f"   Texto: {texto[:80]}{'...' if len(texto) > 80 else ''}")
         if achados:
-            print(f"   Detectado: {[f'{a['tipo']}: {a['valor'][:30]}' for a in achados]}")
+            print("   Detectado: [" + ", ".join([
+                f"{a['tipo']}: {a['valor'][:30]}" if a and 'tipo' in a and 'valor' in a and a['valor'] else str(a)
+                for a in achados
+            ]) + "]")
         print(f"   Esperado: {'PII' if esperado_pii else 'PÚBLICO'} | Detectado: {'PII' if contem_pii else 'PÚBLICO'} | Nível: {nivel} | Confiança: {confianca:.2f}")
         print("-" * 60)
         if esperado_pii and contem_pii:
