@@ -17,12 +17,15 @@
 > - O build de produção (Docker/Hugging Face) inclui apenas código-fonte, dependências e a amostra oficial `AMOSTRA_e-SIC.xlsx`.
 > - O diretório `scripts/` é exclusivo para automações/limpeza local e nunca vai para produção.
 > - O `.dockerignore` garante que apenas arquivos essenciais e a amostra permitida vão para o build.
-| 🌐 **Links de Produção** | URL |
-|--------------------------|-----|
-| Frontend (Dashboard) | https://marinhothiago.github.io/desafio-participa-df/ |
-| Backend (API) | https://marinhothiago-desafio-participa-df.hf.space/ |
+
+|------------------------------------------------------------------------|-------|
+| 🌐 **Links de Produção**                                               |  URL |
+|------------------------------------------------------------------------|-------|
+| Frontend (Dashboard) | https://marinhothiago.github.io/desafio-participa-df/   |
+| Backend (API) | https://marinhothiago-desafio-participa-df.hf.space/           |
 | Documentação da API | https://marinhothiago-desafio-participa-df.hf.space/docs |
-| Health Check | https://marinhothiago-desafio-participa-df.hf.space/health |
+| Health Check | https://marinhothiago-desafio-participa-df.hf.space/health      |
+|------------------------------------------------------------------------|-------|
 
 ---
 
