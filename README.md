@@ -1,14 +1,14 @@
 # 🛡️ Participa DF - Detector Inteligente de Dados Pessoais
-[![Build Status](https://github.com/marinhothiago/participa-df-pii/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/marinhothiago/participa-df-pii/actions/workflows/ci.yml)
-[![Coverage Status](https://codecov.io/gh/marinhothiago/participa-df-pii/branch/main/graph/badge.svg)](https://codecov.io/gh/marinhothiago/participa-df-pii)
-[![Dependabot Status](https://img.shields.io/badge/dependabot-enabled-brightgreen?logo=dependabot)](https://github.com/marinhothiago/desafio-participa-df/pulls?q=is:pr+is:open+label:dependencies)
-
 [![Status](https://img.shields.io/badge/Status-Produção-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
 [![Versão](https://img.shields.io/badge/Versão-9.4.3-blue)](./backend/README.md)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)](https://react.dev/)
 [![F1--Score](https://img.shields.io/badge/F1--Score-1.0000-success)](./backend/benchmark.py)
 [![Licença](https://img.shields.io/badge/Licença-LGPD%2FLAI-green)](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
+
+[![Build Status](https://github.com/marinhothiago/participa-df-pii/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/marinhothiago/participa-df-pii/actions/workflows/ci.yml)
+[![Coverage Status](https://codecov.io/gh/marinhothiago/participa-df-pii/branch/main/graph/badge.svg)](https://codecov.io/gh/marinhothiago/participa-df-pii)
+[![Dependabot Status](https://img.shields.io/badge/dependabot-enabled-brightgreen?logo=dependabot)](https://github.com/marinhothiago/desafio-participa-df/pulls?q=is:pr+is:open+label:dependencies)
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade com LGPD e LAI em manifestações do Participa DF.
 > 
