@@ -46,3 +46,12 @@ tests/
 
 # Docker (não incluir compose no build)
 docker-compose*.yml
+
+# =============================
+# Somente para DEV LOCAL
+scripts/
+
+# =============================
+# Para Hugging Face/Docker:
+# Apenas código-fonte (src/, api/), requirements.txt e Dockerfile devem estar presentes no build.
+# Tudo que for dev, dados, scripts, notebooks, etc, deve ser ignorado!

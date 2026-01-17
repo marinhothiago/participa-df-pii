@@ -252,7 +252,12 @@ BLOCK_IF_CONTAINS: List[str] = [
     
     # Organizações/Empresas
     "ADVOGADOS", "ASSOCIADOS", "LTDA", "S/A", "ME", "EPP", "EIRELI",
-    "EMPREENDIMENTOS", "CONDOMINIO", "RESIDENCIAL", "SHOPPING",
+    "EMPREENDIMENTOS", "CONDOMINIO", "RESIDENCIAL", "SHOPPING", "RESIDENTE DE",
+    # Cargos/funções genéricas
+    "COORDENADOR DE", "SUPERVISOR DE", "GESTOR DE", "DIRETOR DE", "CHEFE DE",
+    "ANALISTA DE", "TÉCNICO DE", "ENCARREGADO DE", "SECRETÁRIO DE", "PRESIDENTE DA", "PRESIDENTE DO",
+    # Órgãos públicos/instituições
+    "SECRETARIA DE SAÚDE", "SECRETARIA DE EDUCAÇÃO", "NOVACAP", "CAESB", "DETRAN", "SESDF", "SEEDF", "GDF", "TCDF", "CLDF", "PROCON", "DODF",
     "COOPERATIVAS", "ASSOCIACAO",
     
     # Instituições de ensino
@@ -314,6 +319,11 @@ GATILHOS_CONTATO: Set[str] = {
     "CONTATO:", "SERVIDOR", "SERVIDORA", "SR.", "SRA.", "SENHOR", "SENHORA",
     "DIRETOR", "DIRETORA", "DADOS DO", "DADOS DA", "SOLICITO DADOS",
     "IDENTIFICADO COMO", "CIDADAO", "CIDADA",
+    # Labels de papel de pessoa (indicam nome específico)
+    "TESTEMUNHA:", "VITIMA:", "VÍTIMA:", "DECLARANTE:", "DENUNCIANTE:",
+    "BENEFICIARIO:", "BENEFICIÁRIO:", "REQUERENTE:", "PACIENTE:",
+    "RESPONSAVEL:", "RESPONSÁVEL:", "TITULAR:", "AUTOR:", "AUTORA:",
+    "REU:", "RÉU:", "RE:", "RÉ:", "RECLAMANTE:", "RECLAMADO:", "RECLAMADA:",
 }
 
 

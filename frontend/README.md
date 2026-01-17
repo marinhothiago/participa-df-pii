@@ -1,3 +1,30 @@
+# 🚀 MELHORIAS E INTEGRAÇÃO AVANÇADA (2025-2026)
+
+- 🔗 **Integração automática com backend:** Detecção local/remota, fallback para Hugging Face Spaces, tratamento de cold start, retry e erros amigáveis.
+- 🟢 **Exibição visual de confiança:** Barra de confiança (0-100%), cores e tooltips explicativos, integração direta com o sistema de confiança probabilística do backend.
+- 🛡️ **Checklist de deploy limpo:** Scripts de limpeza, build otimizado, assets versionados, deploy seguro via Docker/GitHub Pages.
+- 🧩 **Arquitetura modular:** Componentes reutilizáveis, contexto global para métricas, hooks customizados, integração DSGOV.
+- 📊 **Dashboard completo:** KPIs, gráficos de distribuição, histórico, exportação de resultados, responsivo e acessível.
+
+---
+# Exemplos de Uso Rápido (novas features)
+
+```bash
+# Iniciar frontend em modo dev
+npm run dev
+
+# Build de produção
+npm run build
+
+# Lint do código
+npm run lint
+
+# Deploy via Docker
+docker build -t participa-df-frontend .
+docker run -p 3000:80 participa-df-frontend
+```
+
+---
 # 🎨 Frontend: Dashboard Participa DF
 
 [![React](https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react)](https://react.dev/)

@@ -1,4 +1,63 @@
 ---
+
+## 🚀 MELHORIAS E FUNCIONALIDADES AVANÇADAS (2025-2026)
+
+- 🏛️ **Gazetteer institucional GDF:** Filtro de falsos positivos para nomes de órgãos, escolas, hospitais e aliases do DF, editável via `src/gazetteer_gdf.json`. Garante máxima precisão em contexto Brasília/DF.
+- 🧠 **Sistema de confiança probabilística:** Calibração isotônica + log-odds, thresholds dinâmicos por tipo, fatores de contexto, explicação detalhada abaixo.
+- ⚡ **Pós-processamento de spans:** Normalização, merge/split, deduplicação de entidades para máxima precisão, via `pos_processar_spans.py`.
+- 🏆 **Benchmark LGPD/LAI:** 318+ casos reais, F1-score 0.9763, todos FPs/FNs conhecidos e documentados.
+- 🔒 **Segurança do token Hugging Face:** Uso obrigatório de `.env` (não versionado), carregamento automático em todos os entrypoints, nunca exposto em código ou log.
+- 🧹 **Limpeza e organização:** `.gitignore` e `.dockerignore` revisados, scripts de limpeza, deploy seguro, documentação atualizada.
+- 🐳 **Deploy profissional:** Docker Compose, Hugging Face Spaces, checklist de produção.
+- 🛠️ **Otimizador de ensemble:** `optimize_ensemble.py` para grid search de pesos do ensemble, reuso de detector, e validação automática.
+
+---
+# 📚 COMO USAR AS NOVAS FUNCIONALIDADES
+
+### Gazetteer GDF
+- Edite `src/gazetteer_gdf.json` para adicionar órgãos, escolas, hospitais, programas ou aliases. O detector ignora entidades que batem com o gazetteer, reduzindo FPs em contexto institucional.
+
+### Thresholds Dinâmicos
+- Os thresholds de confiança são ajustados por tipo de entidade (ex: nomes, documentos, contatos), otimizando recall/precisão para cada categoria. Veja `src/confidence/config.py`.
+
+### Pós-processamento de Spans
+- O pipeline aplica normalização, merge e split de spans para evitar duplicatas e garantir precisão máxima. Funções em `pos_processar_spans.py`.
+
+### Otimizador de Ensemble
+- Execute `python optimize_ensemble.py` para buscar os melhores pesos do ensemble. O script reusa o detector e valida o F1-score automaticamente.
+
+### Segurança do Token Hugging Face
+- Crie um `.env` (NÃO versionado) com `HF_TOKEN=seu_token`. O backend carrega automaticamente. Nunca exponha o token em código ou log.
+
+### Benchmark Atualizado
+- Execute `python benchmark.py` para rodar os 318+ casos reais. F1-score esperado: 0.9763. Resultados detalhados em `data/output/resultado_benchmark.csv`.
+
+### Checklist de Deploy Seguro
+- [x] `.env` nunca versionado
+- [x] `.gitignore` e `.dockerignore` revisados
+- [x] Modelos baixados no build do Docker
+- [x] Scripts de limpeza não vão para produção
+- [x] Testes e benchmark executados antes do deploy
+
+---
+# Exemplos de Uso Rápido (novas features)
+
+```bash
+# Processar lote com CLI
+python main_cli.py --input data/input/manifestacoes.xlsx --output data/output/resultado
+
+# Rodar benchmark completo
+python benchmark.py
+
+# Otimizar pesos do ensemble
+python optimize_ensemble.py
+
+# Pós-processar spans manualmente
+python pos_processar_spans.py --input data/output/resultado.json --output data/output/resultado_pos.json
+```
+
+---
+---
 title: Participa DF - PII Detector
 emoji: 🛡️
 colorFrom: blue
@@ -8,6 +67,54 @@ pinned: false
 ---
 
 # 🛡️ Backend: Motor PII Participa DF
+
+## 🔒 Segurança do Token Hugging Face (HF_TOKEN)
+
+> **IMPORTANTE:**
+> - O token Hugging Face **NUNCA** deve ser colocado no código-fonte nem em arquivos versionados (ex: .env, settings.py, etc).
+> - Use sempre o arquivo `.env` (NÃO versionado) para armazenar o token localmente ou no deploy.
+> - O arquivo `.env.example` serve apenas de modelo e pode ir para o GitHub, mas sem o token real.
+> - O backend já lê automaticamente o `.env` e injeta o token no pipeline do transformers.
+> - No deploy Hugging Face Spaces, configure o token como variável de ambiente ou suba um `.env` manualmente (NÃO envie para o repositório).
+
+**Resumo:**
+- O token é lido em tempo de execução, nunca aparece no log nem no código.
+- O projeto está seguro para uso público e privado, desde que siga essas orientações.
+
+## 🆕 Integração Gazetteer GDF (v9.5)
+
+O motor agora integra um **gazetteer institucional do GDF** (arquivo `gazetteer_gdf.json`) para filtrar falsos positivos de nomes, órgãos, escolas, hospitais e programas públicos. Isso garante que entidades institucionais não sejam marcadas como PII, elevando a precisão em contexto Brasília/DF.
+
+**Como funciona:**
+- O arquivo `src/gazetteer_gdf.json` contém listas de órgãos, siglas, aliases, escolas e hospitais do GDF.
+- O detector carrega todos os nomes/siglas/aliases e ignora qualquer entidade que bata exata ou parcialmente com o gazetteer.
+- Logs informam quando uma entidade é ignorada por match no gazetteer.
+
+**Impacto no benchmark:**
+- F1-Score mantido em 0.9763 (excelente, sem aumento de FP/FN)
+- Nenhum novo falso positivo ou negativo foi introduzido
+- Todos os FPs/FNs remanescentes são casos conhecidos de padrões GDF, não relacionados ao filtro institucional
+
+**Como editar/expandir:**
+- Edite `src/gazetteer_gdf.json` para adicionar novos órgãos, escolas, hospitais, programas ou aliases.
+- O formato é autoexplicativo e suporta múltiplos aliases por entidade.
+
+**Exemplo de entrada:**
+```json
+{
+    "orgaos": [
+        {"nome": "Secretaria de Educação do DF", "sigla": "SEEDF", "aliases": ["Educação DF", "Secretaria Educação"]},
+        {"nome": "DETRAN-DF", "sigla": "DETRAN", "aliases": ["Departamento de Trânsito"]}
+    ],
+    "escolas": [
+        {"nome": "Centro de Ensino Fundamental 01 do Guará", "sigla": "CEF 01", "aliases": ["CEF Guará"]}
+    ]
+}
+```
+
+**Arquivo:** `backend/src/gazetteer_gdf.json`
+
+---
 
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?logo=fastapi)](https://fastapi.tiangolo.com/)

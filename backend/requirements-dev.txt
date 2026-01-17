@@ -41,3 +41,6 @@ accelerate>=0.21.0
 # === Desenvolvimento ===
 pytest>=7.0.0
 httpx>=0.24.0
+
+# === Utilitários de ambiente ===
+python-dotenv>=1.0.0

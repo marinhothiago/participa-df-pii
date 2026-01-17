@@ -1,24 +1,42 @@
-# Ignora ambiente virtual local
+
+# ===== IGNORA TUDO QUE NÃO É ESSENCIAL PARA O BUILD DO DOCKER/HF =====
+
+# === AMBIENTE PYTHON ===
 venv/
-.git/
+.venv/
+ENV/
+env/
 __pycache__/
-data/output/
-.ipynb_checkpoints/
-
-# Ignora Git
-.git
-.gitignore
-
-# Ignora dados e caches
 *.pyc
 *.pyo
 *.pyd
+*.egg-info/
+.eggs/
+*.egg
 .Python
-pip-log.txt
-pip-delete-this-directory.txt
-.cache
-data/
-outputs/
-resultados/
+.cache/
+
+# === GIT ===
+.git/
+.gitignore
+
+# === OUTPUTS/DADOS ===
+data/output/*
+!data/output/.gitkeep
+data/input/*.xlsx
+data/input/*.csv
+data/temp/*
+!data/temp/.gitkeep
 AMOSTRA_e-SIC.xlsx
 resultado_hackathon.xlsx
+outputs/
+resultados/
+.ipynb_checkpoints/
+
+# === LOGS/TEMP ===
+*.log
+logs/
+*.pid
+
+# === SCRIPTS LOCAIS ===
+scripts/

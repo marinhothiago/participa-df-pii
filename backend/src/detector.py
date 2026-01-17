@@ -35,6 +35,33 @@ from functools import lru_cache
 import logging
 from text_unidecode import unidecode
 
+# === INTEGRAÇÃO GAZETTEER GDF ===
+import json
+import os
+from functools import lru_cache
+
+# Função singleton para carregar o gazetteer uma vez
+@lru_cache(maxsize=1)
+def carregar_gazetteer_gdf():
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'gazetteer_gdf.json')
+    try:
+        with open(caminho, encoding='utf-8') as f:
+            gazetteer = json.load(f)
+        # Extrai todos nomes, siglas e aliases em um set normalizado
+        termos = set()
+        for categoria in ['orgaos', 'programas', 'escolas', 'hospitais']:
+            for item in gazetteer.get(categoria, []):
+                termos.add(unidecode(item['nome']).upper().strip())
+                if 'sigla' in item and item['sigla']:
+                    termos.add(unidecode(item['sigla']).upper().strip())
+                if 'aliases' in item:
+                    for alias in item['aliases']:
+                        termos.add(unidecode(alias).upper().strip())
+        return termos
+    except Exception as e:
+        logging.warning(f"[GAZETTEER] Falha ao carregar gazetteer_gdf.json: {e}")
+        return set()
+
 # Módulo de allow_list (termos seguros que não são PII)
 try:
     from .allow_list import (
@@ -295,26 +322,37 @@ class ValidadorDocumentos:
         return True
 
 
+
 class PIIDetector:
-    """Detector híbrido de PII com ensemble de alta recall.
-    
+    """
+    Detector híbrido de PII com ensemble de alta recall.
     Estratégia: Ensemble OR - qualquer detector positivo classifica como PII.
     Isso maximiza recall (não deixar escapar nenhum PII) às custas de alguns
     falsos positivos, que é a estratégia correta para LAI/LGPD.
-    
     Confiança: Sistema probabilístico com:
     - Calibração isotônica de scores de modelos
     - Combinação via Log-Odds (Naive Bayes)
     - Validação de DV como fonte adicional
     """
 
-    def __init__(self, usar_gpu: bool = True, use_probabilistic_confidence: bool = True) -> None:
+    # Thresholds dinâmicos por tipo de entidade (pode ser ajustado via parâmetro futuramente)
+    THRESHOLDS_DINAMICOS = {
+        'PROCESSO_SEI': {'peso_min': 1, 'confianca_min': 0.5},
+        'PROTOCOLO_LAI': {'peso_min': 1, 'confianca_min': 0.5},
+        'PROTOCOLO_OUV': {'peso_min': 1, 'confianca_min': 0.5},
+        'MATRICULA_SERVIDOR': {'peso_min': 1, 'confianca_min': 0.5},
+        'INSCRICAO_IMOVEL': {'peso_min': 1, 'confianca_min': 0.5},
+        # Outros tipos seguem padrão global
+    }
+
+    def __init__(self, usar_gpu: bool = True, use_probabilistic_confidence: bool = True, ensemble_weights: dict = None) -> None:
         """Inicializa o detector com todos os modelos NLP.
         
         Args:
             usar_gpu: Se deve usar GPU para modelos (default: True)
             use_probabilistic_confidence: Se deve usar sistema de confiança 
                 probabilística (default: True)
+            ensemble_weights: dicionário de pesos para fontes do ensemble (ex: {'bert': 1.0, 'spacy': 1.0, 'regex': 1.0})
         """
         logger.info("🏆 [v9.4.3] VERSÃO HACKATHON - ENSEMBLE 5 FONTES + CONFIANÇA PROBABILÍSTICA")
         
@@ -332,13 +370,16 @@ class PIIDetector:
             self.confidence_calculator = None
             if use_probabilistic_confidence and not CONFIDENCE_MODULE_AVAILABLE:
                 logger.warning("⚠️ Módulo de confiança não disponível, usando fallback")
+
+        # Pesos customizados do ensemble
+        self.ensemble_weights = ensemble_weights or {'bert': 1.0, 'spacy': 1.0, 'regex': 1.0}
     
     def _inicializar_modelos(self, usar_gpu: bool) -> None:
-        """Carrega modelos NLP com fallback."""
+        """Carrega modelos NLP priorizando baixo uso de memória (pt_core_news_sm)."""
         import spacy
         from transformers import pipeline, AutoModelForTokenClassification, AutoTokenizer
-        
-        # spaCy - modelo grande para português
+
+        # spaCy - prioriza modelo grande, faz fallback se necessário
         try:
             self.nlp_spacy = spacy.load("pt_core_news_lg")
             logger.info("✅ spaCy pt_core_news_lg carregado")
@@ -347,8 +388,12 @@ class PIIDetector:
                 self.nlp_spacy = spacy.load("pt_core_news_md")
                 logger.warning("⚠️ Usando pt_core_news_md (fallback)")
             except OSError:
-                self.nlp_spacy = None
-                logger.error("❌ Nenhum modelo spaCy disponível")
+                try:
+                    self.nlp_spacy = spacy.load("pt_core_news_sm")
+                    logger.warning("⚠️ Usando pt_core_news_sm (último recurso)")
+                except OSError:
+                    self.nlp_spacy = None
+                    logger.error("❌ Nenhum modelo spaCy disponível")
         
         # BERT NER - Modelo multilíngue treinado para NER
         # Suporta: PER (pessoas), ORG (organizações), LOC (locais), DATE (datas)
@@ -362,6 +407,8 @@ class PIIDetector:
         else:
             device = -1  # CPU
         
+        # Token Hugging Face seguro via .env
+        # O token Hugging Face deve estar em os.environ['HF_TOKEN']
         try:
             # Modelo multilíngue NER - treinado em 10+ idiomas incluindo português
             # Labels: O, B-PER, I-PER, B-ORG, I-ORG, B-LOC, I-LOC, B-DATE, I-DATE
@@ -375,7 +422,7 @@ class PIIDetector:
         except Exception as e:
             self.nlp_bert = None
             logger.warning(f"⚠️ BERT NER não disponível: {e}. Usando apenas spaCy para NER.")
-        
+
         # NuNER - Modelo especializado para português brasileiro
         # Melhor performance em nomes brasileiros (Maria das Graças, João de Souza)
         try:
@@ -427,7 +474,7 @@ class PIIDetector:
             # LGPD: dado com erro de digitação AINDA É PII pois pode identificar pessoa
             # Aceita: 123.456.789-00, 12345678900, 129.180.122-6 (10 dígitos com erro)
             'CPF': re.compile(
-                r'\b(\d{3}[\.\s]?\d{3}[\.\s]?\d{3}[\-\.\s]?\d{1,2})\b',  # Aceita 1-2 dígitos finais
+                r'\b(\d{3}[\.\s\-]?\d{3}[\.\s\-]?\d{3}[\-\.\s]?\d{1,2})\b',  # Aceita hífen, espaço, ponto em qualquer posição
                 re.IGNORECASE
             ),
             
@@ -541,18 +588,15 @@ class PIIDetector:
                 re.IGNORECASE
             ),
             
-            # Celular: (XX) 9XXXX-XXXX ou (XX)9XXXX-XXXX (sem espaço)
-            # Aceita variações de formatação comuns em dados reais
-            # Inclui DDD com zero opcional: (061) ou 061
+            # Celular: cobre todos formatos reais e-SIC, inclusive espaço entre o 9 e o número, sem hífen, sem espaço, DDD com/sem zero, blocos compactos
             'CELULAR': re.compile(
-                r'(?<![+\d])[\(\[]?0?(\d{2})[\)\]]?[\s\-]?(9[\s]?\d{4})[\s\-]?(\d{4})(?!\d)',
+                r'(?<!\d)(?:0?(\d{2})[\s\-\)]*9[\s\-]?\d{4}[\s\-]?\d{4})(?!\d)',
                 re.IGNORECASE
             ),
-            
-            # Telefone fixo: (XX) XXXX-XXXX ou (XX)XXXX-XXXX
-            # Inclui DDD com zero opcional: (061) ou 061
+
+            # Telefone fixo: cobre formatos compactos, DDD com/sem zero, sem hífen/sem espaço
             'TELEFONE_FIXO': re.compile(
-                r'(?<![+\d])[\(\[]?0?(\d{2})[\)\]]?[\s\-]?([2-5]\d{3})[\s\-]?(\d{4})(?!\d)',
+                r'(?<![+\d])[\(\[]?0?(\d{2})[\)\]]?[\s\-]*([2-5]\d{3})[\s\-]*\d{4}(?!\d)',
                 re.IGNORECASE
             ),
             
@@ -579,7 +623,7 @@ class PIIDetector:
             # Endereço de Brasília (QI, QR, QN, QS, etc) - com prefixo de moradia
             'ENDERECO_BRASILIA': re.compile(
                 r'(?i)(?:moro|resido|minha casa|meu endere[cç]o|minha resid[eê]ncia|resid[eê]ncia:?)[^\n]{0,30}?'
-                r'(?:Q[INRSE]\s*\d+|SQS\s*\d+|SQN\s*\d+|SRES\s*\d+|SHIS\s*QI\s*\d+|'
+                r'(?:Q[INRSEMSAB]\s*\d+|SQS\s*\d+|SQN\s*\d+|SRES\s*\d+|SHIS\s*QI\s*\d+|'
                 r'SHIN\s*QI\s*\d+|QNM\s*\d+|QNN\s*\d+|Conjunto\s+[A-Z]\s+Casa\s+\d+)',
                 re.IGNORECASE | re.UNICODE
             ),
@@ -603,13 +647,46 @@ class PIIDetector:
                 r'\b(\d{2}\.?\d{3}[\-]?\d{3})\b',
                 re.IGNORECASE
             ),
+
+                        # === PADRÕES GDF ===
+                        # Processo SEI: 12345-1234567/2024-12
+                        'PROCESSO_SEI': re.compile(
+                            r'\b\d{4,5}-\d{6,8}/\d{4}(?:-\d{2})?\b',
+                            re.IGNORECASE
+                        ),
+                        # Protocolo LAI: LAI-12345/2024 ou LAI-123456/2024
+                        'PROTOCOLO_LAI': re.compile(
+                            r'\bLAI-\d{5,7}/\d{4}\b',
+                            re.IGNORECASE
+                        ),
+                        # Protocolo OUV: OUV-654321/2022 ou OUV-123456/2022
+                        'PROTOCOLO_OUV': re.compile(
+                            r'\bOUV-\d{5,7}/\d{4}\b',
+                            re.IGNORECASE
+                        ),
+                        # Matrícula servidor: 98.123-3, 12345678A, 12345678, mas não 6 dígitos puros
+                        'MATRICULA_SERVIDOR': re.compile(
+                            r'\b\d{2}\.\d{3}-\d{1}\b|\b\d{7,8}[A-Z]?\b',
+                            re.IGNORECASE
+                        ),
+                        # Ocorrência policial: 20 + 14 a 16 dígitos
+                        'OCORRENCIA_POLICIAL': re.compile(
+                            r'\b20\d{14,16}\b',
+                            re.IGNORECASE
+                        ),
+                        # Inscrição imóvel: contexto "inscrição" (com ou sem dois pontos), 6 a 9 dígitos
+                        'INSCRICAO_IMOVEL': re.compile(
+                            r'(?i)inscri[cç][ãa]o\s*:?\s*\d{6,9}\b',
+                            re.IGNORECASE
+                        ),
             
             # Placa de veículo (Mercosul e antiga)
             # Excluímos padrões comuns que não são placas: ANO, SEI, REF, ART, LEI, DEC, etc.
             'PLACA_VEICULO': re.compile(
                 r'(?<!\b(?:ANO|SEI|REF|ART|LEI|DEC|CAP|INC|PAR|SUS|SÃO)[ \-])'  # Negative lookbehind
                 r'\b((?!ANO|SEI|REF|ART|LEI|DEC|CAP|INC|PAR|SUS|SÃO)[A-Z]{3}[\-]?\d[A-Z0-9]\d{2}|'  # Mercosul
-                r'(?!ANO|SEI|REF|ART|LEI|DEC|CAP|INC|PAR|SUS|SÃO)[A-Z]{3}[\-]?\d{4})\b',  # Antiga
+                r'(?!ANO|SEI|REF|ART|LEI|DEC|CAP|INC|PAR|SUS|SÃO)[A-Z]{3}[\-]?\d{4}|'  # Antiga
+                r'[A-Z]{3}\d{1}[A-Z]{1}\d{2})\b',  # Moto
                 re.IGNORECASE
             ),
             
@@ -622,15 +699,9 @@ class PIIDetector:
                 re.IGNORECASE
             ),
             
-            # Dados bancários: conta + agência (ordem inversa ou mais flexível)
-            'DADOS_BANCARIOS': re.compile(
-                r'(?i)(?:conta)[:\s]*(\d{4,12})[\s\-]*\d?[\s,\.;]+(?:ag[eê]?ncia|ag\.?)[:\s]*(\d{4,5})',
-                re.IGNORECASE
-            ),
-            
             # Chave PIX (UUID, CPF, email, telefone já cobertos)
             'PIX_UUID': re.compile(
-                r'\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b',
+                r'\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-fA-F]{32})\b',
                 re.IGNORECASE
             ),
             
@@ -651,7 +722,7 @@ class PIIDetector:
             
             # IP Address (IPv4)
             'IP_ADDRESS': re.compile(
-                r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b',
+                r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|([0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4})\b',
                 re.IGNORECASE
             ),
             
@@ -750,7 +821,7 @@ class PIIDetector:
             # Mozilla/5.0 (Windows NT 10.0; Win64; x64) ...
             'USER_AGENT': re.compile(
                 r'(?i)(?:user[\-\s]?agent|navegador|browser)[:\s]*'
-                r'(Mozilla/\d\.\d\s*\([^)]+\)[^\n]{0,100})',
+                r'(Mozilla/\d\.\d\s*\([^)]+\)[^\n]{0,100}|Mobile Safari|Chrome Android|CriOS|FxiOS|Opera Mini|Edge Mobile)',
                 re.IGNORECASE
             ),
         }
@@ -761,43 +832,37 @@ class PIIDetector:
         return unidecode(texto).upper().strip() if texto else ""
     
     def _deve_ignorar_entidade(self, texto_entidade: str) -> bool:
-        """Verifica se entidade deve ser ignorada (falso positivo potencial).
-        
-        Analisa se o texto representa uma entidade que não deve ser
-        considerada PII, como nomes de instituições públicas, termos
-        administrativos ou palavras genéricas.
-        
-        Todas as listas usadas vêm do módulo allow_list.py (fonte única).
-        
-        Args:
-            texto_entidade: Texto da entidade detectada
-            
-        Returns:
-            bool: True se deve ser ignorada, False se é PII potencial
-        """
+        """Decide se uma entidade detectada deve ser ignorada (não é PII)."""
         if not texto_entidade or len(texto_entidade) < 3:
             return True
-        
+        # Ignorar nomes com caracteres corrompidos
+        if '##' in texto_entidade or re.search(r'[^\w\sáéíóúàèìòùâêîôûãõÁÉÍÓÚÀÈÌÒÙÂÊÎÔÛÃÕ\-]', texto_entidade):
+            return True
         t_norm = self._normalizar(texto_entidade)
-        
         # 1. Blocklist direta (match exato)
         if t_norm in self.blocklist_total:
             return True
-        
-        # 2. BLOCK_IF_CONTAINS: verifica se alguma palavra bloqueada está CONTIDA no nome
+        # 2. BLOCK_IF_CONTAINS: verifica se alguma PALAVRA bloqueada está no nome
+        palavras_nome = set(t_norm.split())
         for blocked in BLOCK_IF_CONTAINS:
             blocked_norm = unidecode(blocked.upper())
-            if blocked_norm in t_norm:
+            if blocked_norm in palavras_nome:
                 return True
-        
         # 3. Termos seguros (match parcial)
         if any(ts in t_norm for ts in self.termos_seguros):
             return True
-        
-        # 4. Só números/símbolos
+        # 4. Gazetteer GDF (match exato ou parcial)
+        termos_gazetteer = carregar_gazetteer_gdf()
+        if t_norm in termos_gazetteer:
+            logger.info(f"[GAZETTEER] Entidade '{texto_entidade}' ignorada por match exato no gazetteer GDF.")
+            return True
+        for termo_gdf in termos_gazetteer:
+            if termo_gdf in t_norm:
+                logger.info(f"[GAZETTEER] Entidade '{texto_entidade}' ignorada por match parcial no gazetteer GDF: '{termo_gdf}'")
+                return True
+        # 5. Só números/símbolos
         if re.match(r'^[\d/\.\-\s]+$', texto_entidade):
             return True
-        
         return False
     
     def _contexto_negativo_cpf(self, texto: str, cpf_valor: str) -> bool:
@@ -1306,52 +1371,58 @@ class PIIDetector:
             idx = texto_upper.find(gatilho) + len(gatilho)
             resto = texto[idx:idx+60].strip()
             
-            # Procura nome após o gatilho
-            match = re.search(
-                r'\b(?:o|a|do|da)?\s*([A-Z][a-záéíóúàèìòùâêîôûãõ]+(?:\s+[A-Z][a-záéíóúàèìòùâêîôûãõ]+)*)',
-                resto
-            )
-            
-            if match:
-                nome = match.group(1).strip()
-                nome_upper = self._normalizar(nome)
-                
-                # Ignora cargos e termos genéricos
-                if nome_upper in self.cargos_autoridade:
-                    continue
-                if nome_upper in self.indicadores_servidor:
-                    continue
-                if len(nome) <= 3:
-                    continue
-                # Filtro de qualidade: precisa ter nome + sobrenome
-                if " " not in nome:
-                    continue
-                # Usa blocklist global
-                if self._deve_ignorar_entidade(nome):
-                    continue
-                
-                inicio = idx + match.start()
-                fim = idx + match.end()
-                # Usa base NOME_GATILHO (0.85) com fator de contexto
-                confianca = self._calcular_confianca("NOME", texto, inicio, fim)
-                # Boost adicional porque tem gatilho (já é forte indicador)
-                confianca = min(1.0, confianca * 1.05)
-                
-                findings.append(PIIFinding(
-                    tipo="NOME", valor=nome, confianca=confianca,
-                    peso=4, inicio=inicio, fim=fim
-                ))
+            # Melhorar parsing após "Me chamo" para evitar erro "Braga Gostaria"
+            if "ME CHAMO" in gatilho:
+                # Aceita apenas nomes com pelo menos 2 palavras e nenhuma palavra do tipo "GOSTARIA", "QUERO", "PRECISO"
+                match = re.search(r'([A-Z][a-záéíóúàèìòùâêîôûãõ]+(?:\s+[A-Z][a-záéíóúàèìòùâêîôûãõ]+)+)', resto)
+                if match:
+                    nome = match.group(1).strip()
+                    if any(w in nome.upper() for w in ["GOSTARIA", "QUERO", "PRECISO"]):
+                        continue
+                    if self._deve_ignorar_entidade(nome):
+                        continue
+                    inicio = idx + match.start()
+                    fim = idx + match.end()
+                    confianca = self._calcular_confianca("NOME", texto, inicio, fim)
+                    confianca = min(1.0, confianca * 1.05)
+                    findings.append(PIIFinding(
+                        tipo="NOME", valor=nome, confianca=confianca,
+                        peso=4, inicio=inicio, fim=fim
+                    ))
+            else:
+                match = re.search(
+                    r'\b(?:o|a|do|da)?\s*([A-Z][a-záéíóúàèìòùâêîôûãõ]+(?:\s+[A-Z][a-záéíóúàèìòùâêîôûãõ]+)*)',
+                    resto
+                )
+                if match:
+                    nome = match.group(1).strip()
+                    nome_upper = self._normalizar(nome)
+                    if nome_upper in self.cargos_autoridade:
+                        continue
+                    if nome_upper in self.indicadores_servidor:
+                        continue
+                    if len(nome) <= 3:
+                        continue
+                    if " " not in nome:
+                        continue
+                    if self._deve_ignorar_entidade(nome):
+                        continue
+                    inicio = idx + match.start()
+                    fim = idx + match.end()
+                    confianca = self._calcular_confianca("NOME", texto, inicio, fim)
+                    confianca = min(1.0, confianca * 1.05)
+                    findings.append(PIIFinding(
+                        tipo="NOME", valor=nome, confianca=confianca,
+                        peso=4, inicio=inicio, fim=fim
+                    ))
         
         # Nomes após "contra" (reclamação contra Pedro)
         if "CONTRA" in texto_upper:
             idx = texto_upper.find("CONTRA") + 6
             resto = texto[idx:idx+50].strip().strip(".,;:'\"-")
-            
             match = re.search(r"^([A-Z][a-záéíóúàèìòùâêîôûãõ]+)", resto)
             if match:
                 nome = match.group(1).strip()
-                
-                # Filtros de qualidade
                 if len(nome) <= 3:
                     pass  # Skip
                 elif " " not in nome:
@@ -1603,6 +1674,7 @@ class PIIDetector:
         all_raw_detections: List[Dict] = []
         
         # 1. Regex com validação de DV
+        regex_weight = self.ensemble_weights.get('regex', 1.0)
         regex_findings = self._detectar_regex(text)
         for f in regex_findings:
             all_raw_detections.append({
@@ -1611,8 +1683,8 @@ class PIIDetector:
                 "start": f.inicio,
                 "end": f.fim,
                 "source": "regex",
-                "score": f.confianca,
-                "peso": f.peso
+                "score": f.confianca * regex_weight,
+                "peso": f.peso * regex_weight
             })
         
         # 2. Nomes após gatilhos
@@ -1629,6 +1701,7 @@ class PIIDetector:
             })
         
         # 3. BERT Davlan NER (multilíngue)
+        bert_weight = self.ensemble_weights.get('bert', 1.0)
         if self.nlp_bert:
             bert_findings = self._detectar_ner_bert_only(text)
             for f in bert_findings:
@@ -1638,8 +1711,8 @@ class PIIDetector:
                     "start": f.inicio,
                     "end": f.fim,
                     "source": "bert_ner",
-                    "score": f.confianca,
-                    "peso": f.peso
+                    "score": f.confianca * bert_weight,
+                    "peso": f.peso * bert_weight
                 })
         
         # 4. NuNER pt-BR (especializado em português)
@@ -1657,6 +1730,7 @@ class PIIDetector:
                 })
         
         # 5. spaCy NER (complementar)
+        spacy_weight = self.ensemble_weights.get('spacy', 1.0)
         if self.nlp_spacy:
             spacy_findings = self._detectar_ner_spacy_only(text)
             for f in spacy_findings:
@@ -1666,8 +1740,8 @@ class PIIDetector:
                     "start": f.inicio,
                     "end": f.fim,
                     "source": "spacy",
-                    "score": f.confianca,
-                    "peso": f.peso
+                    "score": f.confianca * spacy_weight,
+                    "peso": f.peso * spacy_weight
                 })
         
         # Usa calculador probabilístico
@@ -1681,15 +1755,30 @@ class PIIDetector:
         if not doc_confidence.has_pii:
             return False, [], "SEGURO", doc_confidence.confidence_no_pii
         
-        # Extrai findings no formato esperado
-        findings_dict = []
-        for entity in doc_confidence.entities:
-            findings_dict.append({
-                "tipo": entity.tipo,
-                "valor": entity.valor,
-                "confianca": entity.confianca
-            })
-        
+        # Pós-processamento de spans
+        try:
+            from src.confidence.combiners import pos_processar_spans
+            spans = [(e.inicio, e.fim, e.tipo, e.valor) for e in doc_confidence.entities if hasattr(e, 'inicio') and hasattr(e, 'fim')]
+            spans_proc = pos_processar_spans(spans, min_len=2, merge_overlap=True)
+            findings_proc = []
+            for s in spans_proc:
+                for e in doc_confidence.entities:
+                    if hasattr(e, 'inicio') and hasattr(e, 'fim') and e.inicio == s[0] and e.fim == s[1]:
+                        findings_proc.append({
+                            "tipo": e.tipo,
+                            "valor": e.valor,
+                            "confianca": e.confianca
+                        })
+                        break
+            findings_dict = findings_proc if findings_proc else [
+                {"tipo": entity.tipo, "valor": entity.valor, "confianca": entity.confianca} for entity in doc_confidence.entities
+            ]
+        except Exception as e:
+            findings_dict = [
+                {"tipo": entity.tipo, "valor": entity.valor, "confianca": entity.confianca} for entity in doc_confidence.entities
+            ]
+            logger.warning(f"[Pós-processamento] Falha ao aplicar pos_processar_spans: {e}")
+
         # Confiança do documento = confidence_all_found (ou min_entity como fallback)
         doc_conf = doc_confidence.confidence_all_found or doc_confidence.confidence_min_entity or 0.9
         
@@ -1727,8 +1816,20 @@ class PIIDetector:
         # === RESULTADO FINAL ===
         final_list = list(final_dict.values())
         
-        # Filtra apenas PII relevantes (peso >= 2, inclui BAIXO)
-        pii_relevantes = [f for f in final_list if f.peso >= 2]
+
+        # === THRESHOLD DINÂMICO POR TIPO ===
+        pii_relevantes = []
+        for f in final_list:
+            tipo = getattr(f, 'tipo', None)
+            conf = getattr(f, 'confianca', 1.0)
+            peso = getattr(f, 'peso', 1)
+            if tipo in self.THRESHOLDS_DINAMICOS:
+                th = self.THRESHOLDS_DINAMICOS[tipo]
+                if peso >= th['peso_min'] and conf >= th['confianca_min']:
+                    pii_relevantes.append(f)
+            else:
+                if peso >= 2:
+                    pii_relevantes.append(f)
         
         if not pii_relevantes:
             return False, [], "SEGURO", 1.0
@@ -1749,16 +1850,30 @@ class PIIDetector:
         # Confiança baseada no melhor achado
         max_confianca = max(f.confianca for f in pii_relevantes)
         
-        # Converte para dict para compatibilidade
-        findings_dict = [
-            {
-                "tipo": f.tipo,
-                "valor": f.valor,
-                "confianca": f.confianca  # Corrigido: era 'conf', frontend espera 'confianca'
-            }
-            for f in pii_relevantes
-        ]
-        
+        # Pós-processamento de spans
+        try:
+            from src.confidence.combiners import pos_processar_spans
+            spans = [(f.inicio, f.fim, f.tipo, f.valor) for f in pii_relevantes if hasattr(f, 'inicio') and hasattr(f, 'fim')]
+            spans_proc = pos_processar_spans(spans, min_len=2, merge_overlap=True)
+            findings_proc = []
+            for s in spans_proc:
+                for f in pii_relevantes:
+                    if hasattr(f, 'inicio') and hasattr(f, 'fim') and f.inicio == s[0] and f.fim == s[1]:
+                        findings_proc.append({
+                            "tipo": f.tipo,
+                            "valor": f.valor,
+                            "confianca": f.confianca
+                        })
+                        break
+            findings_dict = findings_proc if findings_proc else [
+                {"tipo": f.tipo, "valor": f.valor, "confianca": f.confianca} for f in pii_relevantes
+            ]
+        except Exception as e:
+            findings_dict = [
+                {"tipo": f.tipo, "valor": f.valor, "confianca": f.confianca} for f in pii_relevantes
+            ]
+            logger.warning(f"[Pós-processamento] Falha ao aplicar pos_processar_spans: {e}")
+
         return True, findings_dict, nivel_risco, max_confianca
     
     def detect_extended(self, text: str) -> Dict:
@@ -1896,42 +2011,37 @@ class PIIDetector:
     def _detectar_ner_bert_only(self, texto: str) -> List[PIIFinding]:
         """Detecta apenas com BERT NER (para rastreamento de fonte)."""
         findings = []
-        
         if not self.nlp_bert:
             return findings
-        
         try:
-            # Trunca texto se necessário (BERT tem limite de tokens)
-            texto_truncado = texto[:4096] if len(texto) > 4096 else texto
-            
-            resultados = self.nlp_bert(texto_truncado)
+            resultados = self.nlp_bert(texto)
             for ent in resultados:
-                if ent['entity_group'] != 'PER':
+                tipo = ent.get('entity_group', '')
+                valor = ent.get('word', '')
+                inicio = ent.get('start', 0)
+                fim = ent.get('end', 0)
+                score = ent.get('score', 0.0)
+                # Filtros de qualidade
+                if tipo not in ['PER', 'PESSOA', 'B-PER', 'I-PER', 'PERSON']:
                     continue
-                
-                nome = ent['word']
-                score = ent['score']
-                
-                # Filtros
-                if len(nome) <= 3:
+                if len(valor) <= 3:
                     continue
-                if " " not in nome:
+                if " " not in valor:
                     continue
-                if self._deve_ignorar_entidade(nome):
+                if self._deve_ignorar_entidade(valor):
                     continue
-                if self._deve_ignorar_nome(texto, ent['start']):
+                if self._deve_ignorar_nome(texto, inicio):
                     continue
-                
-                inicio, fim = ent['start'], ent['end']
-                
+                base = self.confianca_base.get("NOME_BERT", 0.82)
+                fator = self._calcular_fator_contexto(texto, inicio, fim, "NOME")
+                confianca = min(1.0, base * fator)
                 findings.append(PIIFinding(
-                    tipo="NOME", valor=nome,
-                    confianca=score, peso=4,
+                    tipo="NOME", valor=valor,
+                    confianca=confianca, peso=4,
                     inicio=inicio, fim=fim
                 ))
         except Exception as e:
             logger.warning(f"Erro no BERT NER: {e}")
-        
         return findings
     
     def _detectar_ner_spacy_only(self, texto: str) -> List[PIIFinding]:
@@ -1992,7 +2102,7 @@ class PIIDetector:
             
             resultados = self.nlp_nuner(texto_truncado)
             for ent in resultados:
-                # NuNER usa labels diferentes - aceita PER, PESSOA, B-PER, I-PER
+                # NuNER usa labels diferentes - aceita PER, PESSOA, B-PER, I-PER, 'PERSON'
                 if ent['entity_group'] not in ['PER', 'PESSOA', 'B-PER', 'I-PER', 'PERSON']:
                     continue
                 

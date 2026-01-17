@@ -29,6 +29,11 @@ Exemplo de uso:
     }
 """
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 from typing import Dict, Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

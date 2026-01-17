@@ -1,48 +1,85 @@
-# ===== GERAL =====
+
+# ===== IGNORA TUDO QUE NÃO É ESSENCIAL PARA O GIT/DEPLOY =====
+
+# === SISTEMA/OS ===
 .DS_Store
 Thumbs.db
-*.log
-.env
-.env.local
-.env.*.local
+.AppleDouble
+.LSOverride
+desktop.ini
 
-# ===== PYTHON =====
+# === AMBIENTE PYTHON ===
 venv/
 .venv/
 ENV/
+env/
+venv_*/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.egg-info/
-*.egg
 .eggs/
+*.egg
+*.so
+.Python
+.cache/
 
-# ===== NODE.JS =====
+# === NODE/NPM ===
 node_modules/
 .npm/
 .pnpm-store/
+dist/
+build/
+out/
+.turbo/
+.eslintcache
 
-# ===== VSCODE =====
+# === IDE/EDITOR ===
 .vscode/
-*.code-workspace
-
-# ===== IDEA (JETBRAINS) =====
 .idea/
 *.iml
+*.code-workspace
+.history/
+*.sublime-workspace
+*.sublime-project
+.vscode-settings
 
-# ===== OS =====
-.AppleDouble
-.LSOverride
-desktop.ini
-
-# ===== TEMP FILES =====
+# === TEMP/LOGS ===
 *~
 *.swp
 *.swo
 .tmp/
+*.log
+logs/
+*.pid
 
-# ===== BUILD ARTIFACTS =====
-dist/
-build/
-out/
+# === CONFIG/SEGREDOS ===
+.env
+.env.local
+.env.*.local
+.env.prod
+.env.staging
+*.pem
+*.key
+
+# === DADOS/OUTPUTS ===
+data/output/*
+!data/output/.gitkeep
+data/input/*.xlsx
+data/input/*.csv
+data/temp/*
+!data/temp/.gitkeep
+AMOSTRA_e-SIC.xlsx
+resultado_hackathon.xlsx
+
+# === SCRIPTS LOCAIS ===
+scripts/
+
+# === HUGGING FACE/DEPLOY ===
+.huggingface/
+
+# === OUTROS ===
+package-lock.json
+bun.lockb
+

@@ -5,6 +5,11 @@ Entry point para HuggingFace Spaces
 Inicia o servidor FastAPI do backend PII Detector
 """
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 import subprocess
 import sys
 import os

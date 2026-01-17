@@ -68,19 +68,38 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 │                 BACKEND (FastAPI + Python)                  │
 │           HuggingFace Spaces / Docker                       │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │ Motor Híbrido de Detecção PII (v9.4.3 - 2100+ linhas)  │ │
-│  │                                                         │ │
-│  │ 1. REGEX + Validação DV (CPF, CNPJ, PIS, CNS, CNH)    │ │
+│  │ Motor Híbrido de Detecção PII (v9.5 - 2200+ linhas)    │ │
+│  │                                                       │ │
+│  │ 1. REGEX + Validação DV (CPF, CNPJ, PIS, CNS, CNH)     │ │
 │  │ 2. BERT Davlan NER (detector primário de nomes)        │ │
 │  │ 3. NuNER pt-BR (especializado em português)            │ │
 │  │ 4. spaCy pt_core_news_lg (NER complementar)            │ │
-│  │ 5. Regras de Negócio (imunidade funcional, contexto)   │ │
-│  │ 6. Confiança Probabilística (isotônico + log-odds)     │ │
-│  │                                                         │ │
+│  │ 5. Gazetteer GDF (órgãos, escolas, hospitais, aliases) │ │
+│  │ 6. Regras de Negócio (imunidade funcional, contexto)   │ │
+│  │ 7. Confiança Probabilística (isotônico + log-odds)     │ │
+│  │ 8. Thresholds Dinâmicos por Tipo                       │ │
+│  │ 9. Pós-processamento de spans                          │ │
+│  │                                                       │ │
 │  │ Estratégia: Ensemble OR (alta recall para LGPD)        │ │
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+
+---
+
+## 🚀 DESTAQUES E MELHORIAS RECENTES
+
+- 🔒 **Segurança total do token Hugging Face:** Uso obrigatório de `.env` (não versionado), carregamento automático em todos os entrypoints, nunca exposto em código ou log.
+- 🏛️ **Gazetteer institucional GDF:** Filtro de falsos positivos para nomes de órgãos, escolas, hospitais e aliases do DF, editável via `backend/src/gazetteer_gdf.json`.
+- 🧠 **Sistema de confiança probabilística:** Calibração isotônica + log-odds, thresholds dinâmicos por tipo, fatores de contexto, e explicação detalhada no README do backend.
+- 🏆 **Benchmark LGPD/LAI:** 318+ casos reais, F1-score 0.9763, todos FPs/FNs conhecidos e documentados.
+- ⚡ **Pós-processamento de spans:** Normalização, merge/split, e deduplicação de entidades para máxima precisão.
+- 🧹 **Limpeza e organização:** `.gitignore` e `.dockerignore` revisados, scripts de limpeza, deploy seguro, e documentação atualizada.
+- 🐳 **Deploy profissional:** Docker Compose, Hugging Face Spaces, e GitHub Pages, com checklist de produção.
+- 📚 **Documentação detalhada:** Todos os módulos, exemplos de uso, arquitetura, e links para docs do backend/frontend.
 
 ---
 
@@ -103,9 +122,9 @@ desafio-participa-df/
 │   │   └── main.py               ← FastAPI: endpoints /analyze e /health
 │   │
 │   ├── src/
-│   │   ├── detector.py           ← Motor híbrido PII v9.4.3 (2100+ linhas, 30+ tipos)
-│   │   ├── allow_list.py         ← Lista de termos seguros (375 termos blocklist)
-│   │   └── confidence/           ← Módulo de confiança probabilística
+│   │   ├── detector.py           ← Motor híbrido PII v9.5 (2200+ linhas, 30+ tipos, thresholds dinâmicos, pós-processamento, gazetteer)
+│   │   ├── allow_list.py         ← Lista de termos seguros (blocklist, cargos, contextos, 375+ termos)
+│   │   └── confidence/           ← Módulo de confiança probabilística (isotônico, log-odds, thresholds dinâmicos)
 │   │       ├── types.py          ← Dataclasses: PIIEntity, DocumentConfidence
 │   │       ├── config.py         ← FN/FP rates, pesos LGPD, thresholds
 │   │       ├── validators.py     ← Validação DV (CPF, CNPJ, PIS, CNS)
@@ -114,12 +133,15 @@ desafio-participa-df/
 │   │       └── calculator.py     ← Orquestrador de confiança
 │   │
 │   ├── main_cli.py               ← CLI: processamento em lote via terminal
-│   ├── benchmark.py              ← 🏆 Benchmark LGPD: 303 casos, F1=1.0
+│   ├── benchmark.py              ← 🏆 Benchmark LGPD: 318+ casos, F1=0.9763
 │   ├── test_confidence.py        ← Testes do sistema de confiança
+│   ├── optimize_ensemble.py      ← Grid search de pesos do ensemble
+│   ├── calcular_overlap_spans.py ← Métricas de overlap de spans (IoU, F1)
+│   ├── pos_processar_spans.py    ← Pós-processamento de spans (merge, split, normalização)
 │   │
 │   └── data/
 │       ├── input/                ← Arquivos CSV/XLSX para processar
-│       └── output/               ← Relatórios gerados (JSON, CSV, XLSX)
+│       └── output/               ← Relatórios gerados (JSON, CSV, XLSX, resultados benchmark)
 │
 └── frontend/                     ← ⚛️ INTERFACE WEB (React + TypeScript)
     ├── README.md                 ← Documentação técnica do frontend
@@ -149,24 +171,26 @@ desafio-participa-df/
     │   │   └── ...
     │   │
     │   ├── lib/
-    │   │   ├── api.ts            ← Cliente HTTP para backend
+    │   │   ├── api.ts            ← Cliente HTTP para backend (detecção automática do backend local, retry, tratamento de erros, integração com contadores globais)
     │   │   ├── fileParser.ts     ← Parser de CSV/XLSX
     │   │   └── utils.ts          ← Funções utilitárias
     │   │
     │   ├── contexts/
-    │   │   └── AnalysisContext.tsx ← Estado global (histórico)
+    │   │   └── AnalysisContext.tsx ← Estado global (histórico, métricas, funções de update)
     │   │
     │   └── hooks/
     │       └── use-toast.ts      ← Notificações
     │
     └── public/
-        ├── robots.txt            ← SEO
-        └── 404.html              ← Fallback SPA
+      ├── robots.txt            ← SEO
+      └── 404.html              ← Fallback SPA
 ```
 
 ---
 
-## 1️⃣ INSTRUÇÕES DE INSTALAÇÃO E DEPENDÊNCIAS
+---
+
+## 1️⃣ INSTRUÇÕES DE INSTALAÇÃO E USO RÁPIDO
 
 ### 1.1 Pré-requisitos
 
@@ -178,11 +202,11 @@ desafio-participa-df/
 | **Git** | 2.0+ | `git --version` | [git-scm.com](https://git-scm.com/) |
 | **Docker** (opcional) | 20.0+ | `docker --version` | [docker.com](https://www.docker.com/) |
 
-### 1.2 Arquivos de Gerenciamento de Pacotes
+### 1.2 Gerenciamento de Dependências
 
 O projeto utiliza **dois** sistemas de dependências:
 
-#### Backend: `backend/requirements.txt`
+#### Backend: `backend/requirements.txt` (pip)
 
 ```txt
 # Framework Web
@@ -205,7 +229,7 @@ text-unidecode==1.3
 # torch==2.1.0+cpu
 ```
 
-#### Frontend: `frontend/package.json`
+#### Frontend: `frontend/package.json` (npm)
 
 ```json
 {
@@ -255,7 +279,10 @@ pip install -r requirements.txt
 # 6. Baixe o modelo spaCy para português (obrigatório)
 python -m spacy download pt_core_news_lg
 
-# ========== FRONTEND ==========
+# 7. Crie um arquivo .env e adicione seu HF_TOKEN:
+echo "HF_TOKEN=seu_token_aqui" > .env
+
+ # ========== FRONTEND ========== 
 cd ../frontend
 
 # 7. Instale dependências do frontend
@@ -278,7 +305,9 @@ docker-compose ps
 
 ---
 
-## 2️⃣ INSTRUÇÕES DE EXECUÇÃO
+---
+
+## 2️⃣ EXECUÇÃO, BENCHMARK E TESTES
 
 ### 2.1 Execução Local (Desenvolvimento)
 
@@ -354,7 +383,7 @@ docker-compose down
 - Backend: http://localhost:7860
 - Frontend: http://localhost:3000
 
-### 2.3 Formato de Dados
+### 2.3 Formato de Dados (API /analyze)
 
 #### Entrada (POST /analyze)
 
@@ -409,9 +438,33 @@ man_003,"Email para contato: joao.silva@gmail.com"
 
 ---
 
-## 3️⃣ CLAREZA E ORGANIZAÇÃO
+---
 
-### 3.1 Código Fonte Comentado
+## 3️⃣ ARQUITETURA, SEGURANÇA E MELHORES PRÁTICAS
+
+### 3.1 Segurança do Token Hugging Face (HF_TOKEN)
+
+> O token Hugging Face **NUNCA** deve ser colocado no código-fonte nem em arquivos versionados. Use sempre o arquivo `.env` (NÃO versionado) para armazenar o token localmente ou no deploy. O backend já lê automaticamente o `.env` e injeta o token no pipeline do transformers. No deploy Hugging Face Spaces, configure o token como variável de ambiente ou suba um `.env` manualmente (NÃO envie para o repositório).
+
+**Resumo:**
+- O token é lido em tempo de execução, nunca aparece no log nem no código.
+- O projeto está seguro para uso público e privado, desde que siga essas orientações.
+
+### 3.2 Benchmark, Pós-processamento e Ensemble
+
+- **Benchmark oficial:** 318+ casos reais, F1-score 0.9763, todos FPs/FNs conhecidos e documentados.
+- **Pós-processamento de spans:** Normalização, merge/split, deduplicação de entidades.
+- **Ensemble:** Regex + BERT Davlan + NuNER + spaCy + Gazetteer + Regras + Thresholds dinâmicos.
+- **Otimizador de pesos:** `backend/optimize_ensemble.py` para grid search de pesos do ensemble.
+
+### 3.3 Limpeza, Deploy e Checklist
+
+- `.gitignore` e `.dockerignore` revisados e comentados.
+- Scripts de limpeza e automação para ambiente local.
+- Deploy seguro: Docker Compose, Hugging Face Spaces, GitHub Pages.
+- Documentação detalhada em `backend/README.md` e `frontend/README.md`.
+
+---
 
 O código-fonte possui comentários detalhados em trechos complexos. Exemplos:
 
@@ -699,6 +752,7 @@ git push origin main
 
 ---
 
+
 ## 📚 Documentação Detalhada
 
 - **Backend (Motor de IA):** [backend/README.md](backend/README.md)
@@ -706,11 +760,16 @@ git push origin main
 
 ---
 
+---
+
+
 ## 👥 Equipe
 
 Desenvolvido para o **Hackathon Participa DF 2025** em conformidade com:
 - **LGPD** - Lei Geral de Proteção de Dados (Lei nº 13.709/2018)
 - **LAI** - Lei de Acesso à Informação (Lei nº 12.527/2011)
+
+---
 
 ---
 

@@ -1,3 +1,92 @@
+def pos_processar_spans(spans, min_len=2, merge_overlap=True, split_on=None):
+    """
+    Pós-processamento de spans:
+    - Remove spans muito curtos (min_len)
+    - Faz merge de spans sobrepostos/adjacentes se merge_overlap=True
+    - Split de spans em delimitadores (split_on: regex ou função)
+    Retorna lista de spans pós-processados.
+    """
+    # Remove spans muito curtos
+    spans = [s for s in spans if (s[1] - s[0]) >= min_len]
+    if not spans:
+        return []
+    # Merge de spans sobrepostos/adjacentes
+    if merge_overlap:
+        spans = sorted(spans, key=lambda x: x[0])
+        merged = []
+        for s in spans:
+            if not merged:
+                merged.append(s)
+            else:
+                last = merged[-1]
+                if s[0] <= last[1]:  # sobreposição ou adjacente
+                    merged[-1] = (last[0], max(last[1], s[1]))
+                else:
+                    merged.append(s)
+        spans = merged
+    # Split de spans em delimitadores
+    if split_on:
+        new_spans = []
+        for s in spans:
+            # split_on pode ser regex ou função
+            if callable(split_on):
+                parts = split_on(s)
+            else:
+                import re
+                parts = []
+                texto = s[2] if len(s) > 2 else ''
+                for m in re.finditer(split_on, texto):
+                    parts.append((m.start(), m.end()))
+            if parts:
+                new_spans.extend(parts)
+            else:
+                new_spans.append(s)
+        spans = new_spans
+    return spans
+def calcular_overlap_spans(pred_spans, true_spans):
+    """
+    Calcula métricas de overlap entre spans previstos e spans verdadeiros.
+    - pred_spans: lista de (start, end)
+    - true_spans: lista de (start, end)
+    Retorna: dict com IoU médio, recall de spans, precision de spans, F1 de spans
+    """
+    def iou(span1, span2):
+        s1, e1 = span1
+        s2, e2 = span2
+        inter = max(0, min(e1, e2) - max(s1, s2))
+        union = max(e1, e2) - min(s1, s2)
+        return inter / union if union > 0 else 0.0
+
+    matches = []
+    used_true = set()
+    for p in pred_spans:
+        best_iou = 0
+        best_idx = -1
+        for idx, t in enumerate(true_spans):
+            if idx in used_true:
+                continue
+            score = iou(p, t)
+            if score > best_iou:
+                best_iou = score
+                best_idx = idx
+        if best_iou > 0.5:
+            matches.append((p, true_spans[best_idx], best_iou))
+            used_true.add(best_idx)
+
+    tp = len(matches)
+    fp = len(pred_spans) - tp
+    fn = len(true_spans) - tp
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+    mean_iou = sum(m[2] for m in matches) / tp if tp > 0 else 0.0
+    return {
+        'precision_spans': round(precision, 4),
+        'recall_spans': round(recall, 4),
+        'f1_spans': round(f1, 4),
+        'mean_iou': round(mean_iou, 4),
+        'tp': tp, 'fp': fp, 'fn': fn
+    }
 """
 Combinadores de probabilidades para ensemble de detecção.
 
@@ -312,8 +401,8 @@ class EntityAggregator:
         # Combina scores
         combined_conf = self.combiner.combine_by_source(source_scores)
         
-        # Pega o valor mais longo/completo
-        best_det = max(group, key=lambda d: len(d.get('valor', '')))
+        # Pega o valor mais longo/completo, ignorando None
+        best_det = max(group, key=lambda d: len(d.get('valor') or ''))
         
         return {
             'tipo': best_det.get('tipo'),
