@@ -18,14 +18,14 @@
 > - O diretório `scripts/` é exclusivo para automações/limpeza local e nunca vai para produção.
 > - O `.dockerignore` garante que apenas arquivos essenciais e a amostra permitida vão para o build.
 
-|------------------------------------------------------------------------|-------|
+
 | 🌐 **Links de Produção**                                               |  URL |
 |------------------------------------------------------------------------|-------|
 | Frontend (Dashboard) | https://marinhothiago.github.io/desafio-participa-df/   |
 | Backend (API) | https://marinhothiago-desafio-participa-df.hf.space/           |
 | Documentação da API | https://marinhothiago-desafio-participa-df.hf.space/docs |
 | Health Check | https://marinhothiago-desafio-participa-df.hf.space/health      |
-|------------------------------------------------------------------------|-------|
+
 
 ---
 
