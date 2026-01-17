@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { type AnalysisResult, type BatchResult, api } from '@/lib/api';
+import { ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 export interface AnalysisHistoryItem {
   id: string;
@@ -125,7 +125,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         siteVisits: stats.site_visits,
         totalClassificationRequests: stats.classification_requests,
       });
-      
+
       // Registrar visita uma vez por sessão
       const hasVisited = sessionStorage.getItem(VISIT_SESSION_KEY);
       if (!hasVisited) {
@@ -135,9 +135,9 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         setCounters(prev => ({ ...prev, siteVisits: prev.siteVisits + 1 }));
       }
     };
-    
+
     loadGlobalStats();
-    
+
     // Atualizar stats a cada 30 segundos para refletir outras sessões
     const interval = setInterval(async () => {
       const stats = await api.getStats();
@@ -146,7 +146,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         totalClassificationRequests: stats.classification_requests,
       });
     }, 30000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -215,7 +215,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const addAnalysisResult = useCallback((result: AnalysisResult, text: string, type: 'individual' | 'batch', pedidoId?: string) => {
     const now = new Date();
     const { date, time } = formatDateTime(now);
-    
+
     const classification = result.classificacao === 'PÚBLICO' ? 'PÚBLICO' : 'NÃO PÚBLICO';
     const probability = result.confianca ?? 0;
     const risco = result.risco ?? 'SEGURO';
@@ -244,11 +244,11 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const addBatchResults = useCallback((results: BatchResult[]) => {
     const now = new Date();
     const currentCounter = requestCounter;
-    
+
     const newItems: AnalysisHistoryItem[] = results.map((result, index) => {
       const itemTime = new Date(now.getTime() + index);
       const { date, time } = formatDateTime(itemTime);
-      
+
       const classification: 'PÚBLICO' | 'NÃO PÚBLICO' = result.classification === 'public' ? 'PÚBLICO' : 'NÃO PÚBLICO';
       const risco = result.risco ?? 'SEGURO';
       const riskLevel = getRiskLevelFromRisco(risco);
