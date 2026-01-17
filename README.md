@@ -1,6 +1,6 @@
 # 🛡️ Participa DF - Detector Inteligente de Dados Pessoais
-[![Build Status](https://img.shields.io/github/actions/workflow/status/marinhothiago/desafio-participa-df/ci.yml?branch=main)](https://github.com/marinhothiago/desafio-participa-df/actions)
-[![Coverage Status](https://img.shields.io/codecov/c/github/marinhothiago/desafio-participa-df?logo=codecov)](https://codecov.io/gh/marinhothiago/desafio-participa-df)
+[![Build Status](https://github.com/marinhothiago/participa-df-pii/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/marinhothiago/participa-df-pii/actions/workflows/ci.yml)
+[![Coverage Status](https://codecov.io/gh/marinhothiago/participa-df-pii/branch/main/graph/badge.svg)](https://codecov.io/gh/marinhothiago/participa-df-pii)
 [![Dependabot Status](https://img.shields.io/badge/dependabot-enabled-brightgreen?logo=dependabot)](https://github.com/marinhothiago/desafio-participa-df/pulls?q=is:pr+is:open+label:dependencies)
 
 [![Status](https://img.shields.io/badge/Status-Produção-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
