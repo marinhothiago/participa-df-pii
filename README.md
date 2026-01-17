@@ -1,4 +1,7 @@
 # 🛡️ Participa DF - Detector Inteligente de Dados Pessoais
+[![Build Status](https://img.shields.io/github/actions/workflow/status/marinhothiago/desafio-participa-df/ci.yml?branch=main)](https://github.com/marinhothiago/desafio-participa-df/actions)
+[![Coverage Status](https://img.shields.io/codecov/c/github/marinhothiago/desafio-participa-df?logo=codecov)](https://codecov.io/gh/marinhothiago/desafio-participa-df)
+[![Dependabot Status](https://img.shields.io/badge/dependabot-enabled-brightgreen?logo=dependabot)](https://github.com/marinhothiago/desafio-participa-df/pulls?q=is:pr+is:open+label:dependencies)
 
 [![Status](https://img.shields.io/badge/Status-Produção-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
 [![Versão](https://img.shields.io/badge/Versão-9.4.3-blue)](./backend/README.md)
@@ -736,11 +739,91 @@ git push origin main
 ---
 
 
-## 👥 Equipe
 
-Desenvolvido para o **Hackathon Participa DF 2025** em conformidade com:
-- **LGPD** - Lei Geral de Proteção de Dados (Lei nº 13.709/2018)
-- **LAI** - Lei de Acesso à Informação (Lei nº 12.527/2011)
+---
+
+## 👥 Equipe & Contato
+
+- **Thiago Marinho**  
+  Email: [thiago.marinho@email.com](mailto:thiago.marinho@email.com)  
+  [LinkedIn](https://www.linkedin.com/feed/) | [GitHub](https://github.com/marinhothiago/)
+
+---
+
+## 📄 Licença
+
+MIT. Consulte o arquivo [LICENSE](LICENSE) para detalhes. Uso livre para fins públicos, educacionais e governamentais. Para uso comercial, entre em contato.
+
+---
+
+## 🔗 Links Úteis
+
+- [Repositório no GitHub](https://github.com/marinhothiago/desafio-participa-df)
+- [Frontend (Dashboard)](https://marinhothiago.github.io/desafio-participa-df/)
+- [Backend (API)](https://marinhothiago-desafio-participa-df.hf.space/)
+- [Documentação da API](https://marinhothiago-desafio-participa-df.hf.space/docs)
+- [Benchmark LGPD](backend/benchmark.py)
+- [Design System DSGOV](https://govbr.github.io/ds)
+- [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
+- [LAI](https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2011/lei/l12527.htm)
+
+---
+
+## 💡 Exemplos de Uso
+
+### API (FastAPI)
+```bash
+curl -X POST "https://marinhothiago-desafio-participa-df.hf.space/analyze" -H "Content-Type: application/json" -d '{"text": "Meu CPF é 123.456.789-09"}'
+```
+
+### CLI (Processamento em lote)
+```bash
+python backend/main_cli.py --input backend/data/input/AMOSTRA_e-SIC.xlsx --output backend/data/output/resultado
+```
+
+### Frontend
+1. Acesse: https://marinhothiago.github.io/desafio-participa-df/
+2. Cole um texto ou faça upload de CSV/XLSX
+3. Veja classificação, risco, PIIs e exporte resultados
+
+---
+
+## 🛡️ Segurança & LGPD
+
+- Checklist LGPD/LAI seguido em todo o fluxo
+- Nenhum dado sensível é armazenado ou compartilhado
+- Tokens e segredos nunca vão para o código ou repositório
+- Para reportar vulnerabilidades, envie email para participa.df@protonmail.com
+
+---
+
+## ❓ FAQ
+
+- **Quais dados são detectados?** CPF, RG, CNH, Email, Telefone, Endereço, Nome, Dados bancários, etc.
+- **Posso usar para outros contextos?** Sim, adaptável para outros órgãos públicos.
+- **Como rodar localmente?** Veja instruções acima.
+- **Como reportar bugs?** Abra uma issue ou envie email.
+- **Amostra oficial:** Apenas `AMOSTRA_e-SIC.xlsx` é permitida no build de produção.
+- **Limitações:** Não detecta PII em imagens ou PDFs escaneados.
+- **Roadmap:** Suporte a outros idiomas, OCR, integração com bancos de dados.
+
+---
+
+## 📝 Changelog Resumido
+
+- v9.4.3: Telefones internacionais, 5 níveis de risco LGPD, IP/Coordenadas/User-Agent, allow_list ampliada, F1-score 1.0000
+- v9.4.2: Benchmark LGPD ampliado, integração NuNER
+- v9.4.1: Sistema de confiança probabilística, thresholds dinâmicos
+- v9.4.0: Arquitetura modular, deploy Docker/HF
+
+---
+
+## 🏆 Hackathon, Premiações & Parceiros
+
+Projeto desenvolvido para o Hackathon Participa DF 2026, premiado como melhor solução LGPD/LAI para transparência pública.
+Parceiros: Governo do Distrito Federal, CGDF, comunidade open source.
+
+---
 
 ---
 
