@@ -34,6 +34,8 @@ from enum import Enum
 from functools import lru_cache
 import logging
 from text_unidecode import unidecode
+import requests
+import os
 
 # === INTEGRAÇÃO GAZETTEER GDF ===
 import json
@@ -2214,3 +2216,36 @@ if __name__ == "__main__":
         if findings:
             for f in findings:
                 print(f"  → {f['tipo']}: {f['valor']}")
+
+def arbitrate_with_llama(texto, achados, contexto_extra=None):
+    """
+    Usa Llama-70B via Hugging Face Inference API para arbitrar casos ambíguos de PII.
+    Retorna decisão ('PII' ou 'Público') e explicação detalhada.
+    """
+    HF_TOKEN = os.getenv("HF_TOKEN")
+    assert HF_TOKEN, "HF_TOKEN não encontrado no ambiente (.env)"
+    endpoint = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-70b-chat-hf"
+    prompt = f"""
+    Analise o texto abaixo e decida se ele contém dados pessoais (PII) conforme a LGPD. Explique sua decisão de forma detalhada.
+    Texto: \"{texto}\"
+    Achados do ensemble: {achados}
+    """
+    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+    payload = {"inputs": prompt, "parameters": {"max_new_tokens": 256}}
+    response = requests.post(endpoint, headers=headers, json=payload, timeout=60)
+    response.raise_for_status()
+    result = response.json()
+    # Extrai resposta do LLM (ajustar conforme formato retornado)
+    answer = result[0]["generated_text"] if isinstance(result, list) else result.get("generated_text", "")
+    # Heurística simples para decisão
+    if "PII" in answer.upper():
+        decision = "PII"
+    elif "PÚBLICO" in answer.upper() or "PUBLICO" in answer.upper():
+        decision = "Público"
+    else:
+        decision = "Indefinido"
+    return decision, answer
+
+# Exemplo de uso:
+# decision, explanation = arbitrate_with_llama(texto, achados)
+# print(decision, explanation)

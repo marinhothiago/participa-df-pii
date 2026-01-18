@@ -1,4 +1,3 @@
-
 ---
 title: Participa DF - Detector Inteligente de Dados Pessoais
 emoji: 🛡️
@@ -544,6 +543,7 @@ Texto de Entrada
 │  • Dados bancários, PIX, Cartão de crédito                   │
 │  • Placa de veículo (Mercosul e antiga)                      │
 │  • Data de nascimento, IP Address                            │
+│  • Texto com gatilhos de contato (ex: "falar com", "ligar para")│
 └──────────────────────────────────────────────────────────────┘
        │
        ▼
@@ -813,176 +813,21 @@ async def analyze(data: Dict[str, Optional[str]]) -> Dict:
 
 ---
 
-## 🔗 Integração com Frontend
+## 🤖 Arbitragem com LLM (Llama-70B via Hugging Face)
 
-O frontend React se conecta automaticamente ao backend:
+O backend possui integração opcional com Llama-70B (Hugging Face Inference API) para arbitragem de casos ambíguos de PII.
 
-1. **Detecção automática:** Tenta `localhost:7860` primeiro (2s timeout)
-2. **Fallback produção:** Se local não disponível, usa HuggingFace Spaces
-3. **Retry automático:** 1 retry com delay de 3s para cold start
+- Use a função `arbitrate_with_llama(texto, achados)` para obter decisão e explicação detalhada de um LLM.
+- Ideal para casos de baixa confiança, empate entre detectores ou explicação avançada para humanos.
+- O token Hugging Face já utilizado no projeto é aproveitado para autenticação.
 
-```typescript
-// frontend/src/lib/api.ts
-const PRODUCTION_API_URL = 'https://marinhothiago-desafio-participa-df.hf.space';
-const LOCAL_API_URL = 'http://localhost:7860';
+Exemplo:
+```python
+from src.detector import arbitrate_with_llama
+
+decision, explanation = arbitrate_with_llama(texto, achados)
+print(decision, explanation)
 ```
 
 ---
-
-## 🎯 Sistema de Confiança Probabilística (v9.4)
-
-O backend inclui um sistema sofisticado de cálculo de confiança baseado em práticas de produção de grandes empresas (Google, Microsoft, Meta) e bancos brasileiros.
-
-### Arquitetura do Módulo
-
 ```
-backend/src/confidence/
-├── __init__.py        # Exports do módulo
-├── types.py           # Dataclasses (PIIEntity, DocumentConfidence)
-├── config.py          # Taxas FN/FP, pesos LGPD, thresholds
-├── validators.py      # Validação de dígitos verificadores
-├── calibration.py     # Calibração isotônica de scores
-├── combiners.py       # Combinação via Log-Odds (Naive Bayes)
-└── calculator.py      # Orquestrador principal
-```
-
-### Componentes Principais
-
-#### 1. Calibração de Scores (Isotonic Regression)
-
-Modelos neurais como BERT são frequentemente **overconfident** - retornam scores altos mesmo quando erram. A calibração isotônica corrige isso:
-
-```python
-# Score bruto 0.95 -> Score calibrado ~0.85
-# Score bruto 0.99 -> Score calibrado ~0.90
-```
-
-#### 2. Combinação via Log-Odds (Naive Bayes)
-
-Quando múltiplas fontes detectam a mesma entidade, combinamos via log-odds:
-
-$$
-\text{logit} = \log\frac{p_{\text{prior}}}{1 - p_{\text{prior}}} + \sum_i \log\frac{p_i}{FP_i}
-$$
-
-$$
-\text{confidence} = \frac{e^{\text{logit}}}{1 + e^{\text{logit}}}
-$$
-
-#### 3. Taxas de Erro por Fonte
-
-```python
-# False Negative Rates (quanto cada fonte PERDE)
-FN_RATES = {
-    "bert_ner": 0.008,      # BERT perde 0.8%
-    "spacy": 0.015,         # spaCy perde 1.5%
-    "regex": 0.003,         # Regex perde 0.3%
-    "dv_validation": 0.0001 # DV quase perfeito
-}
-
-# False Positive Rates (alarmes falsos)
-FP_RATES = {
-    "bert_ner": 0.02,       # 2% de FP
-    "spacy": 0.03,          # 3% de FP
-    "regex": 0.0002,        # Muito preciso
-    "dv_validation": 0.00001 # Quase impossível ser FP
-}
-```
-
-#### 4. Métricas de Documento
-
-- **`confidence_no_pii`**: P(não existe PII) quando nada detectado
-- **`confidence_all_found`**: P(encontramos todo PII) quando tem detecções
-- **`confidence_min_entity`**: Menor confiança entre entidades (elo mais fraco)
-
-### Novo Endpoint Extendido
-
-```python
-# Método detect_extended() retorna estrutura completa
-resultado = detector.detect_extended(texto)
-
-# Estrutura de resposta:
-{
-    "has_pii": True,
-    "classificacao": "NÃO PÚBLICO",
-    "risco": "CRÍTICO",
-    "confidence": {
-        "no_pii": 0.0,
-        "all_found": 0.9999,
-        "min_entity": 0.9850
-    },
-    "sources_used": ["bert_ner", "spacy", "regex"],
-    "entities": [
-        {
-            "tipo": "CPF",
-            "valor": "529.982.247-25",
-            "confianca": 0.9999,
-            "confidence_level": "very_high",
-            "sources": ["regex", "dv_validation"],
-            "dv_valid": True
-        }
-    ],
-    "total_entities": 1
-}
-```
-
-### Validação de Dígitos Verificadores
-
-O módulo valida automaticamente documentos brasileiros:
-
-| Documento | Algoritmo | Confiança se Válido |
-|-----------|-----------|---------------------|
-| CPF | Módulo 11 | 0.9999 |
-| CNPJ | Módulo 11 com pesos | 0.9999 |
-| PIS/NIT | Módulo 11 com pesos | 0.9999 |
-| CNS | Soma ponderada | 0.9999 |
-| Título Eleitor | DVs específicos por UF | 0.9999 |
-| Cartão Crédito | Luhn | 0.9999 |
-
-### Backward Compatibility
-
-O método `detect()` original continua funcionando:
-
-```python
-# API antiga (mantida)
-is_pii, findings, risco, conf = detector.detect(texto)
-
-# API nova (recomendada)
-resultado = detector.detect_extended(texto)
-```
-
----
-
-## 📄 Licença
-
-Desenvolvido para o **Hackathon Participa DF 2025** em conformidade com:
-- **LGPD** - Lei Geral de Proteção de Dados (Lei nº 13.709/2018)
-- **LAI** - Lei de Acesso à Informação (Lei nº 12.527/2011)
-
----
-
-## 🚀 Deploy no Hugging Face Spaces: Quais arquivos vão para produção?
-
-Para garantir builds rápidos, seguros e reprodutíveis no Hugging Face Spaces (ou Docker em produção), **apenas os arquivos essenciais devem ser enviados para o contexto de build**:
-
-
-### Checklist de Deploy (Docker/Hugging Face)
-
-**Inclua no build:**
-- `src/` (código-fonte principal)
-- `api/` (endpoints FastAPI)
-- `requirements.txt` (dependências)
-- `Dockerfile` (build)
-- `data/input/AMOSTRA_e-SIC.xlsx` (amostra oficial, permitida no build)
-
-**Ignore tudo que for apenas para desenvolvimento local:**
-- `scripts/` (automatizações, limpeza, etc)
-- arquivos de teste, notebooks, caches, dados sensíveis não autorizados
-
-**Observação:**
-- A amostra `AMOSTRA_e-SIC.xlsx` pode ir para produção (Docker/HF) conforme decisão do projeto/hackathon.
-- O diretório `scripts/` é exclusivo para automações e limpeza local, nunca vai para produção.
-
-**Dica:** O arquivo `.dockerignore` já está configurado para ignorar scripts/ e artefatos de dev. Se for subir manualmente para o Hugging Face, envie só os arquivos essenciais e a amostra permitida!
-
----
