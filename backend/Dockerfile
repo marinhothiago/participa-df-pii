@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # 4. Copia apenas requirements primeiro (cache de camadas Docker)
-COPY requirements.txt .
+COPY backend/requirements.txt requirements.txt
 
 # 5. Instalação de dependências em ordem otimizada
 # 5.1 PyTorch CPU (antes do resto para cache)
@@ -41,18 +41,10 @@ RUN pip install --no-cache-dir \
 
 # 6. Pré-download dos modelos NER
 # 6.1 BERT Davlan multilíngue (PER, ORG, LOC, DATE)
-RUN python -c "\
-    from transformers import pipeline; \
-    print('📥 Baixando modelo BERT Davlan NER multilíngue...'); \
-    pipeline('ner', model='Davlan/bert-base-multilingual-cased-ner-hrl', aggregation_strategy='simple'); \
-    print('✅ BERT Davlan pronto!')"
+RUN python -c "from transformers import pipeline; print('📥 Baixando modelo BERT Davlan NER multilíngue...'); pipeline('ner', model='Davlan/bert-base-multilingual-cased-ner-hrl', aggregation_strategy='simple'); print('✅ BERT Davlan pronto!')"
 
 # 6.2 NuNER pt-BR especializado em português brasileiro
-RUN python -c "\
-    from transformers import pipeline; \
-    print('📥 Baixando modelo NuNER pt-BR...'); \
-    pipeline('ner', model='monilouise/ner_news_portuguese', aggregation_strategy='simple'); \
-    print('✅ NuNER pt-BR pronto!')"
+RUN python -c "from transformers import pipeline; print('📥 Baixando modelo NuNER pt-BR...'); pipeline('ner', model='monilouise/ner_news_portuguese', aggregation_strategy='simple'); print('✅ NuNER pt-BR pronto!')"
 
 
 # 7. Copia código da aplicação

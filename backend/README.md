@@ -454,10 +454,10 @@ python main_cli.py --input data/input/manifestacoes.xlsx --output data/output/re
 
 ```bash
 # Na pasta backend/
-docker build -t participa-df-backend .
+docker build -t desafio-participa-df-backend .
 
 # Execute o container
-docker run -p 7860:7860 participa-df-backend
+docker run -p 7860:7860 desafio-participa-df-backend
 ```
 
 **Ou usando docker-compose (da raiz do projeto):**
