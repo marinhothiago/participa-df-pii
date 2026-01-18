@@ -1,4 +1,5 @@
 # 🛡️ Participa DF - Detector Inteligente de Dados Pessoais
+[![CI](https://github.com/marinhothiago/desafio-participa-df/actions/workflows/ci.yml/badge.svg)](https://github.com/marinhothiago/desafio-participa-df/actions/workflows/ci.yml)
 [![Status](https://img.shields.io/badge/Status-Produção-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
 [![Versão](https://img.shields.io/badge/Versão-9.4.3-blue)](./backend/README.md)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python)](https://www.python.org/)
