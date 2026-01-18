@@ -19,11 +19,17 @@ text-unidecode==1.3
 # === Machine Learning ===
 scikit-learn>=1.3.0  # Calibração isotônica para confiança
 
+
+
 # === Transformers + PyTorch (CPU) ===
 # NOTA: torch instalado separadamente no Dockerfile com --index-url
-transformers==4.41.2
+transformers==4.36.2
 sentencepiece==0.1.99
 accelerate>=0.21.0
+
+# === Exportação ONNX ===
+optimum==1.16.0
+onnx
 
 # === Utilitários de ambiente ===
 python-dotenv>=1.0.0

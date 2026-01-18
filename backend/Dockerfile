@@ -26,6 +26,7 @@ COPY requirements.txt .
 
 # 5. Instalação de dependências em ordem otimizada
 # 5.1 PyTorch CPU (antes do resto para cache)
+
 RUN pip install --no-cache-dir \
     torch==2.1.0+cpu \
     --index-url https://download.pytorch.org/whl/cpu
@@ -33,7 +34,7 @@ RUN pip install --no-cache-dir \
 
 # 5.2 Dependências do requirements.txt + optimum[onnx] e onnxruntime para exportação ONNX
 RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir optimum[onnx] onnxruntime
+    pip install --no-cache-dir optimum[onnx]==1.16.0 onnxruntime onnx
 
 # 5.3 Modelo spaCy para português (grande)
 RUN pip install --no-cache-dir \
