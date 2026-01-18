@@ -29,6 +29,9 @@ data/input/*.csv
 data/temp/*
 !data/temp/.gitkeep
 
+# ===== MODELOS PESADOS (NÃO VERSIONAR) =====
+models/bert_ner_onnx/model.onnx
+
 # ===== CONFIGURAÇÕES E CREDENCIAIS =====
 .env
 .env.local
