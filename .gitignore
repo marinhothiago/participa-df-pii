@@ -86,6 +86,9 @@ bun.lockb
 backend/data/stats.json
 backend/models/bert_ner_onnx/model.onnx
 
+# === BINÁRIOS E FERRAMENTAS ===
+bfg*.jar
+
 # Nunca excluir ou sobrescrever este arquivo!
 !/backend/data/input/AMOSTRA_e-SIC.xlsx
 
