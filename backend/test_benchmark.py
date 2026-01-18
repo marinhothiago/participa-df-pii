@@ -6,7 +6,7 @@ from src.detector import PIIDetector
 DATASET_LGPD = [
     # ...todos os itens do dataset...
     ("Ordem de serviço 2025/12345", False, "OS genérica", "Código Sistema"),
-]
+    # ...continuação dos exemplos do dataset...
 
 detector = PIIDetector()
 
