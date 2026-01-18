@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # 4. Copia apenas requirements primeiro (cache de camadas Docker)
-COPY backend/requirements.txt requirements.txt
+COPY backend/requirements.txt ./requirements.txt
 
 # 5. Instalação de dependências em ordem otimizada
 # 5.1 PyTorch CPU (antes do resto para cache)
@@ -48,7 +48,7 @@ RUN python -c "from transformers import pipeline; print('📥 Baixando modelo Nu
 
 
 # 7. Copia código da aplicação
-COPY . .
+COPY backend/. .
 
 # 7.1 Exporta modelo BERT NER para ONNX (se não existir)
 RUN if [ ! -f backend/models/bert_ner_onnx/model.onnx ]; then \
