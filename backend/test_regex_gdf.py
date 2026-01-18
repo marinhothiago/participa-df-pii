@@ -1,3 +1,4 @@
+# Forçar novo commit para teste do workflow
 # Trigger CI - comentário para disparar workflow
 
 import re
