@@ -1,4 +1,9 @@
 
+import os
+import sys
+import json
+from datetime import datetime
+from collections import defaultdict
 import pytest
 from src.detector import PIIDetector
 
@@ -7,7 +12,9 @@ DATASET_LGPD = [
     # ...todos os itens do dataset...
     ("Ordem de serviço 2025/12345", False, "OS genérica", "Código Sistema"),
     # ...continuação dos exemplos do dataset...
-
+        ("Ordem de serviço 2025/12345", False, "OS genérica", "Código Sistema"),
+        # ...demais exemplos do dataset...
+    ]
 detector = PIIDetector()
 
 # Teste unitário parametrizado para todo o dataset
@@ -81,7 +88,7 @@ def test_pii_detector_dataset(texto, contem_pii, descricao, categoria):
     # CPFs válidos matematicamente
     ("Meu CPF é 529.982.247-25", True, "CPF válido com possessivo", "CPF Válido"),
     # ...demais exemplos do dataset...
-]
+
     ("CPF: 111.444.777-35", True, "CPF válido com label", "CPF Válido"),
     ("O contribuinte de CPF 123.456.789-09 solicitou...", True, "CPF válido em contexto", "CPF Válido"),
     ("Cadastro sob CPF nº 987.654.321-00", True, "CPF válido formal", "CPF Válido"),
@@ -538,7 +545,7 @@ def test_pii_detector_dataset(texto, contem_pii, descricao, categoria):
     ("Chamado técnico 987654 em andamento", False, "Chamado técnico", "Código Sistema"),
     ("Ordem de serviço 2025/12345", False, "OS genérica", "Código Sistema"),
     
-]
+
 
 
 def executar_benchmark():
