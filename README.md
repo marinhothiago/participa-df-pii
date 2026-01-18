@@ -1,39 +1,3 @@
-# 🚀 Compatibilidade de Dependências (Hugging Face Spaces)
-
-> **ATENÇÃO:** Para garantir o build e exportação ONNX no Hugging Face Spaces, utilize as versões abaixo no backend/Dockerfile e backend/requirements.txt:
-
-| Pacote         | Versão         | Observação |
-|----------------|----------------|------------|
-| torch          | 2.1.0+cpu      | Instalar via index oficial CPU no Dockerfile |
-| optimum        | 1.16.0         | Fixar versão para evitar erro `rms_norm` |
-| transformers   | 4.36.2         | Compatível com optimum 1.16.0 |
-| onnx           | latest         | Instalar explicitamente |
-
-**Workaround aplicado:**
-- Optimum >=2.1.0 exige torch >=2.3.0 (com método `rms_norm`), mas não há wheel CPU estável para Python 3.10 no index oficial.
-- Fixe optimum para 1.16.0 e transformers para 4.36.2 para garantir exportação ONNX e evitar erros de import.
-- Adicione `onnx` explicitamente no Dockerfile e requirements.txt.
-
-**Exemplo de trecho Dockerfile:**
-```dockerfile
-RUN pip install --no-cache-dir \
-    torch==2.1.0+cpu \
-    --index-url https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir optimum[onnx]==1.16.0 onnxruntime onnx
-```
-
-**Exemplo de trecho requirements.txt:**
-```
-transformers==4.36.2
-optimum==1.16.0
-onnx
-```
-
-Se precisar exportar modelos ONNX com optimum mais novo, será necessário aguardar wheel CPU do torch >=2.3.0 para Python 3.10 no index oficial.
-
----
-
 # 🛡️ Participa DF - Detector Inteligente de Dados Pessoais
 
 [![Status](https://img.shields.io/badge/Status-Produção-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
