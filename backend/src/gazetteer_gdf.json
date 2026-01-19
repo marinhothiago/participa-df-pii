@@ -1,0 +1,139 @@
+{
+    "orgaos": [
+        {
+            "nome": "Secretaria de Saúde do DF",
+            "sigla": "SESDF",
+            "aliases": [
+                "SES",
+                "Saúde DF"
+            ]
+        },
+        {
+            "nome": "Secretaria de Educação do DF",
+            "sigla": "SEEDF",
+            "aliases": [
+                "SEED",
+                "Educação DF"
+            ]
+        },
+        {
+            "nome": "Secretaria de Segurança Pública do DF",
+            "sigla": "SSP/DF",
+            "aliases": [
+                "SSP",
+                "Segurança DF"
+            ]
+        },
+        {
+            "nome": "Departamento de Trânsito do DF",
+            "sigla": "DETRAN-DF",
+            "aliases": [
+                "DETRAN",
+                "Trânsito DF"
+            ]
+        },
+        {
+            "nome": "Polícia Civil do DF",
+            "sigla": "PCDF",
+            "aliases": [
+                "Polícia Civil",
+                "PC-DF"
+            ]
+        },
+        {
+            "nome": "Polícia Militar do DF",
+            "sigla": "PMDF",
+            "aliases": [
+                "Polícia Militar",
+                "PM-DF"
+            ]
+        },
+        {
+            "nome": "Companhia de Saneamento Ambiental do DF",
+            "sigla": "CAESB",
+            "aliases": [
+                "CAESB",
+                "Saneamento DF"
+            ]
+        },
+        {
+            "nome": "Companhia Energética de Brasília",
+            "sigla": "CEB",
+            "aliases": [
+                "CEB",
+                "Energia DF"
+            ]
+        },
+        {
+            "nome": "Secretaria de Fazenda do DF",
+            "sigla": "SEF-DF",
+            "aliases": [
+                "SEF",
+                "Fazenda DF"
+            ]
+        },
+        {
+            "nome": "Secretaria de Justiça e Cidadania do DF",
+            "sigla": "SEJUS-DF",
+            "aliases": [
+                "SEJUS",
+                "Justiça DF"
+            ]
+        }
+    ],
+    "programas": [
+        {
+            "nome": "Programa Criança Feliz",
+            "sigla": "PCF",
+            "aliases": [
+                "Criança Feliz"
+            ]
+        },
+        {
+            "nome": "Programa Bolsa Família",
+            "sigla": "PBF",
+            "aliases": [
+                "Bolsa Família"
+            ]
+        },
+        {
+            "nome": "Programa DF Sem Miséria",
+            "sigla": "DFSM",
+            "aliases": [
+                "DF Sem Miséria"
+            ]
+        }
+    ],
+    "escolas": [
+        {
+            "nome": "Centro de Ensino Médio Elefante Branco",
+            "sigla": "CEMEB",
+            "aliases": [
+                "Elefante Branco"
+            ]
+        },
+        {
+            "nome": "Centro de Ensino Fundamental 01 do Gama",
+            "sigla": "CEF 01 Gama",
+            "aliases": [
+                "CEF 1 Gama"
+            ]
+        }
+    ],
+    "hospitais": [
+        {
+            "nome": "Hospital de Base do DF",
+            "sigla": "HBDF",
+            "aliases": [
+                "Hospital de Base"
+            ]
+        },
+        {
+            "nome": "Hospital Regional de Taguatinga",
+            "sigla": "HRT",
+            "aliases": [
+                "Hospital Taguatinga"
+            ]
+        }
+    ]
+}
