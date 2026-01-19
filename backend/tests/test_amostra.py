@@ -9,6 +9,13 @@ import pytest
 import pandas as pd
 from src.detector import PIIDetector
 
+
+@pytest.fixture(scope="module")
+def detector():
+    """Inicializa o detector uma única vez para todos os testes do módulo."""
+    return PIIDetector()
+
+
 @pytest.fixture
 def sample_df():
     # Simula uma amostra pequena para teste
@@ -26,8 +33,7 @@ def test_carregamento_amostra(sample_df):
     assert len(sample_df) == 3
     assert 'Texto Mascarado' in sample_df.columns
 
-def test_pii_detection_amostra(sample_df):
-    detector = PIIDetector()
+def test_pii_detection_amostra(sample_df, detector):
     resultados = []
     for idx, row in sample_df.iterrows():
         texto = str(row['Texto Mascarado'])
@@ -48,8 +54,7 @@ def test_pii_detection_amostra(sample_df):
     assert resultados[1]['is_pii'] is False # Telefone institucional
     assert resultados[2]['is_pii'] is True  # Email pessoal
 
-def test_estatisticas_amostra(sample_df):
-    detector = PIIDetector()
+def test_estatisticas_amostra(sample_df, detector):
     resultados = []
     for idx, row in sample_df.iterrows():
         texto = str(row['Texto Mascarado'])
@@ -70,8 +75,7 @@ def test_estatisticas_amostra(sample_df):
     assert total_pii == 2
     assert total_seguro == 1
 
-def test_ordenacao_confianca(sample_df):
-    detector = PIIDetector()
+def test_ordenacao_confianca(sample_df, detector):
     resultados = []
     for idx, row in sample_df.iterrows():
         texto = str(row['Texto Mascarado'])
