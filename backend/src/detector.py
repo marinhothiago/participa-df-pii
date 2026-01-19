@@ -1784,8 +1784,10 @@ class PIIDetector:
         # === LLM PARA RECUPERAR PENDENTES (evitar FN) ===
         # IMPORTANTE: LLM é ativado AUTOMATICAMENTE em ambiguidades mesmo com use_llm_arbitration=False
         # para evitar custos em casos claros mas aproveitar inteligência em casos cinzentos
+        # REQUISITO: HF_TOKEN deve estar configurado no ambiente
         has_ambiguity = len(self._pendentes_llm) > 0
-        should_use_llm = self.use_llm_arbitration or force_llm or has_ambiguity
+        has_hf_token = bool(os.getenv("HF_TOKEN"))
+        should_use_llm = (self.use_llm_arbitration or force_llm or has_ambiguity) and has_hf_token
         
         if should_use_llm and self._pendentes_llm:
             try:
@@ -1836,8 +1838,8 @@ class PIIDetector:
 
         # === RESULTADO ===
         if not pii_relevantes:
-            # Última chance: LLM analisa texto completo
-            if (self.use_llm_arbitration or force_llm) and len(text) > 50:
+            # Última chance: LLM analisa texto completo (apenas se HF_TOKEN disponível)
+            if (self.use_llm_arbitration or force_llm) and len(text) > 50 and has_hf_token:
                 try:
                     decision, explanation = arbitrate_with_llama(text, [])
                     if decision == "PII":

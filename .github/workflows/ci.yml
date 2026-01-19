@@ -10,6 +10,9 @@ jobs:
   backend-tests:
     name: Backend - Testes Completos
     runs-on: ubuntu-latest
+    env:
+      # Desabilita LLM no CI (sem HF_TOKEN) para evitar timeout
+      PII_USE_LLM_ARBITRATION: "false"
     defaults:
       run:
         working-directory: ./backend
@@ -41,6 +44,9 @@ jobs:
   backend-test-benchmark:
     name: Backend - Benchmark P1
     runs-on: ubuntu-latest
+    env:
+      # Desabilita LLM no CI (sem HF_TOKEN) para evitar timeout
+      PII_USE_LLM_ARBITRATION: "false"
     defaults:
       run:
         working-directory: ./backend
