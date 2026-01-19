@@ -216,10 +216,13 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     const now = new Date();
     const { date, time } = formatDateTime(now);
 
+
+    // Novo formato: risk_level, confidence_all_found, entities
     const classification = result.classificacao === 'PÚBLICO' ? 'PÚBLICO' : 'NÃO PÚBLICO';
     const probability = result.confianca ?? 0;
-    const risco = result.risco ?? 'SEGURO';
+    const risco = result.risco ?? result.risk_level ?? 'SEGURO';
     const riskLevel = getRiskLevelFromRisco(risco);
+    const details = result.detalhes || result.entities || [];
 
     const newItem: AnalysisHistoryItem = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -234,7 +237,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       probability,
       riskLevel,
       risco,
-      details: result.detalhes || [],
+      details,
     };
 
     setRequestCounter(prev => prev + 1);

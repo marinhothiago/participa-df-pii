@@ -1,26 +1,25 @@
-import { useState } from 'react';
-import { Search, Loader2, CheckCircle, AlertTriangle, FileText, Shield, ShieldAlert, ShieldX, AlertCircle, Upload, FolderUp, List, Eye, ChevronLeft, ChevronRight, Percent, Download, RefreshCw, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { FileDropzone } from '@/components/FileDropzone';
-import { KPICard } from '@/components/KPICard';
-import { ExportButton } from '@/components/ExportButton';
-import { ConfidenceBar } from '@/components/ConfidenceBar';
-import { ResultsLegend } from '@/components/ResultsLegend';
-import { AnalysisSkeleton } from '@/components/AnalysisSkeleton';
 import { ApiWakingUpMessage } from '@/components/ApiWakingUpMessage';
+import { ConfidenceBar } from '@/components/ConfidenceBar';
+import { ExportButton } from '@/components/ExportButton';
+import { FileDropzone } from '@/components/FileDropzone';
 import { IdentifierList } from '@/components/IdentifierBadge';
-import { api, type AnalysisResult, ApiError, getErrorMessage } from '@/lib/api';
-import { parseFile } from '@/lib/fileParser';
-import { cn } from '@/lib/utils';
-import { Progress } from '@/components/ui/progress';
-import { useAnalysis, getRiskBgClass, getRiskLabel, getRiskLevelFromRisco } from '@/contexts/AnalysisContext';
+import { KPICard } from '@/components/KPICard';
+import { ResultsLegend } from '@/components/ResultsLegend';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
+import { Textarea } from '@/components/ui/textarea';
+import { getRiskBgClass, getRiskLabel, getRiskLevelFromRisco, useAnalysis } from '@/contexts/AnalysisContext';
+import { api, ApiError, getErrorMessage, type AnalysisResult } from '@/lib/api';
+import { parseFile } from '@/lib/fileParser';
+import { cn } from '@/lib/utils';
+import { AlertCircle, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, Download, Eye, FileText, FolderUp, Info, List, Loader2, Percent, RefreshCw, Search, Shield, ShieldAlert, ShieldX, Upload } from 'lucide-react';
+import { useState } from 'react';
 
 export function Classification() {
   const { history, metrics, addAnalysisResult, addBatchResults, clearHistory, incrementClassificationRequests } = useAnalysis();
@@ -99,42 +98,42 @@ export function Classification() {
 
     try {
       const parseResult = await parseFile(selectedFile);
-      
+
       if (!parseResult.success) {
         setBatchError({ message: parseResult.error || 'Erro ao processar o arquivo.', isWaking: false });
         setIsProcessing(false);
         return;
       }
-      
+
       if (parseResult.rows.length === 0) {
         setBatchError({ message: 'Nenhum texto encontrado no arquivo para análise.', isWaking: false });
         setIsProcessing(false);
         return;
       }
-      
+
       // Mapeia as linhas para o formato esperado pela API (id + text)
       const items = parseResult.rows.map(row => ({
         id: row.id,
         text: row.text,
       }));
-      
+
       setBatchProgress({ current: 0, total: items.length });
-      
+
       const data = await api.analyzeBatch(items, (current, total) => {
         setBatchProgress({ current, total });
       });
-      
+
       setBatchProgress(null);
-      
+
       // Add batch results to global history
       addBatchResults(data);
-      
+
       // Increment classification requests counter
       incrementClassificationRequests(items.length);
-      
+
       // Reset to first page to see new results
       setCurrentPage(1);
-      
+
       // Clear file selection after successful processing
       setSelectedFile(null);
     } catch (err) {
@@ -166,13 +165,13 @@ export function Classification() {
     return result.classificacao;
   };
   const getProbability = (result: AnalysisResult) => {
-    const prob = result.confianca ?? 0;
-    // Backend retorna confiança já normalizada entre 0-1
-    return prob;
+    // Novo campo: confidence_all_found
+    return result.confianca ?? result.confidence_all_found ?? 0;
   };
 
   const getDetails = (result: AnalysisResult) => {
-    return result.detalhes || [];
+    // Novo campo: entities
+    return result.detalhes || result.entities || [];
   };
 
   const getRiskIcon = (riskLevel: string) => {
@@ -253,13 +252,13 @@ export function Classification() {
             <Search className="w-5 h-5 text-primary" />
             <h3 className="text-lg font-semibold text-foreground">Classificação Individual</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <FileText className="w-4 h-4" />
               <span>Cole o texto do pedido LAI para análise</span>
             </div>
-            
+
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -289,7 +288,7 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                   </>
                 )}
               </Button>
-              
+
               {(text || analysisResult) && (
                 <Button variant="outline" size="sm" onClick={clearAnalysis} disabled={isAnalyzing}>
                   Limpar
@@ -299,8 +298,8 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
 
             {analysisError && (
               analysisError.isWaking ? (
-                <ApiWakingUpMessage 
-                  variant="inline" 
+                <ApiWakingUpMessage
+                  variant="inline"
                   onRetry={handleAnalyze}
                   isRetrying={isAnalyzing}
                 />
@@ -323,7 +322,7 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                   const probability = getProbability(analysisResult);
                   const risco = analysisResult.risco ?? 'SEGURO';
                   const riskInfo = getRiskInfo(risco);
-                  
+
                   return (
                     <div className={cn(
                       'p-3 rounded-lg flex items-center gap-3 border',
@@ -347,8 +346,8 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
 
                 {/* Details Badges - usando novo componente */}
                 {getDetails(analysisResult).length > 0 && (
-                  <IdentifierList 
-                    identificadores={getDetails(analysisResult)} 
+                  <IdentifierList
+                    identificadores={getDetails(analysisResult)}
                     showConfidence={true}
                     size="sm"
                   />
@@ -370,7 +369,7 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
               size="sm"
               asChild
             >
-              <a 
+              <a
                 href="https://www.cg.df.gov.br/documents/d/cg/amostra_e-sic"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -380,7 +379,7 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
               </a>
             </Button>
           </div>
-          
+
           <FileDropzone
             onFileSelect={handleFileSelect}
             disabled={isProcessing}
@@ -426,8 +425,8 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
           {batchError && (
             batchError.isWaking ? (
               <div className="mt-4">
-                <ApiWakingUpMessage 
-                  variant="inline" 
+                <ApiWakingUpMessage
+                  variant="inline"
                   onRetry={handleProcess}
                   isRetrying={isProcessing}
                 />
@@ -500,8 +499,8 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                       <td className="py-3 px-4">
                         <span className={cn(
                           'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                          item.type === 'individual' 
-                            ? 'bg-primary/10 text-primary' 
+                          item.type === 'individual'
+                            ? 'bg-primary/10 text-primary'
                             : 'bg-muted text-muted-foreground'
                         )}>
                           {item.type === 'individual' ? 'Individual' : 'Lote'}
@@ -510,8 +509,8 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                       <td className="py-3 px-4 text-center">
                         <span className={cn(
                           'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium',
-                          item.classification === 'PÚBLICO' 
-                            ? 'bg-green-600/10 text-green-600' 
+                          item.classification === 'PÚBLICO'
+                            ? 'bg-green-600/10 text-green-600'
                             : 'bg-red-600/10 text-red-600'
                         )}>
                           {item.classification === 'PÚBLICO' ? (
@@ -528,7 +527,7 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <ConfidenceBar 
+                        <ConfidenceBar
                           value={item.probability}
                           classification={item.classification}
                           className="justify-center"
@@ -643,8 +642,8 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
               {selectedHistoryItem && (
                 <span className={cn(
                   'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium',
-                  selectedHistoryItem.classification === 'PÚBLICO' 
-                    ? 'bg-green-600/10 text-green-600' 
+                  selectedHistoryItem.classification === 'PÚBLICO'
+                    ? 'bg-green-600/10 text-green-600'
                     : 'bg-red-600/10 text-red-600'
                 )}>
                   {selectedHistoryItem.classification}
@@ -652,7 +651,7 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
               )}
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedHistoryItem && (
             <div className="space-y-4">
               <div>
@@ -690,8 +689,8 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                   <h4 className="text-sm font-medium text-muted-foreground mb-2">
                     Dados Pessoais Identificados ({selectedHistoryItem.details.length})
                   </h4>
-                  <IdentifierList 
-                    identificadores={selectedHistoryItem.details} 
+                  <IdentifierList
+                    identificadores={selectedHistoryItem.details}
                     showConfidence={true}
                     size="md"
                   />

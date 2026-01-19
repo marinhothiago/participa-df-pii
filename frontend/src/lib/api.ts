@@ -21,14 +21,14 @@ async function detectLocalBackend(): Promise<void> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), LOCAL_DETECTION_TIMEOUT);
-    
+
     const response = await fetch(`${LOCAL_API_URL}/health`, {
       signal: controller.signal,
       headers: { 'Content-Type': 'application/json' }
     });
-    
+
     clearTimeout(timeoutId);
-    
+
     if (response.ok) {
       API_BASE_URL = LOCAL_API_URL;
       console.log(`✅ Backend local detectado! Usando ${LOCAL_API_URL}`);
@@ -43,15 +43,20 @@ async function detectLocalBackend(): Promise<void> {
 detectLocalBackend();
 
 // Interface para resposta da API /analyze (conforme documentação técnica)
-export interface AnalyzeResponse {
-  classificacao: "PÚBLICO" | "NÃO PÚBLICO";
-  risco: "SEGURO" | "BAIXO" | "MODERADO" | "ALTO" | "CRÍTICO";
-  confianca: number; // Ex: 0.99 (normalizado 0-1)
-  detalhes: Array<{
-    tipo: string; // Ex: "CPF"
-    valor: string; // Ex: "123.456..."
-    confianca: number; // ✅ Normalizado de "conf" para "confianca"
+
+// Novo formato de resposta da API
+export interface AnalyzeResponseV2 {
+  has_pii: boolean;
+  entities: Array<{
+    tipo: string;
+    valor: string;
+    confianca: number;
+    fonte?: string;
   }>;
+  risk_level: string;
+  confidence_all_found: number;
+  total_entities: number;
+  sources_used: string[];
 }
 
 export interface Entity {
@@ -98,34 +103,34 @@ export function getRiskLevel(probability: number, classification: string): RiskL
 export function getRiskInfo(riskLevel: RiskLevel): { label: string; color: string; bgColor: string } {
   switch (riskLevel) {
     case 'critical':
-      return { 
-        label: 'Risco Crítico: Dados Sensíveis Expostos', 
-        color: 'text-white', 
-        bgColor: 'bg-red-800' 
+      return {
+        label: 'Risco Crítico: Dados Sensíveis Expostos',
+        color: 'text-white',
+        bgColor: 'bg-red-800'
       };
     case 'high':
-      return { 
-        label: 'Risco Alto: Identificadores Pessoais', 
-        color: 'text-red-700', 
-        bgColor: 'bg-red-100' 
+      return {
+        label: 'Risco Alto: Identificadores Pessoais',
+        color: 'text-red-700',
+        bgColor: 'bg-red-100'
       };
     case 'moderate':
-      return { 
-        label: 'Atenção: Verifique o Contexto', 
-        color: 'text-yellow-900', 
-        bgColor: 'bg-yellow-100' 
+      return {
+        label: 'Atenção: Verifique o Contexto',
+        color: 'text-yellow-900',
+        bgColor: 'bg-yellow-100'
       };
     case 'low':
-      return { 
-        label: 'Risco Baixo: Verificação Sugerida', 
-        color: 'text-blue-700', 
-        bgColor: 'bg-blue-100' 
+      return {
+        label: 'Risco Baixo: Verificação Sugerida',
+        color: 'text-blue-700',
+        bgColor: 'bg-blue-100'
       };
     case 'safe':
-      return { 
-        label: 'Documento Seguro para Publicação', 
-        color: 'text-green-700', 
-        bgColor: 'bg-green-100' 
+      return {
+        label: 'Documento Seguro para Publicação',
+        color: 'text-green-700',
+        bgColor: 'bg-green-100'
       };
   }
 }
@@ -145,7 +150,7 @@ export type ApiErrorType = 'TIMEOUT' | 'OFFLINE' | 'WAKING_UP' | 'CORS' | 'UNKNO
 
 export class ApiError extends Error {
   type: ApiErrorType;
-  
+
   constructor(type: ApiErrorType, message: string) {
     super(message);
     this.type = type;
@@ -171,13 +176,13 @@ export function getErrorMessage(error: ApiError): string {
 
 class ApiClient {
   private async request<T>(
-    endpoint: string, 
+    endpoint: string,
     options?: RequestInit,
     retryCount = 0
   ): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
-    
+
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
@@ -207,11 +212,11 @@ class ApiClient {
       return response.json();
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       if (error instanceof ApiError) {
         throw error;
       }
-      
+
       if (error instanceof Error) {
         // Timeout
         if (error.name === 'AbortError') {
@@ -221,7 +226,7 @@ class ApiClient {
           }
           throw new ApiError('TIMEOUT', 'Requisição expirou');
         }
-        
+
         // Erro de rede (offline ou CORS)
         if (error.message === 'Failed to fetch') {
           if (retryCount < MAX_RETRIES) {
@@ -231,13 +236,13 @@ class ApiClient {
           }
           throw new ApiError('OFFLINE', 'Sem conexão');
         }
-        
+
         // CORS error
         if (error.message.includes('CORS')) {
           throw new ApiError('CORS', 'Erro de CORS');
         }
       }
-      
+
       throw new ApiError('UNKNOWN', 'Erro desconhecido');
     }
   }
@@ -246,7 +251,7 @@ class ApiClient {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
-      
+
       // Tenta o endpoint /analyze com um texto curto para verificar se está online
       const response = await fetch(`${API_BASE_URL}/analyze`, {
         method: 'POST',
@@ -257,7 +262,7 @@ class ApiClient {
         },
         body: JSON.stringify({ text: 'teste' }),
       });
-      
+
       clearTimeout(timeoutId);
       // Se responder (mesmo com erro de validação), está online
       return response.ok || response.status < 500;
@@ -267,85 +272,64 @@ class ApiClient {
   }
 
   async analyzeText(text: string): Promise<AnalysisResult> {
-    // Endpoint correto: /analyze com body { "text": "..." }
-    const response = await this.request<AnalyzeResponse>('/analyze', {
+    // Novo endpoint: /analyze com body { "text": "..." }
+    const response = await this.request<AnalyzeResponseV2>('/analyze', {
       method: 'POST',
       body: JSON.stringify({ text }),
     });
 
-    // Mapear resposta da API para o formato interno
-    const classificacao = response.classificacao?.includes('NÃO') || response.classificacao?.includes('NAO')
-      ? 'NÃO PÚBLICO' as const
-      : 'PÚBLICO' as const;
-
-    // Mapear risco da API para interno
-    const riscoMap: Record<string, string> = {
-      'CRÍTICO': 'CRÍTICO',
-      'CRITICO': 'CRÍTICO',
-      'ALTO': 'ALTO',
-      'MODERADO': 'MODERADO',
-      'BAIXO': 'BAIXO',
-      'SEGURO': 'SEGURO',
-    };
+    // Mapear resposta da nova API para o formato interno
+    const classificacao = response.has_pii ? 'NÃO PÚBLICO' as const : 'PÚBLICO' as const;
+    const risco = response.risk_level?.toUpperCase() || 'BAIXO';
 
     return {
       classificacao,
-      confianca: response.confianca ?? 0,
-      risco: riscoMap[response.risco?.toUpperCase()] ?? response.risco ?? 'BAIXO',
-      detalhes: response.detalhes?.map(d => ({
+      confianca: response.confidence_all_found ?? 0,
+      risco,
+      detalhes: response.entities?.map(d => ({
         tipo: d.tipo,
         valor: d.valor,
-        confianca: d.confianca ?? 0.95, // ✅ Normalizado de "conf"
+        confianca: d.confianca ?? 0.95,
       })) || [],
     };
   }
 
   async analyzeBatch(
-    items: Array<{ id: string; text: string }>, 
+    items: Array<{ id: string; text: string }>,
     onProgress?: (current: number, total: number) => void
   ): Promise<BatchResult[]> {
     const results: BatchResult[] = [];
-    
+
     for (let i = 0; i < items.length; i++) {
       const { id, text } = items[i];
-      
+
       try {
         // Envia o ID junto com o texto para a API
-        const response = await this.request<AnalyzeResponse>('/analyze', {
+        const response = await this.request<AnalyzeResponseV2>('/analyze', {
           method: 'POST',
           body: JSON.stringify({ id, text }),
         });
 
-        // Mapear resposta da API para o formato interno
-        const classificacao = response.classificacao?.includes('NÃO') || response.classificacao?.includes('NAO')
-          ? 'NÃO PÚBLICO' as const
-          : 'PÚBLICO' as const;
+        // Mapear resposta da nova API para o formato interno
+        const classificacao = response.has_pii ? 'restricted' : 'public';
+        const risco = response.risk_level?.toUpperCase() || 'BAIXO';
 
-        const riscoMap: Record<string, string> = {
-          'CRÍTICO': 'CRÍTICO',
-          'CRITICO': 'CRÍTICO',
-          'ALTO': 'ALTO',
-          'MODERADO': 'MODERADO',
-          'BAIXO': 'BAIXO',
-          'SEGURO': 'SEGURO',
-        };
-        
         const batchResult: BatchResult = {
           id, // Usa o ID original da planilha
           text_preview: text.length > 100 ? text.slice(0, 100) + '...' : text,
           fullText: text,
-          classification: classificacao === 'PÚBLICO' ? 'public' : 'restricted',
-          probability: response.confianca ?? 0,
-          risco: riscoMap[response.risco?.toUpperCase()] ?? response.risco ?? 'BAIXO',
-          entities: response.detalhes?.map(d => ({
+          classification: classificacao,
+          probability: response.confidence_all_found ?? 0,
+          risco,
+          entities: response.entities?.map(d => ({
             type: d.tipo,
             value: d.valor,
-            confidence: d.confianca ?? 0.95, // ✅ Normalizado de "conf"
+            confidence: d.confianca ?? 0.95,
           })) || [],
         };
-        
+
         results.push(batchResult);
-        
+
         if (onProgress) {
           onProgress(i + 1, items.length);
         }
@@ -361,30 +345,30 @@ class ApiClient {
           risco: `ERRO_${errorType}`,
           entities: [],
         });
-        
+
         if (onProgress) {
           onProgress(i + 1, items.length);
         }
       }
     }
-    
+
     return results;
   }
 
   // === ESTATÍSTICAS GLOBAIS ===
-  
+
   async getStats(): Promise<{ site_visits: number; classification_requests: number; last_updated: string | null }> {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       const response = await fetch(`${API_BASE_URL}/stats`, {
         signal: controller.signal,
         headers: { 'Accept': 'application/json' },
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (response.ok) {
         return await response.json();
       }
@@ -398,13 +382,13 @@ class ApiClient {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       await fetch(`${API_BASE_URL}/stats/visit`, {
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
       });
-      
+
       clearTimeout(timeoutId);
     } catch (error) {
       console.error('Erro ao registrar visita:', error);
