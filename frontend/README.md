@@ -1,3 +1,4 @@
+# trigger workflow frontend - teste integração nova API
 # 🚀 MELHORIAS E INTEGRAÇÃO AVANÇADA (2025-2026)
 
 - 🔗 **Integração automática com backend:** Detecção local/remota, fallback para Hugging Face Spaces, tratamento de cold start, retry e erros amigáveis.
