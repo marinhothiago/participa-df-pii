@@ -32,7 +32,8 @@ Exemplo de uso:
     }
 """
 
-
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 # Corrige PYTHONPATH para garantir importação do pacote backend
 import sys, os
@@ -48,7 +49,7 @@ from typing import Dict, Optional
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from celery.result import AsyncResult
-from celery_worker import celery_app
+from backend.celery_worker import celery_app
 import json
 import threading
 from datetime import datetime
@@ -56,7 +57,7 @@ import shutil
 
 # Adiciona o diretório backend ao path para importação de módulos locais
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-from src.detector import PIIDetector
+from backend.src.detector import PIIDetector
 
 # === SISTEMA DE CONTADORES GLOBAIS ===
 STATS_FILE = os.path.join(backend_dir, "data", "stats.json")

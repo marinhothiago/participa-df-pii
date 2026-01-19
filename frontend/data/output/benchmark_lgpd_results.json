@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-01-19T01:23:55.045069",
+  "total_casos": 15,
+  "metricas": {
+    "precisao": 0.0,
+    "sensibilidade": 0,
+    "f1_score": 0,
+    "acuracia": 0.8667
+  },
+  "contagens": {
+    "VP": 0,
+    "VN": 13,
+    "FP": 2,
+    "FN": 0
+  },
+  "erros_por_categoria": {
+    "e-SIC Real": 2
+  },
+  "falsos_negativos": [],
+  "falsos_positivos": [
+    {
+      "texto": "Prezados senhores, boa tarde! Solicito acesso integral aos autos do Processo SEI 00015-01009853/2026",
+      "descricao": "Solicitação processo SEI",
+      "categoria": "e-SIC Real",
+      "detectado": "PROCESSO_SEI: 00015-01009853/2026-01, MATRICULA_SERVIDOR: 01009853"
+    },
+    {
+      "texto": "Isenção de imposto de renda para aposentado da SES-DF. Tratamento realizado de câncer.",
+      "descricao": "Solicitação isenção genérica",
+      "categoria": "e-SIC Real",
+      "detectado": "DADO_SAUDE: Tratamento realizado de câncer"
+    }
+  ]
+}

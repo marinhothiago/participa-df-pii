@@ -4,7 +4,7 @@ Script de otimização de pesos do ensemble (BERT, spaCy, regex) para maximizar 
 import itertools
 import json
 import os
-from test_benchmark import DATASET_LGPD
+from backend.tests.test_diagnostico_motor_dataset_lgpd import DATASET_LGPD
 from src.detector import PIIDetector
 
 

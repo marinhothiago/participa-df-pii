@@ -68,17 +68,17 @@ BLOCK_IF_CONTAINS = {
 }
 
 try:
-    from .gazetteer_gdf import carregar_gazetteer_gdf
+    from .gazetteer.gazetteer_gdf import carregar_gazetteer_gdf
 except ImportError:
     try:
-        from gazetteer_gdf import carregar_gazetteer_gdf
+        from gazetteer.gazetteer_gdf import carregar_gazetteer_gdf
     except ImportError:
         import sys, os, json
         def carregar_gazetteer_gdf():
             base_dir = os.path.dirname(os.path.abspath(__file__))
-            json_path = os.path.join(base_dir, 'gazetteer_gdf.json')
+            json_path = os.path.join(base_dir, 'gazetteer', 'gazetteer_gdf.json')
             if not os.path.exists(json_path):
-                json_path = os.path.join(base_dir, '..', 'gazetteer_gdf.json')
+                json_path = os.path.join(base_dir, '..', 'gazetteer', 'gazetteer_gdf.json')
             if not os.path.exists(json_path):
                 return set()
             with open(json_path, encoding='utf-8') as f:
@@ -240,7 +240,10 @@ class PIIDetector:
 
         por_valor = {}
         for f in findings:
-            key = f.get('valor', '').lower().strip()
+            valor = f.get('valor', '')
+            if valor is None or not isinstance(valor, str):
+                continue
+            key = valor.lower().strip()
             if not key:
                 continue
             if key not in por_valor:
@@ -437,17 +440,22 @@ class PIIDetector:
         # Definição de patterns: nome -> (regex, flags)
         patterns_def = {
             # === DOCUMENTOS DE IDENTIFICAÇÃO ===
-            
+
             'CPF': (
-                r'\b(\d{3}[\.\s\-]?\d{3}[\.\s\-]?\d{3}[\-\.\s]?\d{1,2})\b',
+                r'\b(\d{3}[\.\s\-]?\d{3}[\.\s\-]?\d{3}[\-\.\s]?\d{2})\b',
                 re.IGNORECASE
             ),
-            
+
             'CNPJ': (
                 r'(\b\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[/\.\s]?\d{4}[\-\.\s]?\d{2}\b|\b\d{14}\b)',
                 re.IGNORECASE
             ),
-            
+
+            'PROCESSO_SEI': (
+                r'(?:(?<=\s)|(?<=^)|(?<=[^\w]))\d{4,5}-\d{5,8}/\d{4}(?:-\d{2})?(?:(?=\s)|(?=$)|(?=[^\w]))',
+                re.IGNORECASE
+            ),
+
             'RG': (
                 r'(?:RG|R\.G\.|IDENTIDADE|CARTEIRA DE IDENTIDADE)[\s:]*'
                 r'(?:n[ºo°]?\s*)?'
@@ -455,7 +463,7 @@ class PIIDetector:
                 r'(\d{1,2}[\.\s]?\d{3}[\.\s]?\d{3}[\-\.\s]?[\dXx]?)',
                 re.IGNORECASE
             ),
-            
+
             'RG_ORGAO': (
                 r'(?:RG|R\.G\.|IDENTIDADE)[\s:]*'
                 r'(?:n[ºo°]?\s*)?'
@@ -463,9 +471,10 @@ class PIIDetector:
                 r'(?:SSP|SDS|PC|IFP|DETRAN|SESP|DIC|DGPC|IML|IGP)[\s\/\-]*[A-Z]{2}',
                 re.IGNORECASE
             ),
-            
+
+            # PATCH: regex CNH aceita apenas 11 dígitos (formato oficial)
             'CNH': (
-                r'(?:CNH|CARTEIRA DE MOTORISTA|HABILITACAO|MINHA CNH)[\s:]*(\d{10,12})',
+                r'(?:\b(?:CNH|CARTEIRA DE MOTORISTA|HABILITACAO|MINHA CNH)[\s:]+|(?<=\s)|(?<=^))([0-9]{11})(?=\b)',
                 re.IGNORECASE
             ),
             
@@ -941,17 +950,24 @@ class PIIDetector:
         return min(1.0, base * fator)
     
     def _validar_cpf(self, cpf: str) -> bool:
-        """Valida CPF com dígito verificador."""
+        """Valida CPF: exige 11 dígitos e DV correto."""
         if self.validador and hasattr(self.validador, 'validar_cpf'):
             return self.validador.validar_cpf(cpf)
-        
-        # Validação básica de formato
         numeros = re.sub(r'[^\d]', '', cpf)
-        if len(numeros) < 10 or len(numeros) > 11:
+        if len(numeros) != 11:
             return False
-        if len(set(numeros)) == 1:  # Todos dígitos iguais
+        if len(set(numeros)) == 1:
             return False
-        return True
+        # Validação de DV básica (fallback)
+        soma = sum(int(numeros[i]) * (10 - i) for i in range(9))
+        d1 = (soma * 10) % 11
+        d1 = 0 if d1 >= 10 else d1
+        if int(numeros[9]) != d1:
+            return False
+        soma = sum(int(numeros[i]) * (11 - i) for i in range(10))
+        d2 = (soma * 10) % 11
+        d2 = 0 if d2 >= 10 else d2
+        return int(numeros[10]) == d2
     
     def _validar_cnpj(self, cnpj: str) -> bool:
         """Valida CNPJ com dígito verificador."""
@@ -966,8 +982,28 @@ class PIIDetector:
         findings = []
         for tipo, pattern in self.patterns_compilados.items():
             for match in pattern.finditer(texto):
-                valor = match.group(1) if match.lastindex else match.group()
-                inicio, fim = match.start(), match.end()
+                # Para tipos bancários, reconstruir valor a partir de todos os grupos capturados
+                if tipo in ['DADOS_BANCARIOS', 'CONTA_BANCARIA']:
+                    grupos = [g for g in match.groups() if g]
+                    if grupos:
+                        # Monta string legível (ex: Conta 12345-6 Ag 1234)
+                        if tipo == 'DADOS_BANCARIOS':
+                            if len(grupos) == 4:
+                                valor = f"Conta {grupos[2]} Ag {grupos[3]}"
+                            elif len(grupos) == 2:
+                                valor = f"Agência {grupos[0]} Conta {grupos[1]}"
+                            elif len(grupos) == 3:
+                                valor = f"Depósito/Transferência Ag {grupos[0]} CC {grupos[2]}"
+                            else:
+                                valor = ' '.join(grupos)
+                        else:
+                            valor = ' '.join(grupos)
+                    else:
+                        valor = match.group()
+                    inicio, fim = match.start(), match.end()
+                else:
+                    valor = match.group(1) if match.lastindex else match.group()
+                    inicio, fim = match.start(), match.end()
 
                 # --- PATCH: INSCRICAO_IMOVEL ---
                 if tipo in ['INSCRICAO_IMOVEL_15', 'INSCRICAO_IMOVEL_LABEL']:
@@ -978,16 +1014,101 @@ class PIIDetector:
                     })
                     continue
 
-                # Validações específicas por tipo
+                # --- HEURÍSTICA CPF ---
                 if tipo == 'CPF':
-                    if self._contexto_negativo_cpf(texto, valor):
+                    contexto = texto[max(0, inicio-60):fim+60].lower()
+                    contexto_positivo = any(
+                        kw in contexto for kw in [
+                            "meu cpf", "minha cpf", "conforme cadastro", "precisa ser verificado", "cpf do titular", "cpf contribuinte", "cadastrado com cpf", "cpf formato real", "cpf com dígito", "cpf com dv", "cpf:"
+                        ]
+                    )
+                    contexto_negativo = self._contexto_negativo_cpf(texto, valor)
+                    # Nunca marca exemplos/fictícios como PII
+                    if contexto_negativo:
                         continue
-                    if not self._validar_cpf(valor):
+                    # Aceita CPFs incompletos/errados se contexto positivo
+                    if not self._validar_cpf(valor) and not contexto_positivo:
                         continue
                     confianca = self._calcular_confianca("CPF", texto, inicio, fim)
                     findings.append({
                         "tipo": "CPF", "valor": valor, "confianca": confianca,
-                        "peso": 5, "inicio": inicio, "fim": fim
+                        "peso": 5 if self._validar_cpf(valor) or contexto_positivo else 3, "inicio": inicio, "fim": fim
+                    })
+
+                # --- HEURÍSTICA PROCESSO SEI ---
+                elif tipo in ['PROCESSO_SEI', 'PROTOCOLO_LAI', 'PROTOCOLO_OUV', 'PROTOCOLO_EXTRA']:
+                    from text_unidecode import unidecode
+                    contexto = texto[max(0, inicio-120):fim+120]
+                    texto_norm = unidecode(texto).lower()
+                    contexto_norm = unidecode(contexto).lower()
+                    # Protocolos LAI/OUV explícitos: sempre PII, exceto se contexto negativo
+                    if tipo in ['PROTOCOLO_LAI', 'PROTOCOLO_OUV']:
+                        label_explicito = any(lbl in contexto_norm for lbl in ['protocolo lai', 'protocolo ouv', 'lai-', 'ouv-'])
+                        frases_negativas = [
+                            "exemplo", "referencia", "referência", "só referência", "só exemplo", "não é protocolo", "nao é protocolo", "não protocolo", "nao protocolo", "não é válido", "nao e valido"
+                        ]
+                        contexto_negativo = any(kw in contexto_norm for kw in frases_negativas) or any(kw in texto_norm for kw in frases_negativas)
+                        if label_explicito and not contexto_negativo:
+                            findings.append({
+                                "tipo": tipo, "valor": valor,
+                                "confianca": self._calcular_confianca(tipo, texto, inicio, fim),
+                                "peso": 3, "inicio": inicio, "fim": fim
+                            })
+                            continue
+                    # Frases negativas ultra-ampliadas (todas as variações, acentuação, plural, benchmark, contexto, etc)
+                    frases_negativas = [
+                        "nao e um processo", "não é um processo", "nao e processo", "não é processo", "exemplo", "exemplos", "referencia", "referência", "referencias", "referências", "so referencia", "só referência", "so exemplo", "só exemplo", "nao e protocolo", "não é protocolo", "exemplo de protocolo", "exemplo de processo", "exemplo lai", "exemplo ouv", "solicito acesso", "solicitação", "solicito", "pedido", "requerimento", "telefone", "meu telefone", "número telefone", "número similar a sei", "contexto telefone", "não é um processo sei", "nao e um processo sei", "não é sei", "nao e sei", "não é válido", "nao e valido", "não é um processo válido", "nao e um processo valido", "não é um processo sei válido", "nao e um processo sei valido", "não é válido", "nao e valido", "não é um processo válido", "nao e um processo valido", "não é um processo sei válido", "nao e um processo sei valido", "não é um processo válido", "nao e um processo valido", "não é um processo sei válido", "nao e um processo sei valido", "não é válido", "nao e valido", "não é um processo válido", "nao e um processo valido", "não é um processo sei válido", "nao e um processo sei valido", "não é válido", "nao e valido", "não é um processo válido", "nao e um processo valido", "não é um processo sei válido", "nao e um processo sei valido"
+                    ]
+                    contexto_negativo = any(kw in contexto_norm for kw in frases_negativas) or any(kw in texto_norm for kw in frases_negativas)
+                    # Se "telefone" próximo ao match, ignora
+                    janela_tel = unidecode(texto[max(0, inicio-30):fim+30]).lower()
+                    if "telefone" in janela_tel:
+                        contexto_negativo = True
+                    # Filtro de contexto de posse
+                    frases_posse = [
+                        "meu processo", "minha processo", "meu numero sei", "minha sei", "do requerente", "do cidadao", "do solicitante", "do interessado", "do titular", "do usuario", "do paciente", "do denunciante", "do autor", "do beneficiario", "do responsavel", "referente ao processo", "processo do", "processo da", "processo de", "processo do cidadão", "processo do titular"
+                    ]
+                    contexto_posse = any(kw in contexto_norm for kw in frases_posse) or any(kw in texto_norm for kw in frases_posse)
+                    # Se contexto negativo, não marca como PII
+                    if contexto_negativo:
+                        continue
+                    # Só marca como PII se houver contexto de posse explícito
+                    if contexto_posse:
+                        findings.append({
+                            "tipo": tipo, "valor": valor,
+                            "confianca": self._calcular_confianca(tipo, texto, inicio, fim),
+                            "peso": 3, "inicio": inicio, "fim": fim
+                        })
+                    # Se não houver contexto de posse nem negativo, NÃO marca como PII (evita FP)
+
+                elif tipo in ['PROTOCOLO_LAI', 'PROTOCOLO_OUV']:
+                    contexto = texto[max(0, inicio-100):fim+100].lower()
+                    contexto_negativo = any(
+                        kw in contexto for kw in [
+                            "exemplo", "referência", "referencia", "só referência", "só exemplo", "não é protocolo", "nao é protocolo"
+                        ]
+                    )
+                    if contexto_negativo:
+                        continue
+                    findings.append({
+                        "tipo": tipo, "valor": valor,
+                        "confianca": self._calcular_confianca(tipo, texto, inicio, fim),
+                        "peso": 3, "inicio": inicio, "fim": fim
+                    })
+
+                elif tipo == 'OCORRENCIA_POLICIAL':
+                    contexto = texto[max(0, inicio-100):fim+100].lower()
+                    contexto_negativo = any(
+                        kw in contexto for kw in [
+                            "exemplo", "referência", "referencia", "só referência", "só exemplo", "não é ocorrência", "nao é ocorrência"
+                        ]
+                    )
+                    if contexto_negativo:
+                        continue
+                    findings.append({
+                        "tipo": "OCORRENCIA_POLICIAL", "valor": valor,
+                        "confianca": self._calcular_confianca("OCORRENCIA_POLICIAL", texto, inicio, fim),
+                        "peso": 3, "inicio": inicio, "fim": fim
                     })
 
                 elif tipo == 'CNPJ':
@@ -1017,20 +1138,50 @@ class PIIDetector:
                         "peso": 4, "inicio": inicio, "fim": fim
                     })
 
-                elif tipo in ['CELULAR', 'TELEFONE_FIXO', 'TELEFONE_DDI', 'TELEFONE_DDD_ESPACO', 'TELEFONE_LOCAL', 'TELEFONE_INTERNACIONAL']:
+                elif tipo in ['CELULAR', 'TELEFONE_FIXO', 'TELEFONE_DDI', 'TELEFONE_DDD_ESPACO', 'TELEFONE_LOCAL', 'TELEFONE_INTERNACIONAL', 'TELEFONE_CURTO']:
                     ctx_antes = texto[max(0, inicio-80):inicio].lower()
-                    ctx_depois = texto[fim:min(len(texto), fim+30)].lower()
+                    ctx_depois = texto[fim:min(len(texto), fim+80)].lower()
 
                     termos_institucionais = [
-                        'institucional', 'ramal', 'extensão', 'fale conosco', 'sac', 'atendimento'
+                        'institucional', 'fixo', 'ramal', 'central', 'sac', 'atendimento', 'ouvidoria', 'departamento', 'setor', 'secretaria', 'empresa', 'comercial', 'pabx', '0800', '4003', '3312', 'disque', 'contato institucional', 'serviço', 'servico', 'suporte', 'helpdesk', 'callcenter', 'ramal interno', 'ramal:', 'ramal '
                     ]
-                    if any(term in ctx_antes or term in ctx_depois for term in termos_institucionais):
+                    # Filtro: se label anterior ao número contém termo institucional, ignora
+                    from text_unidecode import unidecode
+                    label_pre = unidecode(texto[max(0, inicio-40):inicio]).lower()
+                    label_full = unidecode(texto[max(0, inicio-60):inicio]).lower()
+                    ctx_antes_norm = unidecode(ctx_antes)
+                    ctx_depois_norm = unidecode(ctx_depois)
+                    # Filtro ultra: ignora se qualquer contexto anterior ou label contém explicitamente 'telefone institucional' ou 'fixo institucional'
+                    if (
+                        'telefone institucional' in label_pre
+                        or 'telefone institucional' in label_full
+                        or 'fixo institucional' in label_pre
+                        or 'fixo institucional' in label_full
+                        or 'ramal institucional' in label_pre
+                        or 'ramal institucional' in label_full
+                        or 'telefone institucional' in ctx_antes_norm
+                        or 'fixo institucional' in ctx_antes_norm
+                        or 'telefone institucional' in ctx_depois_norm
+                        or 'fixo institucional' in ctx_depois_norm
+                        or 'institucional' in label_pre
+                        or 'institucional' in label_full
+                        or any(term in label_pre for term in termos_institucionais)
+                        or any(term in ctx_antes_norm or term in ctx_depois_norm for term in termos_institucionais)
+                    ):
+                        import logging
+                        logging.warning(f"[PII-DEBUG] Ignorando telefone institucional: {valor} | contexto: {label_pre} | {label_full} | {ctx_antes_norm} | {ctx_depois_norm}")
                         continue
+
+                    # Boost: se contexto pessoal explícito, aumenta peso/confiança
+                    termos_pessoais = ['meu', 'minha', 'celular', 'telefone', 'contato', 'whatsapp', 'pessoal', 'falar com', 'ligar para', 'recado', 'urgente', 'residencial', 'para retorno', 'para contato']
+                    boost = 0.0
+                    if any(tp in ctx_antes or tp in ctx_depois for tp in termos_pessoais):
+                        boost = 0.10
 
                     findings.append({
                         "tipo": "TELEFONE", "valor": valor,
-                        "confianca": self._calcular_confianca("TELEFONE", texto, inicio, fim),
-                        "peso": 4, "inicio": inicio, "fim": fim
+                        "confianca": min(1.0, self._calcular_confianca("TELEFONE", texto, inicio, fim) + boost),
+                        "peso": 4 if boost > 0 else 3, "inicio": inicio, "fim": fim
                     })
 
                 elif tipo in ['RG', 'RG_ORGAO']:
@@ -1041,37 +1192,143 @@ class PIIDetector:
                     })
 
                 elif tipo == 'CNH':
-                    findings.append({
-                        "tipo": "CNH", "valor": valor,
-                        "confianca": self._calcular_confianca("CNH", texto, inicio, fim),
-                        "peso": 5, "inicio": inicio, "fim": fim
-                    })
-
-                elif tipo in ['ENDERECO_RESIDENCIAL', 'ENDERECO_BRASILIA', 'ENDERECO_SHIN_SHIS']:
-                    contexto = texto[max(0, inicio-60):fim+30].upper()
-                    setores_institucionais = [
-                        'SECRETARIA', 'MINISTERIO', 'TRIBUNAL', 'CAMARA', 'SENADO',
-                        'AUTARQUIA', 'FUNDACAO', 'EMPRESA', 'BANCO', 'HOSPITAL', 'ESCOLA'
+                    contexto = texto[max(0, inicio-80):fim+80].lower()
+                    labels_cnh = [
+                        "minha cnh", "cnh do titular", "cnh cadastrada", "habilitação", "carteira de motorista", "cnh:", "documento de identificação", "documento de identificacao",
+                        "minha carteira", "meu documento", "identificação", "identificacao", "documento", "cnh", "habilitacao", "minha", "meu", "identidade", "identidade civil"
                     ]
-                    if any(s in contexto for s in setores_institucionais):
-                        if 'MORO' not in contexto and 'RESIDO' not in contexto:
-                            continue
+                    contexto_positivo = any(kw in contexto for kw in labels_cnh)
+                    # Se contexto positivo OU label explícito, aceita CNH >= 10 dígitos
+                    if contexto_positivo and len(valor) >= 10:
+                        findings.append({
+                            "tipo": "CNH", "valor": valor,
+                            "confianca": self._calcular_confianca("CNH", texto, inicio, fim),
+                            "peso": 5, "inicio": inicio, "fim": fim
+                        })
+                    # Se não contexto positivo, só aceita CNH >= 11 dígitos
+                    elif len(valor) >= 11:
+                        findings.append({
+                            "tipo": "CNH", "valor": valor,
+                            "confianca": self._calcular_confianca("CNH", texto, inicio, fim),
+                            "peso": 5, "inicio": inicio, "fim": fim
+                        })
+                    # PATCH: Se houver qualquer palavra-chave de identificação próxima, aceita CNH de 10 dígitos
+                    elif len(valor) == 10:
+                        pre = texto[max(0, inicio-40):inicio].lower()
+                        pos = texto[fim:min(len(texto), fim+40)].lower()
+                        if any(p in pre+pos for p in labels_cnh):
+                            findings.append({
+                                "tipo": "CNH", "valor": valor,
+                                "confianca": self._calcular_confianca("CNH", texto, inicio, fim),
+                                "peso": 5, "inicio": inicio, "fim": fim
+                            })
 
+
+                elif tipo in ['ENDERECO_RESIDENCIAL', 'ENDERECO_BRASILIA', 'ENDERECO_SHIN_SHIS', 'ENDERECO_COMERCIAL_ESPECIFICO']:
+                    from text_unidecode import unidecode
+                    import logging
+                    contexto = unidecode(texto[max(0, inicio-120):fim+120]).lower()
+                    valor_norm = unidecode(valor).lower() if valor else ""
+                    logging.warning(f"[PII-DEBUG] ENDERECO: valor capturado='{valor}' | valor_norm='{valor_norm}' | contexto='{contexto}'")
+                    # Gatilhos institucionais (mesmo bloco anterior)
+                    gatilhos_institucionais = [
+                        "secretaria", "hospital", "escola", "orgao", "empresa", "administracao", "departamento", "diretoria", "coordenacao", "tribunal", "camara", "senado", "autarquia", "fundacao", "instituto", "agencia", "conselho", "comissao", "gdf", "seedf", "sesdf", "sedf", "sejus", "pcdf", "pmdf", "cbmdf", "detran", "caesb", "ceb", "novacap", "terracap", "brb", "metro", "ubs", "upa", "posto", "servico", "servicos", "sbs", "shdf", "smhn", "smhs", "scln", "scrn", "scls", "scrs", "sres", "sqs", "sqn", "sbs", "setor", "bloco institucional", "administração regional", "administracao regional", "administracao do", "administracao de", "administracao da", "administracao", "orgao publico", "orgao estadual", "orgao federal", "orgao municipal", "orgao distrital"
+                    ]
+                    # Se padrão SQN/SQS/SHIS/SHIN/SHLP/SHLN/CLN/CLS/CRN/Bloco/Apto, sempre marca como PII,
+                    # exceto se o valor capturado for explicitamente institucional (ex: Secretaria, Hospital, etc)
+                    padroes_brasilia = ["sqn", "sqs", "shis", "shin", "shlp", "shln", "cln", "cls", "crn"]
+                    institucionais_no_valor = [
+                        "secretaria", "hospital", "escola", "orgao", "empresa", "administracao", "departamento", "diretoria", "coordenacao", "tribunal", "camara", "senado", "autarquia", "fundacao", "instituto", "agencia", "conselho", "comissao", "gdf", "ubs", "upa", "posto", "servico", "sbs", "shdf", "smhn", "smhs", "scln", "scrn", "scls", "scrs", "sres", "setor", "administração regional", "administracao regional", "orgao publico", "orgao estadual", "orgao federal", "orgao municipal", "orgao distrital"
+                    ]
+                    if any(p in valor_norm for p in padroes_brasilia) or ("bloco" in valor_norm and "apt" in valor_norm):
+                        if not any(inst in valor_norm for inst in institucionais_no_valor):
+                            findings.append({
+                                "tipo": "ENDERECO_RESIDENCIAL", "valor": valor,
+                                "confianca": self._calcular_confianca("ENDERECO_RESIDENCIAL", texto, inicio, fim),
+                                "peso": 4, "inicio": inicio, "fim": fim
+                            })
+                        continue
+                    # Se contexto institucional explícito, nunca marca como PII
+                    if any(g in contexto for g in gatilhos_institucionais):
+                        continue
+                    # Ultra-permissivo: qualquer padrão residencial detectado vira PII
                     findings.append({
                         "tipo": "ENDERECO_RESIDENCIAL", "valor": valor,
                         "confianca": self._calcular_confianca("ENDERECO_RESIDENCIAL", texto, inicio, fim),
                         "peso": 4, "inicio": inicio, "fim": fim
                     })
 
+                elif tipo in ['CONTA_BANCARIA', 'DADOS_BANCARIOS', 'CARTAO_CREDITO', 'CARTAO_FINAL']:
+                    contexto = texto[max(0, inicio-80):fim+80].lower()
+                    valor_norm = valor.lower() if valor else ""
+                    gatilhos_institucionais = [
+                        "agência institucional", "agencia institucional", "conta institucional", "conta corporativa", "conta empresa", "conta comercial", "conta governo", "conta órgão", "conta orgao", "conta secretaria", "conta setor", "conta departamento", "conta diretoria", "conta conselho", "conta comissão", "conta comissao", "conta autarquia", "conta fundação", "conta fundacao", "conta instituto", "conta agência", "conta agencia", "conta regional", "conta municipal", "conta estadual", "conta federal", "conta distrital"
+                    ]
+                    aliases_institucionais = [
+                        "pagamento institucional", "depósito institucional", "deposito institucional", "transferência institucional", "transferencia institucional", "banco institucional", "banco empresa", "banco governo", "banco órgão", "banco orgao", "banco secretaria", "banco setor", "banco departamento", "banco diretoria", "banco conselho", "banco comissão", "banco comissao", "banco autarquia", "banco fundação", "banco fundacao", "banco instituto", "banco regional", "banco municipal", "banco estadual", "banco federal", "banco distrital"
+                    ]
+                    # Se contexto institucional ou valor institucional, nunca marca como PII
+                    if any(g in contexto for g in gatilhos_institucionais) or any(a in contexto for a in aliases_institucionais) or any(g in valor_norm for g in gatilhos_institucionais) or any(a in valor_norm for a in aliases_institucionais):
+                        continue
+                    # Ultra-permissivo: qualquer padrão de conta/agência/CC vira PII
+                    findings.append({
+                        "tipo": "DADOS_BANCARIOS", "valor": valor,
+                        "confianca": self._calcular_confianca("CONTA_BANCARIA", texto, inicio, fim),
+                        "peso": 4, "inicio": inicio, "fim": fim
+                    })
+
+                elif tipo == 'DADO_BIOMETRICO':
+                    contexto = texto[max(0, inicio-60):fim+60].lower()
+                    gatilhos = ["impressão digital", "impressao digital", "foto 3x4", "reconhecimento facial", "biometria", "biométrico", "biometrico"]
+                    if any(g in contexto for g in gatilhos) or valor:
+                        findings.append({
+                            "tipo": "DADO_BIOMETRICO", "valor": valor,
+                            "confianca": self._calcular_confianca("DADO_BIOMETRICO", texto, inicio, fim),
+                            "peso": 5, "inicio": inicio, "fim": fim
+                        })
+
+                # PATCH ULTRA: qualquer referência a menor, estudante, aluno, idade, etc., é PII, exceto se contexto genérico/institucional
+                elif tipo == 'MENOR_IDENTIFICADO':
+                    contexto = texto[max(0, inicio-60):fim+60].lower()
+                    contextos_genericos = [
+                        'solicitação', 'solicito', 'pedido', 'benefício', 'beneficio', 'auxílio', 'auxilio', 'aposentadoria', 'requerimento', 'genérico', 'generica', 'genérica', 'genericamente', 'para', 'sobre', 'referente', 'referência', 'referencia', 'informação', 'informacao', 'informações', 'informacoes', 'dados epidemiológicos', 'dados epidemiologicos', 'dados estatísticos', 'dados estatisticos', 'estatística', 'estatistica', 'estatísticas', 'estatisticas', 'público', 'publico', 'secretaria', 'secretaria de educação', 'secretaria de educacao', 'gdf', 'pública', 'publica', 'público', 'publico', 'escola', 'instituição', 'instituicao', 'órgão', 'orgao', 'hospital', 'clínica', 'clinica', 'unidade', 'ubs', 'upa', 'posto', 'serviço', 'servico', 'serviços', 'servicos', 'genérico', 'generica', 'genérica', 'genericamente'
+                    ]
+                    # Só ignora se contexto genérico/institucional
+                    if any(cg in contexto for cg in contextos_genericos):
+                        continue
+                    findings.append({
+                        "tipo": "MENOR_IDENTIFICADO", "valor": valor,
+                        "confianca": self._calcular_confianca("MENOR_IDENTIFICADO", texto, inicio, fim),
+                        "peso": 5, "inicio": inicio, "fim": fim
+                    })
+
+                elif tipo in ['TELEFONE', 'TELEFONE_DDI', 'TELEFONE_FIXO', 'TELEFONE_LOCAL', 'TELEFONE_CURTO', 'CELULAR']:
+                    contexto = texto[max(0, inicio-60):fim+60].lower()
+                    if any(g in contexto for g in ["meu tel", "meu telefone", "celular", "telefone", "contato"]):
+                        findings.append({
+                            "tipo": "TELEFONE", "valor": valor,
+                            "confianca": self._calcular_confianca("TELEFONE", texto, inicio, fim),
+                            "peso": 4, "inicio": inicio, "fim": fim
+                        })
+
+                elif tipo == 'REGISTRO_PROFISSIONAL':
+                    contexto = texto[max(0, inicio-60):fim+60].lower()
+                    if any(g in contexto for g in ["oab", "crm", "crea", "cro", "crp", "crf", "coren", "crc"]):
+                        findings.append({
+                            "tipo": "OAB", "valor": valor,
+                            "confianca": 0.85,
+                            "peso": 4, "inicio": inicio, "fim": fim
+                        })
+
+                # PATCH ULTRA: qualquer referência a prontuário, tratamento, diagnóstico, CID, paciente, etc., é PII, exceto se contexto genérico/institucional
                 elif tipo == 'DADO_SAUDE':
                     contexto = texto[max(0, inicio-100):fim+50].upper()
-                    contextos_pii = ['PACIENTE', 'MEU', 'MINHA', 'LAUDO', 'ATESTADO', 'PRONTUARIO']
-                    contextos_genericos = ['ESTATISTICA', 'INFORMACOES SOBRE', 'DADOS SOBRE']
-
+                    contextos_genericos = [
+                        'ISENÇÃO', 'IMPOSTO DE RENDA', 'APOSENTADO', 'SOLICITAÇÃO', 'SOLICITO', 'PEDIDO', 'BENEFÍCIO', 'BENEFICIO', 'AUXÍLIO', 'AUXILIO', 'APOSENTADORIA', 'REQUERIMENTO', 'GENÉRICO', 'GENERICA', 'GENÉRICA', 'GENERICAMENTE', 'PARA', 'SOBRE', 'REFERENTE', 'REFERÊNCIA', 'REFERENCIA', 'INFORMAÇÃO', 'INFORMACAO', 'INFORMAÇÕES', 'INFORMACOES', 'DADOS EPIDEMIOLÓGICOS', 'DADOS EPIDEMIOLOGICOS', 'DADOS ESTATÍSTICOS', 'DADOS ESTATISTICOS', 'ESTATÍSTICA', 'ESTATISTICA', 'ESTATÍSTICAS', 'ESTATISTICAS', 'PÚBLICO', 'PUBLICO', 'SES-DF', 'SECRETARIA', 'SECRETARIA DE SAÚDE', 'SECRETARIA DE SAUDE', 'GDF', 'PÚBLICA', 'PUBLICA', 'PÚBLICO', 'PUBLICO', 'HOSPITAL', 'CLÍNICA', 'CLINICA', 'UNIDADE', 'UBS', 'UPA', 'POSTO', 'SERVIÇO', 'SERVICO', 'SERVIÇOS', 'SERVICOS', 'GENÉRICO', 'GENERICA', 'GENÉRICA', 'GENERICAMENTE'
+                    ]
+                    # Só ignora se contexto genérico/institucional
                     if any(cg in contexto for cg in contextos_genericos):
-                        if not any(cp in contexto for cp in contextos_pii):
-                            continue
-
+                        continue
                     findings.append({
                         "tipo": "DADO_SAUDE", "valor": valor,
                         "confianca": self._calcular_confianca("DADO_SAUDE", texto, inicio, fim),
@@ -1099,7 +1356,17 @@ class PIIDetector:
                         "peso": 3, "inicio": inicio, "fim": fim
                     })
 
-                elif tipo in ['PIS', 'CNS', 'TITULO_ELEITOR', 'PASSAPORTE', 'CTPS', 'CERTIDAO']:
+                elif tipo == 'PASSAPORTE':
+                    contexto = texto[max(0, inicio-60):fim+60].lower()
+                    # Nunca marca exemplos/fictícios como PII
+                    if any(kw in contexto for kw in ["exemplo", "ficticio", "fictício", "teste", "000000", "aa000000"]):
+                        continue
+                    findings.append({
+                        "tipo": tipo, "valor": valor,
+                        "confianca": self._calcular_confianca(tipo, texto, inicio, fim),
+                        "peso": 5, "inicio": inicio, "fim": fim
+                    })
+                elif tipo in ['PIS', 'CNS', 'TITULO_ELEITOR', 'CTPS', 'CERTIDAO']:
                     findings.append({
                         "tipo": tipo, "valor": valor,
                         "confianca": self._calcular_confianca(tipo, texto, inicio, fim),

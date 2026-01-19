@@ -8,7 +8,7 @@ import pytest
 pytestmark = pytest.mark.timeout(10)
 
 # Garante import do detector
-sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.detector import PIIDetector
 
 # Validação explícita da inicialização do modelo spaCy

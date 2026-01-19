@@ -9,8 +9,8 @@ def carregar_gazetteer_gdf():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     json_path = os.path.join(base_dir, 'gazetteer_gdf.json')
     if not os.path.exists(json_path):
-        # Fallback: tenta na raiz do backend
-        json_path = os.path.join(base_dir, '..', 'gazetteer_gdf.json')
+        # Fallback: tenta na raiz do backend/src
+        json_path = os.path.join(base_dir, '..', 'gazetteer', 'gazetteer_gdf.json')
     if not os.path.exists(json_path):
         return set()
     with open(json_path, encoding='utf-8') as f:
