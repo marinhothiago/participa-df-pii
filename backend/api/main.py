@@ -230,7 +230,7 @@ def submit_lote(file: UploadFile = File(...)):
     temp_path = f'/tmp/{file.filename}'
     with open(temp_path, 'wb') as f:
         shutil.copyfileobj(file.file, f)
-    task = celery_app.send_task('backend.tasks.processar_lote', args=[temp_path, tipo_arquivo])
+    task = celery_app.send_task('backend.celery_worker_tasks.processar_lote', args=[temp_path, tipo_arquivo])
     return {"job_id": task.id}
 
 @app.get('/api/lote/status/{job_id}')
