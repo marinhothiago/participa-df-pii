@@ -1,7 +1,7 @@
 # 🛡️ Participa DF - Detector Inteligente de Dados Pessoais
 
 [![Status](https://img.shields.io/badge/Status-Produção-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
-[![Versão](https://img.shields.io/badge/Versão-9.4.3-blue)](./backend/README.md)
+[![Versão](https://img.shields.io/badge/Versão-9.5.0-blue)](./backend/README.md)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js)](https://nodejs.org/)
@@ -16,9 +16,9 @@
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade com LGPD e LAI em manifestações do Participa DF.
 > 
-> 🎉 **v9.4.3**: Sistema otimizado com **F1-Score = 1.0000** (100% precisão e sensibilidade) em benchmark de 303 casos LGPD.
+> 🎉 **v9.5.0**: Sistema otimizado com **F1-Score = 1.0000** (100% precisão e sensibilidade) em benchmark de 303 casos LGPD.
 > 
-> 🆕 **Novidades v9.4.3**: Telefones internacionais, 5 níveis de risco LGPD completos (CRÍTICO → BAIXO), IP/Coordenadas/User-Agent, contadores globais, menu hambúrguer mobile, allow_list (375 termos).
+> 🆕 **Novidades v9.5.0**: Reorganização completa do projeto, Celery integrado à API, scripts organizados, CI/CD otimizado.
 
 > **Política de Deploy:**
 > - O build de produção (Docker/Hugging Face) inclui apenas código-fonte, dependências e a amostra oficial `AMOSTRA_e-SIC.xlsx`.
@@ -98,10 +98,10 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 │  │         └─────────┬─────────┘                         │ │
 │  │                   │                                   │ │
 │  │         ┌─────────▼─────────┐                         │ │
-│  │         │ Árbitro LLM (op.) │                         │ │
-│  │         │ Llama-70B (HF API)│                        │ │
-│  │         │ • Explicação PII   │                        │ │
-│  │         │ • Decisão ambígua  │                        │ │
+│  │         │ Árbitro LLM       │                         │ │
+│  │         │ Llama-70B (HF API)│  ← ATIVADO POR PADRÃO   │ │
+│  │         │ • Explicação PII  │                         │ │
+│  │         │ • Decisão ambígua │                         │ │
 │  │         └────────────────────┘                        │ │
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
@@ -110,7 +110,7 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 | Agora o backend suporta:
 | - **Pipeline híbrido avançado**: Regex, validação DV, BERT NER, NuNER, spaCy, gazetteer institucional, regras de negócio, pós-processamento, ensemble/fusão, calibradores probabilísticos e thresholds dinâmicos.
 | - **Presidio Framework (Microsoft)**: expansão modular de detectores PII, multi-idioma, fácil customização.
-| - **Árbitro LLM (Llama-70B via Hugging Face Inference API)**: explicação e decisão em casos ambíguos (opcional).
+| - **🤖 Árbitro LLM (Llama-70B)**: **ATIVADO por padrão** - arbitragem inteligente em casos ambíguos via Hugging Face Inference API.
 | - **Gazetteer institucional GDF**: filtro de falsos positivos para nomes de órgãos, escolas, hospitais e aliases do DF.
 | - **Sistema de confiança probabilística**: calibração isotônica, combinação log-odds, thresholds dinâmicos por tipo, explicabilidade total.
 | - **Presets de merge de spans**: recall, precision, f1, custom (ajustável via parâmetro na API).
@@ -118,6 +118,37 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 | - **Testes robustos**: edge cases, benchmark LGPD, análise de confiança, integração e cobertura total.
 |
 | Consulte o backend/README.md para exemplos de uso, formato de resposta e detalhes técnicos.
+
+---
+
+## 🤖 Árbitro LLM: Llama-70B
+
+O sistema utiliza o **Llama-70B** como árbitro inteligente para casos ambíguos de detecção de PII.
+
+### Status: ✅ ATIVADO POR PADRÃO (v9.5.0)
+
+| Aspecto | Detalhe |
+|---------|---------|
+| **Modelo** | meta-llama/Llama-2-70b-chat-hf |
+| **Ativação** | Automática em casos ambíguos |
+| **Requisito** | `HF_TOKEN` no arquivo `.env` |
+| **Desativar** | `PII_USE_LLM_ARBITRATION=False` |
+
+### Quando é Acionado
+
+1. **Itens com baixa confiança** → LLAMA decide se é PII
+2. **Zero PIIs encontrados** → LLAMA faz análise final do texto
+3. **Via API** → `POST /analyze?use_llm=true`
+
+### Configuração Rápida
+
+```bash
+# .env (OBRIGATÓRIO)
+HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxx
+PII_USE_LLM_ARBITRATION=True  # Padrão: True
+```
+
+> 📚 **Documentação completa**: Consulte [backend/README.md](backend/README.md#-árbitro-llm-llama-70b-v950) ou [LLAMA_ARBITRAGE_LOGIC.md](LLAMA_ARBITRAGE_LOGIC.md)
 
 ---
 
@@ -206,7 +237,9 @@ desafio-participa-df/
 │   ├── Dockerfile                ← Container para deploy
 │   │
 │   ├── api/
-│   │   └── main.py               ← FastAPI: endpoints /analyze e /health
+│   │   ├── main.py               ← FastAPI: endpoints /analyze e /health
+│   │   ├── celery_config.py      ← Configuração Celery + Redis
+│   │   └── tasks.py              ← Tasks assíncronas para lotes
 │   │
 │   ├── src/
 │   │   ├── detector.py           ← Motor híbrido PII v9.5 (2200+ linhas, 30+ tipos, thresholds dinâmicos, pós-processamento, gazetteer)
@@ -219,12 +252,19 @@ desafio-participa-df/
 │   │       ├── combiners.py      ← Combinação log-odds (Naive Bayes)
 │   │       └── calculator.py     ← Orquestrador de confiança
 │   │
-│   ├── main_cli.py               ← CLI: processamento em lote via terminal
-│   ├── benchmark.py              ← 🏆 Benchmark LGPD: 318+ casos, F1=0.9763
-│   ├── test_confidence.py        ← Testes do sistema de confiança
-│   ├── optimize_ensemble.py      ← Grid search de pesos do ensemble
-│   ├── calcular_overlap_spans.py ← Métricas de overlap de spans (IoU, F1)
-│   ├── pos_processar_spans.py    ← Pós-processamento de spans (merge, split, normalização)
+│   ├── scripts/
+│   │   ├── main_cli.py           ← CLI: processamento em lote via terminal
+│   │   ├── optimize_ensemble.py  ← Grid search de pesos do ensemble
+│   │   ├── clean_backend.ps1     ← Limpeza de cache do backend
+│   │   └── clean_frontend.ps1    ← Limpeza de cache do frontend
+│   │
+│   ├── tests/                    ← Testes automatizados (pytest)
+│   │   ├── test_benchmark.py     ← 🏆 Benchmark LGPD: 303+ casos, F1=1.0000
+│   │   ├── test_amostra.py       ← Testes com amostra e-SIC
+│   │   ├── test_confianca.py     ← Testes do sistema de confiança
+│   │   ├── test_edge_cases.py    ← Casos extremos e edge cases
+│   │   ├── test_regex_gdf.py     ← Testes de padrões regex GDF
+│   │   └── ...                   ← Outros testes especializados
 │   │
 │   └── data/
 │       ├── input/                ← Arquivos CSV/XLSX para processar
@@ -411,7 +451,7 @@ cd backend
 # Linux/Mac: source venv/bin/activate
 
 # Processe um arquivo CSV ou XLSX
-python main_cli.py --input data/input/manifestacoes.xlsx --output data/output/resultado
+python scripts/main_cli.py --input data/input/manifestacoes.xlsx --output data/output/resultado
 ```
 
 **Saídas geradas (mesma estrutura de colunas nos 3 formatos):**
@@ -512,7 +552,7 @@ man_003,"Email para contato: joao.silva@gmail.com"
 - **Benchmark oficial:** 318+ casos reais, F1-score 0.9763, todos FPs/FNs conhecidos e documentados.
 - **Pós-processamento de spans:** Normalização, merge/split, deduplicação de entidades.
 - **Ensemble:** Regex + BERT Davlan + NuNER + spaCy + Gazetteer + Regras + Thresholds dinâmicos.
-- **Otimizador de pesos:** `backend/optimize_ensemble.py` para grid search de pesos do ensemble.
+- **Otimizador de pesos:** `backend/scripts/optimize_ensemble.py` para grid search de pesos do ensemble.
 
 ### 3.3 Limpeza, Deploy e Checklist
 
@@ -861,7 +901,7 @@ curl -X POST "https://marinhothiago-desafio-participa-df.hf.space/analyze" -H "C
 
 ### CLI (Processamento em lote)
 ```bash
-python backend/main_cli.py --input backend/data/input/AMOSTRA_e-SIC.xlsx --output backend/data/output/resultado
+python backend/scripts/main_cli.py --input backend/data/input/AMOSTRA_e-SIC.xlsx --output backend/data/output/resultado
 ```
 
 ### Frontend

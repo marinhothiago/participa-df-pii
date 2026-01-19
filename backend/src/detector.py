@@ -123,7 +123,7 @@ except ImportError:
 
 def arbitrate_with_llama(texto: str, achados: List[Dict], contexto_extra: str = None) -> Tuple[str, str]:
     """
-    Usa Llama-70B via Hugging Face Inference API para arbitrar casos ambíguos de PII.
+    Usa Llama via Hugging Face Inference API para arbitrar casos ambíguos de PII.
     
     Args:
         texto: Texto sendo analisado
@@ -135,14 +135,13 @@ def arbitrate_with_llama(texto: str, achados: List[Dict], contexto_extra: str = 
             - decisão: 'PII', 'Público' ou 'Indefinido'
             - explicação: Justificativa do LLM
     """
-    if requests is None:
-        raise RuntimeError("Módulo 'requests' não instalado. Execute: pip install requests")
-    
     HF_TOKEN = os.getenv("HF_TOKEN")
     if not HF_TOKEN:
         raise RuntimeError("HF_TOKEN não encontrado no ambiente. Configure no .env")
     
-    endpoint = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-70b-chat-hf"
+    # Modelo padrão: Llama-3.2-3B-Instruct (rápido e eficiente)
+    # Pode ser sobrescrito via variável de ambiente HF_MODEL
+    model = os.getenv("HF_MODEL", "meta-llama/Llama-3.2-3B-Instruct")
     
     # Formata achados para o prompt
     achados_str = "\n".join([
@@ -150,53 +149,44 @@ def arbitrate_with_llama(texto: str, achados: List[Dict], contexto_extra: str = 
         for a in achados
     ]) if achados else "  Nenhum PII detectado pelo ensemble."
     
-    prompt = f"""[INST] Você é um especialista em LGPD e proteção de dados pessoais no Brasil.
+    system_prompt = """Você é um especialista em LGPD e proteção de dados pessoais no Brasil.
+Sua tarefa é analisar textos e decidir se contêm dados pessoais identificáveis (PII).
 
-Analise o texto abaixo e decida se ele contém dados pessoais identificáveis (PII) que precisam ser protegidos conforme a LGPD.
+REGRAS:
+1. Nomes de servidores públicos em contexto funcional NÃO são PII
+2. CPF, telefone pessoal, email pessoal, endereço residencial SÃO PII
+3. Nomes de cidadãos comuns em manifestações SÃO PII
+4. Dados de saúde, biométricos e de menores são SENSÍVEIS (proteção extra)
 
-TEXTO A ANALISAR:
+Responda APENAS no formato:
+DECISÃO: [PII ou PÚBLICO]
+EXPLICAÇÃO: [justificativa em 1-2 linhas]"""
+
+    user_prompt = f"""Analise este texto:
 "{texto[:1500]}"
 
 ACHADOS DO SISTEMA AUTOMÁTICO:
 {achados_str}
 
-{f"CONTEXTO ADICIONAL: {contexto_extra}" if contexto_extra else ""}
+{f"CONTEXTO: {contexto_extra}" if contexto_extra else ""}"""
 
-INSTRUÇÕES:
-1. Considere que nomes de servidores públicos em contexto funcional NÃO são PII
-2. Dados como CPF, telefone pessoal, email pessoal, endereço residencial SÃO PII
-3. Nomes de cidadãos comuns (não servidores) em manifestações SÃO PII
-4. Dados de saúde, biométricos e de menores são dados SENSÍVEIS (proteção extra)
-
-Responda APENAS com:
-DECISÃO: [PII ou PÚBLICO]
-EXPLICAÇÃO: [sua justificativa em 2-3 linhas]
-[/INST]"""
-
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 300,
-            "temperature": 0.1,
-            "do_sample": False
-        }
-    }
-    
     try:
-        response = requests.post(endpoint, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
-        result = response.json()
+        from huggingface_hub import InferenceClient
+        client = InferenceClient(token=HF_TOKEN)
         
-        # Extrai resposta do LLM
-        if isinstance(result, list) and len(result) > 0:
-            answer = result[0].get("generated_text", "")
-        else:
-            answer = result.get("generated_text", "")
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
         
-        # Remove o prompt da resposta se presente
-        if "[/INST]" in answer:
-            answer = answer.split("[/INST]")[-1].strip()
+        response = client.chat_completion(
+            messages=messages,
+            model=model,
+            max_tokens=150,
+            temperature=0.1
+        )
+        
+        answer = response.choices[0].message.content.strip()
         
         # Parse da decisão
         answer_upper = answer.upper()
@@ -211,17 +201,15 @@ EXPLICAÇÃO: [sua justificativa em 2-3 linhas]
         else:
             decision = "Indefinido"
         
+        logger.info(f"[LLM] Decisão: {decision} para texto: {texto[:50]}...")
         return decision, answer
         
-    except requests.exceptions.Timeout:
-        logger.warning("Timeout na chamada ao Llama-70B")
-        return "Indefinido", "Timeout na API do Hugging Face"
-    except requests.exceptions.RequestException as e:
-        logger.warning(f"Erro na chamada ao Llama-70B: {e}")
-        return "Indefinido", f"Erro na API: {str(e)}"
+    except ImportError:
+        logger.warning("huggingface_hub não instalado. Execute: pip install huggingface_hub")
+        return "Indefinido", "Biblioteca huggingface_hub não instalada"
     except Exception as e:
-        logger.error(f"Erro inesperado no árbitro LLM: {e}")
-        return "Indefinido", f"Erro inesperado: {str(e)}"
+        logger.warning(f"Erro na chamada ao LLM ({model}): {e}")
+        return "Indefinido", f"Erro na API: {str(e)}"
 
 
 class PIIDetector:
@@ -311,7 +299,7 @@ class PIIDetector:
         self,
         usar_gpu: bool = True,
         use_probabilistic_confidence: bool = True,
-        use_llm_arbitration: bool = False
+        use_llm_arbitration: bool = True
     ):
         """
         Inicializa o detector de PII.
@@ -319,7 +307,7 @@ class PIIDetector:
         Args:
             usar_gpu: Se deve usar GPU para modelos NER
             use_probabilistic_confidence: Se deve usar sistema de confiança probabilística
-            use_llm_arbitration: Se deve usar Llama-70B para arbitrar casos ambíguos
+            use_llm_arbitration: Se deve usar Llama-70B para arbitrar casos ambíguos (ATIVADO por padrão)
         """
         # Configurações
         self.usar_gpu = usar_gpu
@@ -441,8 +429,9 @@ class PIIDetector:
         patterns_def = {
             # === DOCUMENTOS DE IDENTIFICAÇÃO ===
 
+            # CPF: aceita 1 ou 2 dígitos finais (para erro de digitação)
             'CPF': (
-                r'\b(\d{3}[\.\s\-]?\d{3}[\.\s\-]?\d{3}[\-\.\s]?\d{2})\b',
+                r'\b(\d{3}[\.\s\-]?\d{3}[\.\s\-]?\d{3}[\-\.\s]?\d{1,2})\b',
                 re.IGNORECASE
             ),
 
@@ -472,9 +461,9 @@ class PIIDetector:
                 re.IGNORECASE
             ),
 
-            # PATCH: regex CNH aceita apenas 11 dígitos (formato oficial)
+            # PATCH: regex CNH aceita 10, 11 ou 12 dígitos (com ou sem contexto)
             'CNH': (
-                r'(?:\b(?:CNH|CARTEIRA DE MOTORISTA|HABILITACAO|MINHA CNH)[\s:]+|(?<=\s)|(?<=^))([0-9]{11})(?=\b)',
+                r'(?:(?:CNH|CARTEIRA DE MOTORISTA|HABILITA[CÇ][AÃ]O|MINHA CNH|MEU DOCUMENTO|DOCUMENTO DE IDENTIFICA[CÇ][AÃ]O)[\s:]*)?([0-9]{10,12})(?!\d)',
                 re.IGNORECASE
             ),
             
@@ -692,10 +681,9 @@ class PIIDetector:
             
             'DADOS_BANCARIOS': (
                 r'(?:'
-                r'(?:ag[êe]ncia|ag\.?|conta|c/?c|c\.c\.?)[\s:]*'
-                r'(\d{4,5})[\s\-]*(?:\d)?[\s\-/]*(\d{5,12})[\-]?\d?|'
-                r'(?:conta)[\s:]*(\d{4,12}[\-]?[\dXx]?)[\s,]*(?:ag[êe]ncia|ag\.?)[\s:]*(\d{4})|'
-                r'(?:dep[óo]sito|transferir)[^\n]{0,30}(?:ag\.?|ag[êe]ncia)[\s:]*(\d{4})[\s,]*(?:cc|conta|c/?c)[\s:]*(\d{4,12}[\-]?[\dXx]?)'
+                r'(?:ag[êe]ncia|ag\.?)\s*(\d{3,5})[\s,]*(?:conta(?:\s*corrente)?|c/?c|c\.c\.?)[\s:]*(\d{4,12}[\-]?[\dXx]?)|'
+                r'(?:conta(?:\s*corrente)?|c/?c|c\.c\.?)[\s:]*(\d{4,12}[\-]?[\dXx]?)[\s,]*(?:ag[êe]ncia|ag\.?)[\s:]*(\d{3,5})|'
+                r'(?:dep[óo]sito|transferir)[^\n]{0,30}(?:conta)[\s:]*(\d{4,12}[\-]?[\dXx]?)[^\n]{0,20}(?:ag\.?|ag[êe]ncia)[\s:]*(\d{3,5})'
                 r')',
                 re.IGNORECASE
             ),
@@ -708,7 +696,7 @@ class PIIDetector:
                 r'(?:HIV|AIDS|cancer|câncer|diabetes|epilepsia|'
                 r'esquizofrenia|depress[ãa]o|bipolar|transtorno)[^.]{0,30}(?:positivo|confirmado|diagn[oó]stico)|'
                 r'prontu[aá]rio\s*(?:m[eé]dico)?\s*(?:n[ºo°]?\s*)?[\d/]+|'
-                r'(?:diagn[oó]stico|tratamento)\s+(?:de\s+|realizado\s+de\s+)?(?:HIV|AIDS|cancer|câncer|diabetes|epilepsia)'
+                r'(?:diagn[oó]stico|tratamento)\s+(?:de\s+|realizado\s+(?:de\s+)?)?(?:HIV|AIDS|cancer|câncer|diabetes|epilepsia)'
                 r')',
                 re.IGNORECASE
             ),
@@ -797,7 +785,23 @@ class PIIDetector:
     def _inicializar_presidio(self) -> None:
         """Inicializa o Presidio Analyzer com recognizers customizados."""
         try:
-            self.presidio_analyzer = AnalyzerEngine()
+            # Configura para português brasileiro
+            from presidio_analyzer.nlp_engine import NlpEngineProvider
+            
+            # Tenta criar engine com suporte a pt
+            try:
+                provider = NlpEngineProvider(nlp_configuration={
+                    "nlp_engine_name": "spacy",
+                    "models": [{"lang_code": "pt", "model_name": "pt_core_news_lg"}]
+                })
+                nlp_engine = provider.create_engine()
+                self.presidio_analyzer = AnalyzerEngine(
+                    nlp_engine=nlp_engine,
+                    supported_languages=["pt"]
+                )
+            except Exception:
+                # Fallback: usa engine padrão com supported_languages
+                self.presidio_analyzer = AnalyzerEngine(supported_languages=["pt", "en"])
             
             # Registra patterns customizados
             for nome, pattern_compilado in self.patterns_compilados.items():
@@ -1019,7 +1023,10 @@ class PIIDetector:
                     contexto = texto[max(0, inicio-60):fim+60].lower()
                     contexto_positivo = any(
                         kw in contexto for kw in [
-                            "meu cpf", "minha cpf", "conforme cadastro", "precisa ser verificado", "cpf do titular", "cpf contribuinte", "cadastrado com cpf", "cpf formato real", "cpf com dígito", "cpf com dv", "cpf:"
+                            "meu cpf", "minha cpf", "conforme cadastro", "precisa ser verificado", 
+                            "cpf do titular", "cpf contribuinte", "cadastrado com cpf", "cpf formato real", 
+                            "cpf com dígito", "cpf com dv", "cpf:", "contribuinte cpf", "titular do cpf",
+                            "contribuinte", "titular", "o cpf", "seu cpf", "informou seu cpf"
                         ]
                     )
                     contexto_negativo = self._contexto_negativo_cpf(texto, valor)
@@ -1193,6 +1200,11 @@ class PIIDetector:
 
                 elif tipo == 'CNH':
                     contexto = texto[max(0, inicio-80):fim+80].lower()
+                    # Contexto negativo: código de barras, boleto, etc
+                    contexto_negativo = re.search(r'c[oó]digo\s+de\s+barras|boleto|linha\s+digit[aá]vel', contexto)
+                    if contexto_negativo:
+                        continue  # Ignora CNH em contexto de código de barras
+                    
                     labels_cnh = [
                         "minha cnh", "cnh do titular", "cnh cadastrada", "habilitação", "carteira de motorista", "cnh:", "documento de identificação", "documento de identificacao",
                         "minha carteira", "meu documento", "identificação", "identificacao", "documento", "cnh", "habilitacao", "minha", "meu", "identidade", "identidade civil"
@@ -1205,8 +1217,8 @@ class PIIDetector:
                             "confianca": self._calcular_confianca("CNH", texto, inicio, fim),
                             "peso": 5, "inicio": inicio, "fim": fim
                         })
-                    # Se não contexto positivo, só aceita CNH >= 11 dígitos
-                    elif len(valor) >= 11:
+                    # Se não contexto positivo, só aceita CNH >= 11 dígitos, mas não em contexto de barras
+                    elif len(valor) >= 11 and not contexto_negativo:
                         findings.append({
                             "tipo": "CNH", "valor": valor,
                             "confianca": self._calcular_confianca("CNH", texto, inicio, fim),
@@ -1291,13 +1303,18 @@ class PIIDetector:
                 elif tipo == 'MENOR_IDENTIFICADO':
                     contexto = texto[max(0, inicio-60):fim+60].lower()
                     contextos_genericos = [
-                        'solicitação', 'solicito', 'pedido', 'benefício', 'beneficio', 'auxílio', 'auxilio', 'aposentadoria', 'requerimento', 'genérico', 'generica', 'genérica', 'genericamente', 'para', 'sobre', 'referente', 'referência', 'referencia', 'informação', 'informacao', 'informações', 'informacoes', 'dados epidemiológicos', 'dados epidemiologicos', 'dados estatísticos', 'dados estatisticos', 'estatística', 'estatistica', 'estatísticas', 'estatisticas', 'público', 'publico', 'secretaria', 'secretaria de educação', 'secretaria de educacao', 'gdf', 'pública', 'publica', 'público', 'publico', 'escola', 'instituição', 'instituicao', 'órgão', 'orgao', 'hospital', 'clínica', 'clinica', 'unidade', 'ubs', 'upa', 'posto', 'serviço', 'servico', 'serviços', 'servicos', 'genérico', 'generica', 'genérica', 'genericamente'
+                        'solicitação genérica', 'solicito informações', 'benefício geral', 'aposentadoria', 'requerimento genérico', 'dados epidemiológicos', 'dados epidemiologicos', 'dados estatísticos', 'dados estatisticos', 'estatística geral', 'secretaria de educação', 'secretaria de educacao', 'informação institucional', 'dados públicos', 'dados publicos'
                     ]
                     # Só ignora se contexto genérico/institucional
                     if any(cg in contexto for cg in contextos_genericos):
                         continue
+                    # Tenta reconstruir valor a partir dos grupos
+                    if valor is None and match.groups():
+                        grupos = [g for g in match.groups() if g]
+                        if grupos:
+                            valor = ' '.join(grupos)
                     findings.append({
-                        "tipo": "MENOR_IDENTIFICADO", "valor": valor,
+                        "tipo": "MENOR_IDENTIFICADO", "valor": valor or match.group(),
                         "confianca": self._calcular_confianca("MENOR_IDENTIFICADO", texto, inicio, fim),
                         "peso": 5, "inicio": inicio, "fim": fim
                     })
@@ -1373,7 +1390,27 @@ class PIIDetector:
                         "peso": 5, "inicio": inicio, "fim": fim
                     })
 
-                elif tipo in ['PROCESSO_SEI', 'PROTOCOLO_LAI', 'PROTOCOLO_OUV', 'MATRICULA_SERVIDOR']:
+                elif tipo == 'MATRICULA_SERVIDOR':
+                    # PATCH: Excluir matrícula que está dentro de processo SEI
+                    processo_sei_pattern = re.compile(r'\b\d{4,5}-\d{5,8}/\d{4}(?:-\d{2})?\b', re.IGNORECASE)
+                    dentro_sei = False
+                    for sei_match in processo_sei_pattern.finditer(texto):
+                        if sei_match.start() <= inicio and fim <= sei_match.end():
+                            dentro_sei = True
+                            break
+                        # Também verifica se o valor está contido no SEI
+                        if valor in sei_match.group():
+                            dentro_sei = True
+                            break
+                    if dentro_sei:
+                        continue  # Ignora matrícula dentro de SEI
+                    findings.append({
+                        "tipo": tipo, "valor": valor,
+                        "confianca": self._calcular_confianca(tipo, texto, inicio, fim),
+                        "peso": 3, "inicio": inicio, "fim": fim
+                    })
+
+                elif tipo in ['PROCESSO_SEI', 'PROTOCOLO_LAI', 'PROTOCOLO_OUV']:
                     findings.append({
                         "tipo": tipo, "valor": valor,
                         "confianca": self._calcular_confianca(tipo, texto, inicio, fim),
@@ -1408,6 +1445,76 @@ class PIIDetector:
                         "confianca": self._calcular_confianca("PLACA_VEICULO", texto, inicio, fim),
                         "peso": 3, "inicio": inicio, "fim": fim
                     })
+        
+        # === HEURÍSTICAS ADICIONAIS ===
+        texto_lower = texto.lower()
+        
+        # Heurística: Tratamento de câncer (específico)
+        # Mas NÃO se for contexto de solicitação genérica (isenção imposto de renda para aposentado)
+        if re.search(r'tratamento\s+(?:realizado\s+)?(?:de\s+)?c[aâ]ncer', texto_lower):
+            # Contexto genérico: combinação de isenção + imposto de renda + aposentado
+            contexto_generico = re.search(r'isen[çc][ãa]o\s+(?:de\s+)?imposto\s+de\s+renda.*aposentado|aposentado.*isen[çc][ãa]o\s+(?:de\s+)?imposto', texto_lower)
+            if not contexto_generico:
+                if not any(f.get('tipo') == 'DADO_SAUDE' for f in findings):
+                    findings.append({
+                        "tipo": "DADO_SAUDE", "valor": "Tratamento de câncer",
+                        "confianca": 0.95, "peso": 5, "inicio": 0, "fim": len(texto)
+                    })
+        
+        # Heurística: Menor de idade identificado
+        # Busca padrão "Nome, X anos, estudante/aluno"
+        menor_match = re.search(
+            r'(\b[A-Za-zÀ-ÿ]+)[\s,]+(\d{1,2})\s*anos',
+            texto
+        )
+        if menor_match:
+            nome = menor_match.group(1)
+            # Verifica se o nome começa com maiúscula
+            if nome and nome[0].isupper():
+                try:
+                    idade = int(menor_match.group(2))
+                    if idade < 18:
+                        # Verifica se há contexto de menor/estudante próximo
+                        contexto = texto[max(0, menor_match.start()-20):min(len(texto), menor_match.end()+40)].lower()
+                        if re.search(r'estudante|aluno|aluna|menor|crian[çc]a|escola|ec\s*\d', contexto):
+                            if not any(f.get('tipo') == 'MENOR_IDENTIFICADO' for f in findings):
+                                valor_menor = f"{nome}, {idade} anos"
+                                findings.append({
+                                    "tipo": "MENOR_IDENTIFICADO", "valor": valor_menor,
+                                    "confianca": 0.95, "peso": 5, "inicio": menor_match.start(), "fim": menor_match.end()
+                                })
+                except ValueError:
+                    pass
+        
+        # Heurística: Nome + menção de CPF/documento (sem número)
+        # Ex: "Maria Souza, servidora, informou seu CPF"
+        nome_cpf_match = re.search(
+            r'([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)+)[^.]{0,50}(?:seu\s+cpf|seu\s+documento|informou\s+(?:seu\s+)?cpf)',
+            texto, re.IGNORECASE
+        )
+        if nome_cpf_match:
+            nome = nome_cpf_match.group(1)
+            # Verifica se o nome começa com maiúscula e tem mais de uma palavra
+            if nome[0].isupper() and ' ' in nome:
+                if not self._deve_ignorar_entidade(nome):
+                    findings.append({
+                        "tipo": "NOME", "valor": nome,
+                        "confianca": 0.90, "peso": 4, "inicio": nome_cpf_match.start(1), "fim": nome_cpf_match.end(1)
+                    })
+        
+        # Heurística: Cidadão identificado como Nome
+        cidadao_match = re.search(
+            r'cidad[ãa]o[^.]{0,30}identificado[^.]{0,20}(?:como|por)\s+([A-ZÀ-Ú][a-záéíóúàâêôãõç]+)',
+            texto
+        )
+        if cidadao_match:
+            nome = cidadao_match.group(1)
+            if not self._deve_ignorar_entidade(nome):
+                findings.append({
+                    "tipo": "NOME", "valor": nome,
+                    "confianca": 0.85, "peso": 4, "inicio": cidadao_match.start(1), "fim": cidadao_match.end(1)
+                })
+        
         return findings
     
     def _extrair_nomes_gatilho(self, texto: str) -> List[Dict]:

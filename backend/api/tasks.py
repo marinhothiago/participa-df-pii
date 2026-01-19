@@ -1,4 +1,5 @@
-from backend.celery_worker import celery_app
+"""Tasks assíncronas do Celery para processamento em lote."""
+from backend.api.celery_config import celery_app
 from backend.src.detector import PIIDetector
 import pandas as pd
 import os
@@ -10,9 +11,10 @@ def processar_lote(self, arquivo_path, tipo_arquivo='csv', params=None):
     Salva o resultado em arquivo e retorna o caminho.
     """
     # Permitir configuração via params/env
+    # LLAMA-70B ÁRBITRO: Ativado por padrão para arbitrar casos ambíguos em lotes
     import os
     usar_gpu = os.getenv("PII_USAR_GPU", "False").lower() == "true"
-    use_llm_arbitration = os.getenv("PII_USE_LLM_ARBITRATION", "False").lower() == "true"
+    use_llm_arbitration = os.getenv("PII_USE_LLM_ARBITRATION", "True").lower() == "true"
     force_llm = False
     if params:
         usar_gpu = params.get("usar_gpu", usar_gpu)

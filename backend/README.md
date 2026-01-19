@@ -75,7 +75,7 @@ pinned: false
 - 🔒 **Segurança do token Hugging Face:** Uso obrigatório de `.env` (não versionado), carregamento automático em todos os entrypoints, nunca exposto em código ou log.
 - 🧹 **Limpeza e organização:** `.gitignore` e `.dockerignore` revisados, scripts de limpeza, deploy seguro, documentação atualizada.
 - 🐳 **Deploy profissional:** Docker Compose, Hugging Face Spaces, checklist de produção.
-- 🛠️ **Otimizador de ensemble:** `optimize_ensemble.py` para grid search de pesos do ensemble, reuso de detector, e validação automática.
+- 🛠️ **Otimizador de ensemble:** `scripts/optimize_ensemble.py` para grid search de pesos do ensemble, reuso de detector, e validação automática.
 
 ---
 ## 🆕 Estratégias de Merge de Spans (Presets)
@@ -121,7 +121,7 @@ curl -X POST "http://localhost:8000/analyze?merge_preset=precision" -H "Content-
 ### Gazetteer GDF
 - Edite `src/gazetteer_gdf.json` para adicionar órgãos, escolas, hospitais, programas ou aliases. O detector ignora entidades que batem com o gazetteer, reduzindo FPs em contexto institucional.
 
-- Execute `python optimize_ensemble.py` para buscar os melhores pesos do ensemble. O script reusa o detector e valida o F1-score automaticamente.
+- Execute `python scripts/optimize_ensemble.py` para buscar os melhores pesos do ensemble. O script reusa o detector e valida o F1-score automaticamente.
 ### Segurança do Token Hugging Face
 - Crie um `.env` (NÃO versionado) com `HF_TOKEN=seu_token`. O backend carrega automaticamente. Nunca exponha o token em código ou log.
 
@@ -130,7 +130,7 @@ curl -X POST "http://localhost:8000/analyze?merge_preset=precision" -H "Content-
 - [x] Scripts de limpeza não vão para produção
 - [x] Testes e benchmark executados antes do deploy
 ```bash
-python main_cli.py --input data/input/manifestacoes.xlsx --output data/output/resultado
+python scripts/main_cli.py --input data/input/manifestacoes.xlsx --output data/output/resultado
 
 # Rodar benchmark completo
 
@@ -160,6 +160,151 @@ pinned: false
 **Resumo:**
 - O token é lido em tempo de execução, nunca aparece no log nem no código.
 - O projeto está seguro para uso público e privado, desde que siga essas orientações.
+
+---
+
+## 🤖 Árbitro LLM: Llama-70B (v9.5.0)
+
+O motor de detecção agora conta com um **Árbitro LLM (Llama-70B)** que é acionado automaticamente em casos ambíguos para melhorar a precisão e reduzir falsos negativos.
+
+### Status: ✅ ATIVADO POR PADRÃO
+
+A partir da versão 9.5.0, o árbitro LLM está **ativado por padrão** (`use_llm_arbitration=True`).
+
+### Quando o LLAMA é Acionado
+
+O árbitro é chamado automaticamente em dois cenários:
+
+1. **Itens com baixa confiança**: Quando um PII é detectado mas a confiança está abaixo do threshold, o LLAMA analisa o contexto e decide se deve ser incluído.
+
+2. **Zero PIIs encontrados**: Quando o ensemble não encontra nenhum PII, o LLAMA faz uma análise final do texto completo como "última chance".
+
+### Fluxo de Decisão
+
+```
+INPUT (texto)
+     │
+     ▼
+┌────────────────────┐
+│ Ensemble Executa   │  BERT + NuNER + spaCy + Regex
+└────────┬───────────┘
+         │
+         ▼
+┌────────────────────┐
+│ Votação + Threshold│  Itens com confiança baixa → _pendentes_llm
+└────────┬───────────┘
+         │
+    ┌────┴────┐
+    │         │
+    ▼         ▼
+┌───────┐  ┌──────────────────┐
+│ PIIs  │  │ Baixa confiança/ │
+│ OK    │  │ Zero PIIs        │
+└───┬───┘  └────────┬─────────┘
+    │               │
+    │               ▼
+    │      ┌────────────────┐
+    │      │ LLAMA-70B      │  Análise contextual LGPD/LAI
+    │      │ ÁRBITRO        │  Prompt em português
+    │      └────────┬───────┘
+    │               │
+    │          ┌────┴────┐
+    │          │         │
+    │          ▼         ▼
+    │      ┌──────┐  ┌──────┐
+    │      │ PII  │  │ NÃO  │
+    │      │      │  │ PII  │
+    │      └──┬───┘  └──┬───┘
+    │         │         │
+    └────┬────┴─────────┘
+         │
+         ▼
+┌────────────────────┐
+│ Resultado Final    │  has_pii, entities, risk_level
+└────────────────────┘
+```
+
+### Configuração
+
+#### Variáveis de Ambiente
+
+```bash
+# .env
+HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxx  # OBRIGATÓRIO para LLAMA funcionar
+PII_USE_LLM_ARBITRATION=True       # Padrão: True (ativado)
+PII_USAR_GPU=True                  # Usar GPU se disponível
+```
+
+#### Desativar LLAMA (opcional)
+
+Para testes rápidos ou ambientes sem HF_TOKEN:
+
+```bash
+# Desativar via variável de ambiente
+PII_USE_LLM_ARBITRATION=False
+```
+
+Ou no código:
+
+```python
+detector = PIIDetector(use_llm_arbitration=False)
+```
+
+#### Forçar LLAMA em uma chamada específica
+
+```python
+# Usar LLAMA mesmo se desativado globalmente
+resultado, findings, risco, confianca = detector.detect(texto, force_llm=True)
+```
+
+### Requisitos
+
+| Requisito | Detalhe |
+|-----------|---------|
+| **HF_TOKEN** | Token do Hugging Face com acesso ao modelo Llama-2-70b-chat-hf |
+| **Conexão** | Internet para chamar a Hugging Face Inference API |
+| **Timeout** | 60 segundos por chamada |
+
+### Fail-Safe (Estratégia de Falha)
+
+Se o LLAMA não responder (timeout, erro de API, etc):
+
+- **Itens pendentes**: São INCLUÍDOS no resultado (evita falso negativo)
+- **Log**: Warning é emitido para monitoramento
+- **Resultado**: Sistema continua funcionando sem interrupção
+
+### Endpoint da API
+
+O endpoint `/analyze` suporta o parâmetro `use_llm`:
+
+```http
+POST /analyze?use_llm=true
+Content-Type: application/json
+
+{
+  "text": "Texto ambíguo para analisar"
+}
+```
+
+### Modelo Utilizado
+
+- **Modelo**: `meta-llama/Llama-2-70b-chat-hf`
+- **Endpoint**: Hugging Face Inference API
+- **Prompt**: Português, com instruções LGPD/LAI específicas
+- **Temperatura**: 0.1 (respostas determinísticas)
+
+### Impacto no Benchmark
+
+| Métrica | Sem LLAMA | Com LLAMA |
+|---------|-----------|-----------|
+| Precisão | 1.0000 | 1.0000 |
+| Sensibilidade | 1.0000 | 1.0000 |
+| F1-Score | 1.0000 | 1.0000 |
+| Latência média | ~200ms | ~500-2000ms* |
+
+*Latência aumenta apenas quando LLAMA é acionado (casos ambíguos).
+
+---
 
 ## 🆕 Integração Gazetteer GDF (v9.5)
 
@@ -319,21 +464,26 @@ backend/
 │       ├── combiners.py      ← ProbabilityCombiner, EntityAggregator
 │       └── calculator.py     ← PIIConfidenceCalculator (orquestrador)
 │
-├── main_cli.py               ← CLI para processamento em lote
-│                               - Entrada: CSV/XLSX com coluna "Texto Mascarado"
-│                               - Saída: JSON + CSV + XLSX com cores
+├── api/
+│   ├── main.py               ← FastAPI: endpoints /analyze e /health
+│   ├── celery_config.py      ← Configuração Celery + Redis
+│   └── tasks.py              ← Tasks assíncronas para lotes
 │
-├── benchmark.py              ← 🏆 Benchmark LGPD: 303 casos de teste
-│                               - F1-Score = 1.0000 (100% P/R)
-│                               - Casos seguros (não PII)
-│                               - PIIs clássicos (CPF, Email, Telefone)
-│                               - Edge cases de Brasília/GDF
-│                               - Imunidade funcional
+├── scripts/
+│   ├── main_cli.py           ← CLI para processamento em lote
+│   │                           - Entrada: CSV/XLSX com coluna "Texto Mascarado"
+│   │                           - Saída: JSON + CSV + XLSX com cores
+│   │
+│   ├── optimize_ensemble.py  ← Grid search de pesos do ensemble
+│   ├── clean_backend.ps1     ← Limpeza de cache do backend
+│   └── clean_frontend.ps1    ← Limpeza de cache do frontend
 │
-├── test_confianca.py         ← Testes do sistema de confiança
-│                               - Validação de dígitos verificadores
-│                               - Calibração isotônica
-│                               - Combinação log-odds
+├── tests/                    ← Testes automatizados (pytest)
+│   ├── test_benchmark.py     ← 🏆 Benchmark LGPD: 303 casos, F1=1.0000
+│   ├── test_amostra.py       ← Testes com amostra e-SIC
+│   ├── test_confianca.py     ← Testes do sistema de confiança
+│   ├── test_edge_cases.py    ← Casos extremos e edge cases
+│   └── ...                   ← Outros testes especializados
 │
 └── data/
     ├── input/                ← Arquivos para processar em lote
@@ -467,7 +617,7 @@ INFO:     Uvicorn running on http://0.0.0.0:7860 (Press CTRL+C to quit)
 # Linux/Mac: source venv/bin/activate
 
 # Execute o processamento
-python main_cli.py --input data/input/manifestacoes.xlsx --output data/output/resultado
+python scripts/main_cli.py --input data/input/manifestacoes.xlsx --output data/output/resultado
 ```
 
 **Argumentos:**

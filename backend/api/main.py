@@ -49,7 +49,7 @@ from typing import Dict, Optional
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from celery.result import AsyncResult
-from backend.celery_worker import celery_app
+from backend.api.celery_config import celery_app
 import json
 import threading
 from datetime import datetime
@@ -108,10 +108,11 @@ app.add_middleware(
 )
 
 # Inicializa detector PII na memória (carregamento único de modelos)
-# Permitir configuração via variáveis de ambiente ou argumentos futuros
+# LLAMA-70B ÁRBITRO: Ativado por padrão para arbitrar casos ambíguos
+# Desative via env PII_USE_LLM_ARBITRATION=False se não tiver HF_TOKEN ou para testes rápidos
 import os
 usar_gpu = os.getenv("PII_USAR_GPU", "True").lower() == "true"
-use_llm_arbitration = os.getenv("PII_USE_LLM_ARBITRATION", "False").lower() == "true"
+use_llm_arbitration = os.getenv("PII_USE_LLM_ARBITRATION", "True").lower() == "true"
 detector = PIIDetector(
     usar_gpu=usar_gpu,
     use_llm_arbitration=use_llm_arbitration
@@ -166,9 +167,17 @@ async def analyze(
     # Incrementa contador de requisições (global)
     increment_stat("classification_requests")
 
-    # Retorna resultado em formato padronizado
+    # Retorna resultado no formato documentado (compatível com frontend)
     return {
         "id": request_id,
+        # Formato novo (documentado no README)
+        "has_pii": has_pii,
+        "entities": findings,
+        "risk_level": risco,
+        "confidence_all_found": confianca,
+        "total_entities": len(findings) if findings else 0,
+        "sources_used": list(set(f.get("fonte", "regex") for f in findings)) if findings else [],
+        # Formato legado (para retrocompatibilidade)
         "classificacao": "NÃO PÚBLICO" if has_pii else "PÚBLICO",
         "risco": risco,
         "confianca": confianca,

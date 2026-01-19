@@ -279,6 +279,94 @@ class DiagnosticoMotor:
             'detalhes': {'encontrados': encontrados}
         }
 
+    def teste_llm_arbitro(self) -> dict:
+        """
+        Testa o árbitro LLM (Llama via Hugging Face).
+        
+        Verifica:
+        1. HF_TOKEN configurado
+        2. Biblioteca huggingface_hub instalada
+        3. Conexão e resposta do modelo
+        """
+        # 1. Verificar HF_TOKEN
+        HF_TOKEN = os.environ.get("HF_TOKEN")
+        if not HF_TOKEN:
+            return {
+                'status': Status.WARN,
+                'mensagem': 'HF_TOKEN não configurado. Árbitro LLM não disponível (fallback local será usado)',
+                'detalhes': {'error': 'HF_TOKEN missing'}
+            }
+        
+        # Token deve ter formato válido (começa com hf_)
+        if not HF_TOKEN.startswith("hf_"):
+            return {
+                'status': Status.WARN,
+                'mensagem': f'HF_TOKEN tem formato incomum (não começa com hf_)',
+                'detalhes': {'token_prefix': HF_TOKEN[:5] + '...'}
+            }
+        
+        # 2. Verificar biblioteca huggingface_hub
+        try:
+            from huggingface_hub import InferenceClient
+        except ImportError:
+            return {
+                'status': Status.WARN,
+                'mensagem': 'Biblioteca huggingface_hub não instalada. Execute: pip install huggingface_hub',
+                'detalhes': {'error': 'huggingface_hub not installed'}
+            }
+        
+        # 3. Testar conexão com modelo
+        model = os.environ.get("HF_MODEL", "meta-llama/Llama-3.2-3B-Instruct")
+        
+        t0 = time.time()
+        try:
+            client = InferenceClient(token=HF_TOKEN)
+            
+            messages = [
+                {"role": "user", "content": "Responda apenas com OK"}
+            ]
+            
+            response = client.chat_completion(
+                messages=messages,
+                model=model,
+                max_tokens=10,
+                temperature=0.1
+            )
+            
+            tempo_ms = (time.time() - t0) * 1000
+            answer = response.choices[0].message.content.strip()
+            
+            return {
+                'status': Status.OK,
+                'mensagem': f'LLM ({model.split("/")[-1]}) respondeu em {tempo_ms:.0f}ms ✅',
+                'detalhes': {
+                    'model': model,
+                    'response': answer[:50],
+                    'tempo_ms': tempo_ms
+                },
+                'tempo_ms': tempo_ms
+            }
+            
+        except Exception as e:
+            tempo_ms = (time.time() - t0) * 1000
+            error_msg = str(e)
+            
+            # Mensagens amigáveis para erros comuns
+            if "401" in error_msg or "Unauthorized" in error_msg:
+                return {
+                    'status': Status.WARN,
+                    'mensagem': 'HF_TOKEN sem acesso ao modelo. Verifique permissões em huggingface.co/settings/tokens',
+                    'detalhes': {'error': 'Unauthorized', 'model': model},
+                    'tempo_ms': tempo_ms
+                }
+            
+            return {
+                'status': Status.WARN,
+                'mensagem': f'Erro ao conectar com LLM: {error_msg[:100]}. Fallback local será usado.',
+                'detalhes': {'error': error_msg, 'model': model},
+                'tempo_ms': tempo_ms
+            }
+
     def teste_integracao_api(self) -> dict:
         """Testa a integração real com a API local (FastAPI), priorizando porta 7860 se disponível."""
         import requests
@@ -372,6 +460,7 @@ class DiagnosticoMotor:
         print("-" * 50, flush=True)
         testes_integracoes = [
             ("Integração API", self.teste_integracao_api),
+            ("Árbitro LLM (Llama-70B)", self.teste_llm_arbitro),
         ]
         for nome, func in testes_integracoes:
             result = self.testar_componente(nome, func)
