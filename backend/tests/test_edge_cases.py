@@ -5,12 +5,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 Testes de edge cases para o PIIDetector.
 NOTA: O motor é CONSERVADOR - prefere detectar um falso positivo do que deixar passar PII real.
 Por isso, formatos que PARECEM ser documentos são detectados mesmo com dígitos faltando.
+
+O detector é carregado via fixture global em conftest.py (scope=session).
 """
 
 import pytest
-from src.detector import PIIDetector
 
-detector = PIIDetector(usar_gpu=False)
+# NOTA: Fixture 'detector' vem do conftest.py (scope=session)
+# Não instanciar PIIDetector() aqui para evitar carregamento duplicado
 
 @pytest.mark.parametrize("texto, esperado", [
     # CPF válidos, inválidos, truncados, com letras
@@ -65,7 +67,12 @@ detector = PIIDetector(usar_gpu=False)
     ("Texto sem nenhum dado pessoal", False),
     ("Números aleatórios: 1234567890, 987654321", False),  # Sem contexto de documento
 ])
-def test_edge_cases(texto, esperado):
+def test_edge_cases(detector, texto, esperado):
+    """Testa edge cases de detecção de PII.
+    
+    Args:
+        detector: Fixture do PIIDetector (conftest.py, scope=session)
+    """
     is_pii, findings, nivel_risco, confianca = detector.detect(texto)
     achou = any(r for r in findings if r['tipo'] != 'NOME_CONTRA')
     assert achou == esperado, f"Texto: {texto} | Esperado: {esperado} | Achou: {findings}"

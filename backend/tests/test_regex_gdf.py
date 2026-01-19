@@ -6,6 +6,8 @@ Testes dos padrões regex específicos do GDF.
 NOTA: PROCESSO_SEI, PROTOCOLO_LAI e PROTOCOLO_OUV são números de protocolo PÚBLICOS,
 não são dados pessoais (PII). O motor os detecta internamente mas os EXCLUI do resultado final.
 Este teste valida apenas os padrões que SÃO considerados PII.
+
+O detector é carregado via fixture global em conftest.py (scope=session).
 """
 
 import re
@@ -14,15 +16,11 @@ import os
 import pytest
 pytestmark = pytest.mark.timeout(10)
 
-# Garante import do detector
+# Path setup (conftest.py já faz isso, mas mantemos por segurança)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src.detector import PIIDetector
 
-# Validação explícita da inicialização do modelo spaCy
-try:
-    detector = PIIDetector()
-except Exception as e:
-    print(f"Erro ao inicializar PIIDetector: {e}")
+# NOTA: Detector vem da fixture 'detector' definida em conftest.py
+# Não instanciar PIIDetector() aqui para evitar carregamento duplicado
 
 # Casos reais e edge cases dos padrões GDF
 # NOTA: Processos SEI e Protocolos LAI/OUV NÃO são PII (são públicos)
@@ -61,11 +59,14 @@ CASES = [
 ]
 
 @pytest.mark.parametrize("texto,tipo,esperado", CASES)
-def test_regex_gdf_padrao(texto, tipo, esperado):
+def test_regex_gdf_padrao(detector, texto, tipo, esperado):
     """
     Testa se o detector final (não o regex interno) detecta ou não PII.
     Processos/Protocolos são públicos = não PII = esperado False.
     Matrículas e Inscrições identificam pessoas = PII = esperado True.
+    
+    Args:
+        detector: Fixture do PIIDetector (conftest.py, scope=session)
     """
     contem_pii, findings, risco, confianca = detector.detect(texto)
     

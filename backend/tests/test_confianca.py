@@ -92,9 +92,12 @@ def test_pii_confidence_calculator():
     assert doc_conf.has_pii is True
     assert doc_conf.confidence_all_found > 0.8
 
-def test_integration_with_detector():
-    from src.detector import PIIDetector, criar_detector
-    detector = criar_detector(usar_gpu=False, use_probabilistic_confidence=True)
+def test_integration_with_detector(detector):
+    """Testa integração do sistema de confiança com PIIDetector.
+    
+    Args:
+        detector: Fixture do PIIDetector (conftest.py, scope=session)
+    """
     texto_teste = "Meu CPF é 529.982.247-25 e meu email é joao@gmail.com"
     is_pii, findings, risco, conf = detector.detect(texto_teste)
     assert is_pii is True

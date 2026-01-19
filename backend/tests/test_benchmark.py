@@ -489,10 +489,12 @@ DATASET_LGPD = [
 
 
 # =============================================================================
-# CONFIGURAÇÃO DO DETECTOR (fora da lista, após fechar)
+# CONFIGURAÇÃO DO DETECTOR
+# O detector é carregado via fixture global em conftest.py (scope=session)
+# Isso evita recarregar o modelo NER (~1.3GB) para cada teste
 # =============================================================================
 
-detector = PIIDetector()
+# NOTA: Não instanciar PIIDetector() aqui - usar fixture 'detector' nos testes
 
 
 # =============================================================================
@@ -500,8 +502,12 @@ detector = PIIDetector()
 # =============================================================================
 
 @pytest.mark.parametrize("texto, contem_pii, descricao, categoria", DATASET_LGPD)
-def test_pii_detector_dataset(texto, contem_pii, descricao, categoria):
-    """Teste unitário parametrizado para todo o dataset LGPD."""
+def test_pii_detector_dataset(detector, texto, contem_pii, descricao, categoria):
+    """Teste unitário parametrizado para todo o dataset LGPD.
+    
+    Args:
+        detector: Fixture do PIIDetector (conftest.py, scope=session)
+    """
     resultado, findings, risco, confianca = detector.detect(texto)
     assert resultado == contem_pii, (
         f"\nTexto: {texto}\n"
@@ -521,7 +527,9 @@ def executar_benchmark():
     """Executa o benchmark completo e calcula métricas P1."""
     
     print("\n[*] Inicializando detector...")
-    det = PIIDetector()
+    # Usa o singleton do conftest para evitar recarregar o modelo
+    from conftest import get_shared_detector
+    det = get_shared_detector()
     
     print("\n[*] Executando benchmark LGPD...")
     print(f"{Fore.GREEN}" + "=" * 80 + f"{Style.RESET_ALL}")

@@ -1,6 +1,8 @@
 """
 Testes básicos de sanidade do PIIDetector.
 Verifica se o detector inicializa corretamente e detecta casos triviais.
+
+O detector é carregado via fixture global em conftest.py (scope=session).
 """
 import sys
 import os
@@ -8,14 +10,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 import pytest
-from src.detector import PIIDetector
 
-
-# Fixture para reusar o detector em todos os testes
-@pytest.fixture(scope="module")
-def detector():
-    """Inicializa o detector uma única vez para todos os testes do módulo."""
-    return PIIDetector()
+# NOTA: Fixture 'detector' vem do conftest.py (scope=session)
+# Não precisa definir aqui - pytest encontra automaticamente
 
 
 class TestDetectorSanity:

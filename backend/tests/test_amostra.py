@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Análise da amostra oficial para identificar anomalias e registros de baixa confiança."""
+"""Análise da amostra oficial para identificar anomalias e registros de baixa confiança.
+
+O detector é carregado via fixture global em conftest.py (scope=session).
+"""
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -7,13 +10,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../s
 
 import pytest
 import pandas as pd
-from src.detector import PIIDetector
 
-
-@pytest.fixture(scope="module")
-def detector():
-    """Inicializa o detector uma única vez para todos os testes do módulo."""
-    return PIIDetector()
+# NOTA: Fixture 'detector' vem do conftest.py (scope=session)
+# Não precisa definir aqui - pytest encontra automaticamente
 
 
 @pytest.fixture
