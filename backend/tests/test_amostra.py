@@ -1,13 +1,13 @@
-import sys, os
-import pandas as pd
-from src.detector import PIIDetector
+#!/usr/bin/env python3
+"""Análise da amostra oficial para identificar anomalias e registros de baixa confiança."""
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
 import pytest
 import pandas as pd
 from src.detector import PIIDetector
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-#!/usr/bin/env python3
-"""Análise da amostra oficial para identificar anomalias e registros de baixa confiança."""
 
 @pytest.fixture
 def sample_df():
