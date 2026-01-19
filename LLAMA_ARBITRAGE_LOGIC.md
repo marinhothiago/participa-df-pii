@@ -1,14 +1,14 @@
 # LLAMA Como Árbitro: Lógica de Ativação
 
 ## Status Atual (v9.5.0)
-**LLAMA está ATIVADO por padrão e se aciona automaticamente em 3 cenários:**
+**LLAMA está DESATIVADO por padrão para evitar custos. Quando ativado, se aciona automaticamente em 3 cenários:**
 
 ### Configuração Atual
 | Parâmetro | Valor |
 |-----------|-------|
 | **Modelo** | `meta-llama/Llama-3.2-3B-Instruct` |
 | **Biblioteca** | `huggingface_hub` (InferenceClient) |
-| **Ativado** | Sim (padrão) |
+| **Ativado** | Não (opt-in) - ative com `PII_USE_LLM_ARBITRATION=True` |
 | **Latência** | ~1-2 segundos |
 | **Token** | `HF_TOKEN` no `.env` |
 
@@ -129,20 +129,20 @@ Por Quê: Estratégia conservadora - melhor falso positivo do que falso negativo
 
 ## 3️⃣ CÓDIGO - Pontos Críticos
 
-### Inicialização (padrão v9.5.0 - ATIVADO)
+### Inicialização (padrão v9.5.0 - DESATIVADO para evitar custos)
 ```python
-detector = PIIDetector(use_llm_arbitration=True)  # ← ATIVADO por padrão
+detector = PIIDetector(use_llm_arbitration=False)  # ← DESATIVADO por padrão
 resultado, findings, _, _ = detector.detect("texto")
-# → LLAMA PARTICIPA quando necessário (casos ambíguos)
+# → LLAMA NÃO participa (ensemble apenas)
 ```
 
-### Desativar Manualmente (opcional)
+### Ativar Manualmente (recomendado para produção)
 ```python
 # Forma 1: Na criação
-detector = PIIDetector(use_llm_arbitration=False)
+detector = PIIDetector(use_llm_arbitration=True)
 
 # Forma 2: Via variável de ambiente
-# PII_USE_LLM_ARBITRATION=False
+# PII_USE_LLM_ARBITRATION=True
 ```
 
 ### Forçar LLAMA em uma chamada específica
@@ -154,8 +154,8 @@ resultado = detector.detect("texto", force_llm=True)
 ### Ativação via Variáveis de Ambiente
 ```bash
 # .env
-HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxx          # OBRIGATÓRIO
-PII_USE_LLM_ARBITRATION=True               # Padrão: True (ativado)
+HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxx          # OBRIGATÓRIO se ativar LLM
+PII_USE_LLM_ARBITRATION=True               # Padrão: False (desativado)
 PII_USAR_GPU=True                          # Usar GPU se disponível
 detector = PIIDetector(use_llm_arbitration=True)
 
@@ -207,13 +207,13 @@ Se LLAMA não responder (timeout, erro API, etc.):
 
 ### Pergunta: "LLAMA está ativado e se aciona automaticamente quando necessário?"
 
-**RESPOSTA: SIM! ✅**
+**RESPOSTA: NÃO por padrão (opt-in) ⚠️**
 
-- ✅ LLAMA está **ATIVADO por padrão** (`use_llm_arbitration=True`)
-- ✅ É acionado **automaticamente** quando necessário:
+- ⚠️ LLAMA está **DESATIVADO por padrão** (`use_llm_arbitration=False`) para evitar custos
+- ✅ Quando ativado, é acionado **automaticamente** quando necessário:
   - Itens com baixa confiança
   - Zero PIIs encontrados
-- ✅ Pode ser forçado via `force_llm=True` ou desativado se necessário
+- ✅ Pode ser forçado via `force_llm=True` ou ativado globalmente
 
 ### O que Acontece com LLAMA ATIVADO (padrão):
 
@@ -224,13 +224,14 @@ Cenário: Baixa confiança ou zero PIIs
 └─ Latência: ~500-2000ms apenas quando acionado
 ```
 
-### Quando Desativar LLAMA (opcional):
+### Quando Ativar LLAMA (recomendado):
 ```
-❌ Desativar (testes rápidos, sem HF_TOKEN):
-   - Testes locais sem internet
-   - Sem HF_TOKEN configurado
-   - Processamento em massa com latência crítica
-   - Via: PII_USE_LLM_ARBITRATION=False
+✅ Ativar (produção, casos críticos):
+   - Casos muito ambíguos
+   - Dados sensíveis (saúde, menores)
+   - Produção com requisitos rígidos LGPD
+   - API em tempo real com timeout adequado
+   - Via: PII_USE_LLM_ARBITRATION=True
 
 ✅ Manter ATIVADO (produção, casos críticos):
    - Casos muito ambíguos
@@ -246,13 +247,13 @@ Cenário: Baixa confiança ou zero PIIs
 ```python
 from src.detector import PIIDetector
 
-# Caso 1: Padrão (LLAMA ATIVADO v9.5.0)
-det1 = PIIDetector()  # use_llm_arbitration=True por padrão
-r1, f1, _, _ = det1.detect("Silva é um sobrenome comum")  # LLAMA analisa se necessário
+# Caso 1: Padrão (LLAMA DESATIVADO v9.5.0 - evita custos)
+det1 = PIIDetector()  # use_llm_arbitration=False por padrão
+r1, f1, _, _ = det1.detect("Silva é um sobrenome comum")  # Apenas ensemble
 
-# Caso 2: Desativar LLAMA explicitamente
-det2 = PIIDetector(use_llm_arbitration=False)
-r2, f2, _, _ = det2.detect("Silva é um sobrenome comum")  # Apenas ensemble
+# Caso 2: Ativar LLAMA explicitamente
+det2 = PIIDetector(use_llm_arbitration=True)
+r2, f2, _, _ = det2.detect("Silva é um sobrenome comum")  # LLAMA analisa se necessário
 
 # Caso 3: Forçar LLAMA em uma chamada específica
 r3, f3, _, _ = det2.detect("Silva é um sobrenome comum", force_llm=True)  # Força LLAMA
@@ -260,15 +261,15 @@ r3, f3, _, _ = det2.detect("Silva é um sobrenome comum", force_llm=True)  # For
 
 ---
 
-## Status Final: ✅ ATIVADO POR PADRÃO (v9.5.0)
+## Status Final: ⚠️ DESATIVADO POR PADRÃO (v9.5.0 - evita custos)
 
 **LLAMA é um ÁRBITRO INTELIGENTE de SEGUNDA LINHA:**
 1. Ensemble executa primeiro (BERT + spaCy + Regex)
-2. Se confiança baixa OU zero PIIs → LLAMA é acionado automaticamente
+2. Se confiança baixa OU zero PIIs → LLAMA é acionado automaticamente **se ativado**
 3. LLAMA faz arbitragem inteligente com contexto LGPD/LAI
 4. Se LLAMA falha → Fail-safe (inclui para evitar FN)
-5. **ATIVADO por padrão** (`use_llm_arbitration=True`)
-6. **Requisito**: `HF_TOKEN` configurado no `.env`
+5. **DESATIVADO por padrão** (`use_llm_arbitration=False`) para evitar custos
+6. **Requisito**: `HF_TOKEN` configurado no `.env` + `PII_USE_LLM_ARBITRATION=True`
 
 ### Variáveis de Ambiente
 
@@ -280,7 +281,7 @@ HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxx
 # Modelos disponíveis: meta-llama/Llama-3.2-3B-Instruct, meta-llama/Llama-3.1-70B-Instruct
 # HF_MODEL=meta-llama/Llama-3.2-3B-Instruct
 
-PII_USE_LLM_ARBITRATION=True   # Padrão: True
+PII_USE_LLM_ARBITRATION=True   # Padrão: False (ative para usar)
 PII_USAR_GPU=True              # Usar GPU se disponível
 ```
 

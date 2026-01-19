@@ -108,11 +108,11 @@ app.add_middleware(
 )
 
 # Inicializa detector PII na memória (carregamento único de modelos)
-# LLAMA-3.2-3B ÁRBITRO: Ativado por padrão para arbitrar casos ambíguos
-# Desative via env PII_USE_LLM_ARBITRATION=False se não tiver HF_TOKEN ou para testes rápidos
+# LLAMA-3.2-3B ÁRBITRO: Desativado por padrão para evitar custos
+# Ative via env PII_USE_LLM_ARBITRATION=True se tiver HF_TOKEN configurado
 import os
 usar_gpu = os.getenv("PII_USAR_GPU", "True").lower() == "true"
-use_llm_arbitration = os.getenv("PII_USE_LLM_ARBITRATION", "True").lower() == "true"
+use_llm_arbitration = os.getenv("PII_USE_LLM_ARBITRATION", "False").lower() == "true"
 detector = PIIDetector(
     usar_gpu=usar_gpu,
     use_llm_arbitration=use_llm_arbitration

@@ -299,7 +299,7 @@ class PIIDetector:
         self,
         usar_gpu: bool = True,
         use_probabilistic_confidence: bool = True,
-        use_llm_arbitration: bool = True
+        use_llm_arbitration: bool = False
     ):
         """
         Inicializa o detector de PII.
@@ -307,7 +307,7 @@ class PIIDetector:
         Args:
             usar_gpu: Se deve usar GPU para modelos NER
             use_probabilistic_confidence: Se deve usar sistema de confiança probabilística
-            use_llm_arbitration: Se deve usar Llama-3.2-3B para arbitrar casos ambíguos (ATIVADO por padrão)
+            use_llm_arbitration: Se deve usar Llama-3.2-3B para arbitrar casos ambíguos (DESATIVADO por padrão - requer HF_TOKEN)
         """
         # Configurações
         self.usar_gpu = usar_gpu
