@@ -55,5 +55,5 @@ CASES = [
 @pytest.mark.parametrize("texto,tipo,esperado", CASES)
 def test_regex_gdf_padrao(texto, tipo, esperado):
     findings = detector._detectar_regex(texto)
-    achou = any(f.tipo == tipo for f in findings)
+    achou = any(f['tipo'] == tipo for f in findings)
     assert achou == esperado, f"Texto: {texto} | Tipo: {tipo} | Esperado: {esperado} | Achados: {findings}"

@@ -15,6 +15,18 @@ from typing import Optional, Tuple
 
 
 class DVValidator:
+    def cpf_tem_formato_valido(self, valor: str) -> bool:
+        """Verifica se o CPF tem formato válido (11 dígitos, não repetido)."""
+        cpf = self.limpar_numero(valor)
+        if len(cpf) != 11:
+            return False
+        if cpf == cpf[0] * 11:
+            return False
+        return True
+
+    def cpf_dv_correto(self, valor: str) -> bool:
+        """Verifica se o dígito verificador do CPF está correto."""
+        return self.validar_cpf(valor)
     """Validador de Dígito Verificador para documentos brasileiros."""
     
     @staticmethod

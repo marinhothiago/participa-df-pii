@@ -9,7 +9,16 @@ def processar_lote(self, arquivo_path, tipo_arquivo='csv', params=None):
     Processa um arquivo CSV/XLSX em lote usando o PIIDetector.
     Salva o resultado em arquivo e retorna o caminho.
     """
-    detector = PIIDetector(usar_gpu=False)
+    # Permitir configuração via params/env
+    import os
+    usar_gpu = os.getenv("PII_USAR_GPU", "False").lower() == "true"
+    use_llm_arbitration = os.getenv("PII_USE_LLM_ARBITRATION", "False").lower() == "true"
+    force_llm = False
+    if params:
+        usar_gpu = params.get("usar_gpu", usar_gpu)
+        use_llm_arbitration = params.get("use_llm_arbitration", use_llm_arbitration)
+        force_llm = params.get("force_llm", force_llm)
+    detector = PIIDetector(usar_gpu=usar_gpu, use_llm_arbitration=use_llm_arbitration)
     if tipo_arquivo == 'csv':
         df = pd.read_csv(arquivo_path)
     elif tipo_arquivo == 'xlsx':
@@ -20,7 +29,7 @@ def processar_lote(self, arquivo_path, tipo_arquivo='csv', params=None):
     resultados = []
     for idx, row in df.iterrows():
         texto = row.get('texto') or row.get('Texto') or str(row)
-        is_pii, findings, nivel_risco, confianca = detector.detect(texto)
+        is_pii, findings, nivel_risco, confianca = detector.detect(texto, force_llm=force_llm)
         resultados.append({
             'linha': idx,
             'texto': texto,

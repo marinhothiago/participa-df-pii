@@ -18,10 +18,16 @@ def main():
     parser = argparse.ArgumentParser(description="Detector PII Participa DF - CLI")
     parser.add_argument('--input', type=str, required=True, help="Arquivo de entrada")
     parser.add_argument('--output', type=str, required=True, help="Nome do arquivo de saída")
+    parser.add_argument('--usar-gpu', action='store_true', help="Usar GPU para modelos NER")
+    parser.add_argument('--use-llm-arbitration', action='store_true', help="Usar árbitro LLM para casos ambíguos")
+    parser.add_argument('--force-llm', action='store_true', help="Forçar uso do árbitro LLM em todos os casos")
     args = parser.parse_args()
 
     print("🚀 Iniciando Motor Participa DF (Híbrido + LGPD)...")
-    detector = PIIDetector()
+    detector = PIIDetector(
+        usar_gpu=args.usar_gpu,
+        use_llm_arbitration=args.use_llm_arbitration
+    )
 
     # Leitura do arquivo
     try:
@@ -38,7 +44,9 @@ def main():
     print(f"🔍 Analisando {len(df)} registros...")
     
     # Processamento - O detector retorna: (bool, lista_detalhes, risco, confianca)
-    results = df[coluna].fillna("").apply(detector.detect)
+    def run_detect(texto):
+        return detector.detect(texto, force_llm=args.force_llm)
+    results = df[coluna].fillna("").apply(run_detect)
     
     # CRIANDO AS COLUNAS NA ORDEM PADRONIZADA
     # 1. Classificação | 2. Confiança | 3. Nível de Risco | 4. Identificadores

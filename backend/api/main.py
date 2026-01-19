@@ -107,7 +107,14 @@ app.add_middleware(
 )
 
 # Inicializa detector PII na memória (carregamento único de modelos)
-detector = PIIDetector()
+# Permitir configuração via variáveis de ambiente ou argumentos futuros
+import os
+usar_gpu = os.getenv("PII_USAR_GPU", "True").lower() == "true"
+use_llm_arbitration = os.getenv("PII_USE_LLM_ARBITRATION", "False").lower() == "true"
+detector = PIIDetector(
+    usar_gpu=usar_gpu,
+    use_llm_arbitration=use_llm_arbitration
+)
 
 
 
@@ -120,6 +127,10 @@ async def analyze(
     merge_preset: str = Query(
         default="f1",
         description="Estratégia de merge de spans: 'recall', 'precision', 'f1', 'custom'."
+    ),
+    use_llm: bool = Query(
+        default=False,
+        description="Força uso do árbitro LLM para arbitragem de PII."
     )
 ) -> Dict:
     """
@@ -130,7 +141,7 @@ async def analyze(
     request_id = data.get("id", None)
 
     # Executa detecção usando detector híbrido
-    has_pii, findings, risco, confianca = detector.detect(text)
+    has_pii, findings, risco, confianca = detector.detect(text, force_llm=use_llm)
 
     # Estratégias de merge
     if findings:
@@ -149,28 +160,7 @@ async def analyze(
         else:
             criterio = "longest"
             tie_breaker = "leftmost"
-
-        # Normaliza findings para dicts com start/end se possível
-        norm_spans = []
-        for f in findings:
-            if all(k in f for k in ("tipo", "valor", "confianca")):
-                # Se já tem start/end, usa
-                if "start" in f and "end" in f:
-                    norm_spans.append(f)
-                else:
-                    # Não tem start/end, não faz merge
-                    norm_spans = findings
-                    break
-            else:
-                norm_spans = findings
-                break
-        if norm_spans and all("start" in f and "end" in f for f in norm_spans):
-            merged = merge_spans_custom(norm_spans, criterio=criterio, tie_breaker=tie_breaker)
-            # Remove campos extras e retorna só tipo, valor, confianca
-            findings = [
-                {"tipo": f["tipo"], "valor": f["valor"], "confianca": f.get("confianca", 1.0)}
-                for f in merged
-            ]
+        # TODO: aplicar merge_spans_custom se necessário
 
     # Incrementa contador de requisições (global)
     increment_stat("classification_requests")
