@@ -107,13 +107,70 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Agora o backend suporta:
-- **Pipeline híbrido original** (regex, BERT, NuNER, spaCy, gazetteer, regras, confiança, thresholds, pós-processamento)
-- **Presidio Framework (Microsoft)**: manutenção/expansão modular dos detectores PII, multi-idioma, fácil customização
-- **Árbitro LLM (Llama-70B via Hugging Face Inference API)**: explicação e decisão em casos ambíguos
-- **Ensemble/Fusão**: resultados combinados para máxima cobertura e explicabilidade
+| Agora o backend suporta:
+| - **Pipeline híbrido avançado**: Regex, validação DV, BERT NER, NuNER, spaCy, gazetteer institucional, regras de negócio, pós-processamento, ensemble/fusão, calibradores probabilísticos e thresholds dinâmicos.
+| - **Presidio Framework (Microsoft)**: expansão modular de detectores PII, multi-idioma, fácil customização.
+| - **Árbitro LLM (Llama-70B via Hugging Face Inference API)**: explicação e decisão em casos ambíguos (opcional).
+| - **Gazetteer institucional GDF**: filtro de falsos positivos para nomes de órgãos, escolas, hospitais e aliases do DF.
+| - **Sistema de confiança probabilística**: calibração isotônica, combinação log-odds, thresholds dinâmicos por tipo, explicabilidade total.
+| - **Presets de merge de spans**: recall, precision, f1, custom (ajustável via parâmetro na API).
+| - **Novo formato de resposta da API**: dicionário estruturado, pronto para integrações modernas.
+| - **Testes robustos**: edge cases, benchmark LGPD, análise de confiança, integração e cobertura total.
+|
+| Consulte o backend/README.md para exemplos de uso, formato de resposta e detalhes técnicos.
 
-Consulte o backend/README.md para exemplos de uso e detalhes técnicos.
+---
+
+## 🆕 NOVO FORMATO DE RESPOSTA DA API
+
+O endpoint principal agora retorna um dicionário estruturado, exemplo:
+
+```json
+{
+  "has_pii": true,
+  "entities": [
+    {"tipo": "CPF", "valor": "123.456.789-09", "confianca": 0.98, "fonte": "regex"}
+  ],
+  "risk_level": "ALTO",
+  "confidence_all_found": 0.97,
+  "total_entities": 1,
+  "sources_used": ["regex", "bert_ner"]
+}
+```
+
+**Principais campos:**
+- `has_pii`: se encontrou dado pessoal
+- `entities`: lista detalhada de entidades (tipo, valor, confiança, fonte)
+- `risk_level`: nível de risco LGPD
+- `confidence_all_found`: confiança global
+- `total_entities`: total de entidades detectadas
+- `sources_used`: fontes usadas na detecção
+
+**Atenção:** O frontend agora deve consumir este novo formato. O formato antigo (tupla) foi descontinuado.
+
+---
+
+## 🧪 ESTRATÉGIA DE TESTES
+
+- **Cobertura total:** edge cases, benchmark LGPD, análise de confiança, integração, regressão.
+- **Testes unitários:** funções isoladas (regex, validadores, calibradores).
+- **Testes de integração:** fluxo completo (detector + confiança + API).
+- **Testes de benchmark:** performance, recall, precisão, F1-score.
+- **Testes de filtragem:** robustez contra falsos positivos/negativos.
+
+Todos os testes podem ser executados via `pytest` no backend.
+
+---
+
+## 🚦 MIGRAÇÃO DO FRONTEND PARA NOVA API
+
+1. Atualize o consumo da API para o novo formato de resposta (dicionário estruturado).
+2. Ajuste o parsing dos campos: use `has_pii`, `entities`, `risk_level`, `confidence_all_found`, etc.
+3. Aproveite os novos campos para exibir mais detalhes (confiança por entidade, fontes, etc).
+4. Remova qualquer dependência do formato antigo (tupla).
+5. Teste todos os fluxos do frontend.
+
+Consulte o backend/README.md para exemplos detalhados e documentação técnica.
 
 ---
 

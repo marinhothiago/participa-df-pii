@@ -216,24 +216,66 @@ O motor agora integra um **gazetteer institucional do GDF** (arquivo `gazetteer_
 ---
 
 ## 📋 Objetivo do Backend
-
 Detectar, classificar e avaliar o risco de vazamento de dados pessoais em textos de manifestações do Participa DF, retornando:
 
-- **Classificação:** "PÚBLICO" ou "NÃO PÚBLICO"
-- **Nível de Risco:** SEGURO, BAIXO, MODERADO, ALTO, CRÍTICO (5 níveis LGPD)
-- **Confiança:** Score normalizado (0.0 a 1.0)
-- **Detalhes:** Lista de PIIs encontrados com tipo, valor e confiança
+- **Novo formato de resposta (API v2):**
+  ```json
+  {
+    "has_pii": true,
+    "entities": [
+      {"tipo": "CPF", "valor": "123.456.789-09", "confianca": 0.98, "fonte": "regex"}
+    ],
+    "risk_level": "ALTO",
+    "confidence_all_found": 0.97,
+    "total_entities": 1,
+    "sources_used": ["regex", "bert_ner"]
+  }
+  ```
+
+- **Principais campos:**
+  - `has_pii`: se encontrou dado pessoal
+  - `entities`: lista detalhada de entidades (tipo, valor, confiança, fonte)
+  - `risk_level`: nível de risco LGPD
+  - `confidence_all_found`: confiança global
+  - `total_entities`: total de entidades detectadas
+  - `sources_used`: fontes usadas na detecção
+
+**Atenção:** O frontend agora deve consumir este novo formato. O formato antigo (tupla) foi descontinuado.
 
 ### Funcionalidades Principais
 
-- ✅ **Rastreabilidade Total:** Preserva o ID original do e-SIC em todo o fluxo
-- ✅ **Motor Híbrido v9.4.3:** Ensemble de Regex + BERT Davlan + NuNER + spaCy + Regras
-- ✅ **30+ Tipos de PII:** Documentos, contatos, financeiros, saúde, biometria, localização
-- ✅ **Confiança Probabilística:** Calibração isotônica + combinação log-odds
-- ✅ **Três Formas de Uso:** API REST, Interface CLI (lote) e integração com Dashboard Web
-- ✅ **Validação de Documentos:** CPF, CNPJ, PIS, CNS com dígito verificador
-- ✅ **Contexto Brasília/GDF:** Imunidade funcional para servidores públicos em exercício
-- ✅ **Contadores Globais:** Persistência em stats.json com thread-safety
+- ✅ **Pipeline híbrido avançado:** Regex, validação DV, BERT NER, NuNER, spaCy, gazetteer institucional, regras de negócio, pós-processamento, ensemble/fusão, calibradores probabilísticos e thresholds dinâmicos.
+- ✅ **Presets de merge de spans:** recall, precision, f1, custom (ajustável via parâmetro na API).
+- ✅ **Gazetteer institucional GDF:** filtro de falsos positivos para nomes de órgãos, escolas, hospitais e aliases do DF.
+- ✅ **Sistema de confiança probabilística:** calibração isotônica, combinação log-odds, thresholds dinâmicos por tipo, explicabilidade total.
+- ✅ **Árbitro LLM (opcional):** explicação e decisão em casos ambíguos (Llama-70B via Hugging Face Inference API).
+- ✅ **30+ Tipos de PII:** documentos, contatos, financeiros, saúde, biometria, localização.
+- ✅ **Rastreabilidade Total:** preserva o ID original do e-SIC em todo o fluxo.
+- ✅ **Contadores Globais:** persistência em stats.json com thread-safety.
+
+---
+
+## 🧪 ESTRATÉGIA DE TESTES
+
+- **Cobertura total:** edge cases, benchmark LGPD, análise de confiança, integração, regressão.
+- **Testes unitários:** funções isoladas (regex, validadores, calibradores).
+- **Testes de integração:** fluxo completo (detector + confiança + API).
+- **Testes de benchmark:** performance, recall, precisão, F1-score.
+- **Testes de filtragem:** robustez contra falsos positivos/negativos.
+
+Todos os testes podem ser executados via `pytest` no backend.
+
+---
+
+## 🚦 INTEGRAÇÃO FRONTEND
+
+1. Consuma o novo formato de resposta (dicionário estruturado, ver exemplo acima).
+2. Ajuste o parsing dos campos: use `has_pii`, `entities`, `risk_level`, `confidence_all_found`, etc.
+3. Aproveite os novos campos para exibir mais detalhes (confiança por entidade, fontes, etc).
+4. Remova qualquer dependência do formato antigo (tupla).
+5. Teste todos os fluxos do frontend.
+
+Consulte o README.md da raiz para instruções de migração e exemplos de uso.
 
 ---
 
