@@ -96,11 +96,12 @@ def main():
             
             # Matriz de Cores Atualizada
             colors = {
-                "CRÍTICO": PatternFill(start_color="9C0006", end_color="9C0006", fill_type="solid"), # Vermelho Escuro
-                "ALTO": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),    # Vermelho Claro
-                "MODERADO": PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid"), # Amarelo
-                "BAIXO": PatternFill(start_color="DEEBF7", end_color="DEEBF7", fill_type="solid"),    # Azul Claro
-                "SEGURO": PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")   # Verde
+                "CRÍTICO": PatternFill(start_color="FF9C0006", end_color="FF9C0006", fill_type="solid"), # Vermelho Escuro ARGB
+                "CRITICO": PatternFill(start_color="FF9C0006", end_color="FF9C0006", fill_type="solid"), # Vermelho Escuro ARGB (sem acento)
+                "ALTO": PatternFill(start_color="FFFFC7CE", end_color="FFFFC7CE", fill_type="solid"),    # Vermelho Claro ARGB
+                "MODERADO": PatternFill(start_color="FFFFEB9C", end_color="FFFFEB9C", fill_type="solid"), # Amarelo ARGB
+                "BAIXO": PatternFill(start_color="FFDEEBF7", end_color="FFDEEBF7", fill_type="solid"),    # Azul Claro ARGB
+                "SEGURO": PatternFill(start_color="FFC6EFCE", end_color="FFC6EFCE", fill_type="solid")   # Verde ARGB
             }
 
             # Localiza dinamicamente as colunas para pintar, mesmo se a ordem mudar
@@ -108,15 +109,19 @@ def main():
             col_class_idx = df.columns.get_loc('Classificação') + 1
 
             for row in range(2, len(df) + 2):
-                # Pinta a célula de Nível de Risco
-                risk_val = ws.cell(row=row, column=col_risk_idx).value
-                if risk_val in colors:
-                    ws.cell(row=row, column=col_risk_idx).fill = colors[risk_val]
-                
-                # Pinta a célula de Classificação
+                # Pinta a célula de Nível de Risco (normalizando para garantir cor correta)
+                risk_val_raw = ws.cell(row=row, column=col_risk_idx).value
+                risk_val_norm = str(risk_val_raw).strip().upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").replace("Ç", "C")
+                # Aplica cor usando o dicionário normalizado
+                if risk_val_norm in colors:
+                    ws.cell(row=row, column=col_risk_idx).fill = colors[risk_val_norm]
+
+                # Pinta a célula de Classificação: verde para público, vermelho para não público
                 class_val = str(ws.cell(row=row, column=col_class_idx).value)
-                color_key = "ALTO" if "NÃO" in class_val else "SEGURO"
-                ws.cell(row=row, column=col_class_idx).fill = colors[color_key]
+                if "NÃO" in class_val:
+                    ws.cell(row=row, column=col_class_idx).fill = colors["ALTO"]  # vermelho claro
+                else:
+                    ws.cell(row=row, column=col_class_idx).fill = colors["SEGURO"]  # verde
 
         print(f"✅ Sucesso! Relatórios gerados em: {os.path.dirname(os.path.abspath(xlsx_path))}")
         print(f"📊 Ordem das colunas: Classificação -> Confiança -> Nível de Risco -> Identificadores")
