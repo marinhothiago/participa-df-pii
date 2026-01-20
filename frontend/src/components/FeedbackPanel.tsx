@@ -1,9 +1,7 @@
-import { Button } from '@/components/ui/button';
 import { api, type EntityFeedback, type FeedbackRequest } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Check, ChevronDown, ChevronUp, Loader2, MessageSquare, X } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
 
 // Tipos de PII disponíveis para reclassificação
 const PII_TYPES = [
@@ -29,7 +27,7 @@ interface EntityFeedbackItemProps {
     disabled?: boolean;
 }
 
-export function EntityFeedbackItem({ entity, onFeedback, disabled = false }: EntityFeedbackItemProps) {
+function EntityFeedbackItem({ entity, onFeedback, disabled = false }: EntityFeedbackItemProps) {
     const [selectedValidation, setSelectedValidation] = useState<'CORRETO' | 'INCORRETO' | 'PARCIAL' | null>(null);
     const [showReclassify, setShowReclassify] = useState(false);
     const [newType, setNewType] = useState<string>('');
@@ -89,13 +87,12 @@ export function EntityFeedbackItem({ entity, onFeedback, disabled = false }: Ent
                     </p>
                 </div>
 
-                {/* Botões simples sem Tooltip */}
                 <div className="flex items-center gap-1">
                     <button
                         type="button"
                         title="Correto - É PII"
                         className={cn(
-                            "h-8 w-8 rounded-md border flex items-center justify-center transition-colors",
+                            "h-7 w-7 rounded border flex items-center justify-center text-xs",
                             selectedValidation === 'CORRETO'
                                 ? "bg-green-600 text-white border-green-600"
                                 : "bg-background border-input hover:bg-accent"
@@ -103,14 +100,14 @@ export function EntityFeedbackItem({ entity, onFeedback, disabled = false }: Ent
                         onClick={() => handleValidation('CORRETO')}
                         disabled={disabled}
                     >
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3" />
                     </button>
 
                     <button
                         type="button"
                         title="Incorreto - Falso Positivo"
                         className={cn(
-                            "h-8 w-8 rounded-md border flex items-center justify-center transition-colors",
+                            "h-7 w-7 rounded border flex items-center justify-center text-xs",
                             selectedValidation === 'INCORRETO'
                                 ? "bg-red-600 text-white border-red-600"
                                 : "bg-background border-input hover:bg-accent"
@@ -118,14 +115,14 @@ export function EntityFeedbackItem({ entity, onFeedback, disabled = false }: Ent
                         onClick={() => handleValidation('INCORRETO')}
                         disabled={disabled}
                     >
-                        <X className="h-4 w-4" />
+                        <X className="h-3 w-3" />
                     </button>
 
                     <button
                         type="button"
-                        title="Reclassificar Tipo"
+                        title="Reclassificar"
                         className={cn(
-                            "h-8 w-8 rounded-md border flex items-center justify-center transition-colors",
+                            "h-7 w-7 rounded border flex items-center justify-center text-xs",
                             selectedValidation === 'PARCIAL'
                                 ? "bg-yellow-600 text-white border-yellow-600"
                                 : "bg-background border-input hover:bg-accent"
@@ -133,37 +130,38 @@ export function EntityFeedbackItem({ entity, onFeedback, disabled = false }: Ent
                         onClick={() => handleValidation('PARCIAL')}
                         disabled={disabled}
                     >
-                        {showReclassify ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        {showReclassify ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </button>
                 </div>
             </div>
 
-            {/* Painel de Reclassificação com elementos nativos */}
             {showReclassify && (
                 <div className="px-2 pb-2 pt-1 border-t border-border/50 space-y-2">
                     <div className="flex items-center gap-2">
                         <select
                             value={newType}
                             onChange={(e) => setNewType(e.target.value)}
-                            className="h-8 text-xs flex-1 rounded-md border border-input bg-background px-2"
+                            className="h-7 text-xs flex-1 rounded border border-input bg-background px-2"
                         >
-                            <option value="">Selecione o tipo correto...</option>
+                            <option value="">Tipo correto...</option>
                             {PII_TYPES.map((type) => (
-                                <option key={type} value={type}>
-                                    {type}
-                                </option>
+                                <option key={type} value={type}>{type}</option>
                             ))}
                         </select>
-                        <Button size="sm" className="h-8 text-xs" onClick={handleReclassify}>
+                        <button
+                            type="button"
+                            className="h-7 px-2 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90"
+                            onClick={handleReclassify}
+                        >
                             OK
-                        </Button>
+                        </button>
                     </div>
                     <input
                         type="text"
-                        placeholder="Comentário opcional..."
+                        placeholder="Comentário..."
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        className="w-full h-8 text-xs rounded-md border border-input bg-background px-2"
+                        className="w-full h-7 text-xs rounded border border-input bg-background px-2"
                     />
                 </div>
             )}
@@ -193,7 +191,8 @@ export function FeedbackPanel({
 }: FeedbackPanelProps) {
     const [entityFeedbacks, setEntityFeedbacks] = useState<EntityFeedback[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitted, setSubmitted] = useState(false);
+    const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [statusMessage, setStatusMessage] = useState('');
     const [classificacaoCorrigida, setClassificacaoCorrigida] = useState<string | null>(null);
 
     const handleEntityFeedback = (feedback: EntityFeedback) => {
@@ -205,11 +204,14 @@ export function FeedbackPanel({
 
     const handleSubmit = async () => {
         if (entityFeedbacks.length === 0) {
-            toast.error('Valide pelo menos uma entidade antes de enviar');
+            setStatus('error');
+            setStatusMessage('Valide pelo menos uma entidade');
             return;
         }
 
         setIsSubmitting(true);
+        setStatus('idle');
+
         try {
             const feedbackRequest: FeedbackRequest = {
                 analysis_id: analysisId,
@@ -221,11 +223,12 @@ export function FeedbackPanel({
 
             const response = await api.submitFeedback(feedbackRequest);
 
-            toast.success(`Feedback enviado! Acurácia: ${(response.stats.accuracy * 100).toFixed(1)}%`);
-            setSubmitted(true);
+            setStatus('success');
+            setStatusMessage(`Acurácia: ${(response.stats.accuracy * 100).toFixed(1)}%`);
             onFeedbackSubmitted?.();
         } catch (error) {
-            toast.error('Erro ao enviar feedback. Tente novamente.');
+            setStatus('error');
+            setStatusMessage('Erro ao enviar. Tente novamente.');
             console.error('Erro ao enviar feedback:', error);
         } finally {
             setIsSubmitting(false);
@@ -234,35 +237,38 @@ export function FeedbackPanel({
 
     const validatedCount = entityFeedbacks.length;
 
-    if (submitted) {
+    if (status === 'success') {
         return (
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
-                <Check className="h-8 w-8 text-green-600 mx-auto mb-2" />
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-center">
+                <Check className="h-6 w-6 text-green-600 mx-auto mb-1" />
                 <p className="text-sm font-medium text-green-600">Feedback enviado!</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                    Obrigado por ajudar a melhorar o sistema.
-                </p>
+                <p className="text-xs text-muted-foreground">{statusMessage}</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Validar Detecção</span>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                    {validatedCount}/{entities.length} validados
+                    {validatedCount}/{entities.length}
                 </span>
             </div>
 
-            {/* Lista de entidades para validar */}
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            {status === 'error' && (
+                <div className="text-xs text-red-500 bg-red-500/10 p-2 rounded">
+                    {statusMessage}
+                </div>
+            )}
+
+            <div className="space-y-2 max-h-48 overflow-y-auto">
                 {entities.map((entity, index) => (
                     <EntityFeedbackItem
-                        key={`${entity.tipo}-${entity.valor}-${index}`}
+                        key={`${entity.tipo}-${index}`}
                         entity={entity}
                         onFeedback={handleEntityFeedback}
                         disabled={isSubmitting}
@@ -270,38 +276,37 @@ export function FeedbackPanel({
                 ))}
             </div>
 
-            {/* Opção para corrigir classificação geral */}
             {classificacao === 'NÃO PÚBLICO' && (
-                <div className="flex items-center gap-2 pt-2 border-t">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                     <input
                         type="checkbox"
-                        id="corrigir-classificacao"
-                        className="rounded border-border"
+                        className="rounded"
                         onChange={(e) => setClassificacaoCorrigida(e.target.checked ? 'PÚBLICO' : null)}
                     />
-                    <label htmlFor="corrigir-classificacao" className="text-sm text-muted-foreground">
-                        Na verdade, este texto é <strong>PÚBLICO</strong> (sem PII real)
-                    </label>
-                </div>
+                    Este texto é na verdade <strong>PÚBLICO</strong>
+                </label>
             )}
 
-            {/* Botão de enviar */}
-            <Button
+            <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting || entityFeedbacks.length === 0}
-                className="w-full"
+                className={cn(
+                    "w-full h-9 rounded text-sm font-medium transition-colors",
+                    entityFeedbacks.length === 0
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
             >
                 {isSubmitting ? (
-                    <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         Enviando...
-                    </>
+                    </span>
                 ) : (
-                    <>
-                        Enviar Feedback ({validatedCount} {validatedCount === 1 ? 'item' : 'itens'})
-                    </>
+                    `Enviar (${validatedCount})`
                 )}
-            </Button>
+            </button>
         </div>
     );
 }
