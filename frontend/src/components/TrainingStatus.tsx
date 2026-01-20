@@ -1,3 +1,4 @@
+import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { AlertCircle, BarChart3, Check, Loader2, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
