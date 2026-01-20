@@ -681,9 +681,10 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
 
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-2">Texto Analisado</h4>
-                <p className="text-sm text-foreground bg-muted/50 p-3 rounded-lg">
-                  {selectedHistoryItem.text}
-                </p>
+                <ExpandableText
+                  text={selectedHistoryItem.text}
+                  maxLines={3}
+                />
               </div>
 
               <div>
