@@ -1210,6 +1210,264 @@ Mais detalhes: [Documentação oficial Presidio](https://microsoft.github.io/pre
 
 ---
 
+## 🔄 FEEDBACK LOOP: Como o Motor Aprende com Feedbacks Humanos
+
+A partir da versão 9.5.1, o sistema implementa um **feedback loop inteligente** que coleta validações humanas e as transforma em melhorias de modelo.
+
+### 📊 Como Funciona
+
+```
+1️⃣ COLETA
+   ├─ Frontend coleta validação: CORRETO | INCORRETO | PARCIAL
+   ├─ Usuário pode reclassificar entidades
+   ├─ Comentários e contexto salvos
+   └─ Dados armazenados em: backend/data/feedback.json
+
+2️⃣ ARMAZENAMENTO ESTRUTURADO
+   └─ JSON com:
+       ├─ analysis_id: ID da análise original
+       ├─ original_text: Texto analisado
+       ├─ entity_feedbacks: Lista de validações
+       ├─ stats: Contadores de acurácia por tipo
+       └─ last_updated: Timestamp
+
+3️⃣ GERAÇÃO DE DATASET
+   ├─ Endpoint POST /feedback/generate-dataset
+   ├─ Converte feedbacks → dataset JSONL/CSV
+   ├─ Separa: CORRETO (label=1), INCORRETO (label=0), PARCIAL (label=0.5)
+   └─ Gera splits train/val automaticamente
+
+4️⃣ RECALIBRAÇÃO AUTOMÁTICA
+   ├─ IsotonicCalibrator treina com dados de feedback
+   ├─ Aprende relação entre score_modelo ↔ label_verdadeiro
+   ├─ Melhora calibração de confiança
+   └─ Aplicado ao próximo restart automático
+
+5️⃣ INSIGHTS DE MELHORIA
+   └─ Métricas por tipo de PII:
+       ├─ Taxa de acertos (accuracy)
+       ├─ Taxa de falsos positivos (FP)
+       ├─ Tipos mais problemáticos
+       └─ Recomendações de ação
+```
+
+### 🔌 Endpoints de Feedback
+
+#### 1. Submeter Feedback
+```http
+POST /feedback
+Content-Type: application/json
+
+{
+  "analysis_id": "id-da-analise",
+  "original_text": "Meu CPF é 123.456.789-09",
+  "entity_feedbacks": [
+    {
+      "tipo": "CPF",
+      "valor": "123.456.789-09",
+      "confianca_modelo": 0.98,
+      "validacao_humana": "CORRETO",
+      "comentario": "Detecção correta"
+    }
+  ],
+  "classificacao_modelo": "NÃO PÚBLICO",
+  "revisor": "admin@participa.df.gov.br"
+}
+```
+
+**Resposta:**
+```json
+{
+  "feedback_id": "uuid-do-feedback",
+  "stats": {
+    "total_feedbacks": 42,
+    "total_entities_reviewed": 156,
+    "correct": 145,
+    "incorrect": 8,
+    "partial": 3,
+    "accuracy": 0.9295
+  }
+}
+```
+
+#### 2. Ver Estatísticas Acumuladas
+```http
+GET /feedback/stats
+```
+
+**Resposta:**
+```json
+{
+  "total_feedbacks": 42,
+  "total_entities_reviewed": 156,
+  "accuracy": 0.9295,
+  "false_positive_rate": 0.0513,
+  "by_type": {
+    "CPF": {
+      "total": 45,
+      "correct": 43,
+      "incorrect": 2,
+      "accuracy": 0.9556,
+      "false_positive_rate": 0.0444
+    },
+    "EMAIL": {
+      "total": 38,
+      "correct": 35,
+      "incorrect": 3,
+      "accuracy": 0.9211,
+      "false_positive_rate": 0.0789
+    }
+  },
+  "last_updated": "2025-01-19T15:30:45.123Z"
+}
+```
+
+#### 3. Gerar Dataset para Treinamento
+```http
+POST /feedback/generate-dataset?format=jsonl
+```
+
+**Retorna arquivo JSONL com amostras:**
+```json
+{
+  "text": "Manifestação original...",
+  "entity_type": "CPF",
+  "entity_value": "123.456.789-09",
+  "label": "correct_detection",
+  "confidence": 0.98,
+  "feedback_type": "correto"
+}
+```
+
+#### 4. Checar Disponibilidade de Dados
+```http
+GET /feedback/dataset-stats
+```
+
+**Resposta:**
+```json
+{
+  "total_samples": 156,
+  "min_samples_recommended": 50,
+  "ready_for_training": true,
+  "recommendation": "✅ Dados suficientes! Pronto para treinamento.",
+  "by_type": {
+    "CPF": {"total": 45},
+    "EMAIL": {"total": 38}
+  }
+}
+```
+
+### 🚀 Workflow de Melhoria Contínua
+
+#### Fase 1: Coleta (Ongoing)
+- Revisores usam painel no frontend para validar detecções
+- Feedback sync automático com backend
+- Estatísticas atualizadas em tempo real
+
+#### Fase 2: Análise (Semanal)
+```bash
+# Ver estatísticas acumuladas
+curl https://api.participa.df/feedback/stats
+
+# Conferir se há dados suficientes
+curl https://api.participa.df/feedback/dataset-stats
+```
+
+#### Fase 3: Geração de Dataset (Monthly)
+```bash
+python scripts/feedback_to_dataset.py
+# Gera:
+# ├─ data/output/ner_dataset.jsonl (para finetune NER)
+# ├─ data/output/ner_dataset.csv
+# └─ data/output/calibration_dataset.json (para recalibradores)
+```
+
+#### Fase 4: Finetune (Quando dados > threshold)
+```bash
+# Option A: Fine-tuning BERT NER com dataset de feedback
+python -m transformers.run_glue \
+  --model_name_or_path Davlan/bert-base-multilingual-cased-ner-hrl \
+  --train_file data/output/ner_dataset.jsonl \
+  --task_name ner \
+  --output_dir models/bert_finetuned/
+
+# Option B: Reexportar para ONNX (mais rápido)
+optimum-cli export onnx --model models/bert_finetuned/ backend/models/bert_ner_onnx/
+```
+
+#### Fase 5: Recalibração Automática
+```bash
+# Ao reiniciar, sistema:
+# 1. Carrega feedback.json
+# 2. Treina IsotonicCalibrator com dados históricos
+# 3. Aplica nova calibração aos scores
+```
+
+### 📈 Métricas de Melhoria
+
+| Métrica | Fórmula | Ideal |
+|---------|---------|-------|
+| **Accuracy** | correct / total | > 95% |
+| **Precision** | correct / (correct + incorrect) | > 95% |
+| **Recall** | correct / (correct + FN) | > 90% |
+| **False Positive Rate** | incorrect / total | < 5% |
+| **Dataset Size** | total_feedbacks * avg_entities | > 50 |
+
+### 🎯 Recomendações por Tipo de PII
+
+O sistema analisa feedbacks e sugere ações:
+
+```
+🟢 CPF (Accuracy: 98%)
+   └─ Excelente performance, manter configuração atual
+
+🟡 EMAIL (Accuracy: 85%)
+   ├─ Taxa de falsos positivos alta (15%)
+   └─ Ação: Ajustar threshold de confiança para EMAIL
+
+🔴 NOME (Accuracy: 70%)
+   ├─ Muitos falsos positivos e falsos negativos
+   └─ Ação: Coletar mais dados, considerar finetune específico
+```
+
+### 💾 Armazenamento de Feedback
+
+**Localização:** `backend/data/feedback.json`
+
+**Estrutura:**
+```json
+{
+  "feedbacks": [
+    {
+      "feedback_id": "uuid",
+      "analysis_id": "id-da-analise",
+      "timestamp": "2025-01-19T15:30:45Z",
+      "original_text": "...",
+      "entity_feedbacks": [...],
+      "classificacao_modelo": "NÃO PÚBLICO",
+      "classificacao_corrigida": null,
+      "revisor": "user@example.com"
+    }
+  ],
+  "stats": {
+    "total_feedbacks": 42,
+    "total_entities_reviewed": 156,
+    "correct": 145,
+    "incorrect": 8,
+    "partial": 3,
+    "by_type": {
+      "CPF": {"total": 45, "correct": 43, "incorrect": 2, "partial": 0}
+    }
+  },
+  "last_updated": "2025-01-19T15:30:45Z"
+}
+```
+
+> **⚠️ Thread-Safety:** O sistema usa locks (`threading.Lock`) para garantir que múltiplas requisições simultâneas não corrompam dados. Seguro para ambientes multi-thread/Gunicorn.
+
+---
+
 ## 🧹 Changelog de Auditoria (v9.5.1)
 
 **Data:** 2025-01-XX

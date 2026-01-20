@@ -423,6 +423,87 @@ async def export_feedback() -> Dict:
     }
 
 
+@app.post("/feedback/generate-dataset")
+async def generate_dataset(format: str = "jsonl") -> Dict:
+    """Gera dataset de treinamento a partir dos feedbacks coletados.
+    
+    Transforma feedbacks em formato pronto para:
+    1. Fine-tuning de modelos NER
+    2. Treinamento de calibradores de confiança
+    3. Análise de padrões de erro
+    
+    Args:
+        format: 'jsonl' ou 'csv'
+    
+    Returns:
+        Dict com caminho do arquivo gerado e estatísticas
+    """
+    try:
+        from scripts.feedback_to_dataset import (
+            export_ner_dataset_jsonl, 
+            export_ner_dataset_csv,
+            generate_ner_dataset
+        )
+        
+        if format == "csv":
+            output_path = export_ner_dataset_csv()
+        else:  # jsonl (padrão)
+            output_path = export_ner_dataset_jsonl()
+        
+        samples, stats = generate_ner_dataset()
+        
+        return {
+            "success": True,
+            "message": f"Dataset gerado em formato {format}",
+            "output_file": output_path,
+            "stats": stats,
+            "generated_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "generated_at": datetime.now().isoformat()
+        }
+
+
+@app.get("/feedback/dataset-stats")
+async def get_dataset_stats() -> Dict:
+    """Retorna estatísticas do dataset que seria gerado para treinamento.
+    
+    Útil para saber se há dados suficientes antes de disparar treinamento.
+    
+    Returns:
+        Dict com:
+            - total_samples: Quantas amostras de treinamento
+            - by_type: Distribuição por tipo de entidade
+            - min_samples_for_training: Mínimo recomendado
+            - ready_for_training: Boolean
+    """
+    try:
+        from scripts.feedback_to_dataset import generate_ner_dataset
+        samples, stats = generate_ner_dataset()
+        
+        min_samples_recommended = 50
+        is_ready = len(samples) >= min_samples_recommended
+        
+        return {
+            **stats,
+            "min_samples_recommended": min_samples_recommended,
+            "ready_for_training": is_ready,
+            "recommendation": (
+                "✅ Dados suficientes! Pronto para treinamento." if is_ready
+                else f"❌ Precisa de mais {min_samples_recommended - len(samples)} amostras"
+            )
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "total_samples": 0,
+            "ready_for_training": False
+        }
+
+
 @app.get("/health")
 async def health() -> Dict[str, str]:
     """Verifica o status da API e disponibilidade dos modelos NLP.
