@@ -29,7 +29,7 @@ export function TrainingStatus() {
         try {
             const data = await api.getTrainingStatus();
             if (data && !data.error) {
-                setStatus(data);
+                setStatus(data as TrainingStatus);
                 setError(null);
             } else {
                 setError(data?.error || 'Erro ao carregar status');
