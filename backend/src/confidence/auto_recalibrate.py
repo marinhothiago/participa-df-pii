@@ -6,8 +6,16 @@ para melhorar scores de confiança.
 
 import logging
 from typing import Dict, List, Tuple
-from src.confidence.calibration import get_calibrator_registry, IsotonicCalibrator
-from src.confidence.training import record_calibration_event, get_training_tracker
+import sys
+import os
+
+# Garante imports de confiança
+try:
+    from src.confidence.calibration import get_calibrator_registry, IsotonicCalibrator
+    from src.confidence.training import record_calibration_event, get_training_tracker
+except ImportError:
+    from backend.src.confidence.calibration import get_calibrator_registry, IsotonicCalibrator
+    from backend.src.confidence.training import record_calibration_event, get_training_tracker
 
 logger = logging.getLogger(__name__)
 

@@ -26,11 +26,12 @@ export function TrainingStatus() {
 
     const fetchStatus = async () => {
         try {
-            const response = await fetch('http://localhost:7860/feedback/training-status');
-            if (response.ok) {
-                const data = await response.json();
+            const data = await api.getTrainingStatus();
+            if (data && !data.error) {
                 setStatus(data);
                 setError(null);
+            } else {
+                setError(data?.error || 'Erro ao carregar status');
             }
         } catch (err) {
             console.error('Erro ao buscar status:', err);
