@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Check, ChevronDown, ChevronUp, Copy } from 'lucide-react';
+import { Check, ChevronUp, Copy, Maximize2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface ExpandableTextProps {
@@ -12,11 +12,8 @@ export function ExpandableText({ text, maxLines = 3, className }: ExpandableText
     const [isExpanded, setIsExpanded] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    // Calcula se precisa expandir (conta linhas)
-    const lines = text.split('\n');
-    const needsExpand = lines.length > maxLines || text.length > 300;
-
-    const displayText = isExpanded ? text : lines.slice(0, maxLines).join('\n');
+    // Calcula se precisa expandir - mais agressivo
+    const needsExpand = text.length > 150 || text.split('\n').length > maxLines;
 
     const handleCopy = async () => {
         try {
@@ -33,56 +30,68 @@ export function ExpandableText({ text, maxLines = 3, className }: ExpandableText
             <div
                 className={cn(
                     'bg-muted/50 p-3 rounded-lg text-sm text-foreground break-words whitespace-pre-wrap',
-                    isExpanded && 'max-h-96 overflow-y-auto',
-                    !isExpanded && `line-clamp-${maxLines}`,
+                    isExpanded ? 'max-h-[400px] overflow-y-auto' : 'max-h-[80px] overflow-hidden',
                     className
                 )}
+                style={!isExpanded ? {
+                    display: '-webkit-box',
+                    WebkitLineClamp: maxLines,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                } : undefined}
             >
-                {displayText}
-                {!isExpanded && needsExpand && (
-                    <div className="mt-2 text-xs text-muted-foreground italic">
-                        ... (clique para expandir)
-                    </div>
-                )}
+                {text}
             </div>
 
-            {needsExpand && (
-                <div className="flex gap-2">
+            {/* Botões SEMPRE visíveis quando texto é longo */}
+            <div className="flex gap-3 flex-wrap">
+                {needsExpand && (
                     <button
                         onClick={() => setIsExpanded(!isExpanded)}
-                        className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                        className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                            isExpanded
+                                ? "bg-muted text-foreground hover:bg-muted/80"
+                                : "bg-primary text-primary-foreground hover:bg-primary/90"
+                        )}
                     >
                         {isExpanded ? (
                             <>
-                                <ChevronUp className="h-4 w-4" />
-                                Recolher
+                                <ChevronUp className="h-3.5 w-3.5" />
+                                Recolher Texto
                             </>
                         ) : (
                             <>
-                                <ChevronDown className="h-4 w-4" />
-                                Expandir Texto Completo
+                                <Maximize2 className="h-3.5 w-3.5" />
+                                Ver Texto Completo
                             </>
                         )}
                     </button>
+                )}
 
-                    <button
-                        onClick={handleCopy}
-                        className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                        title="Copiar texto"
-                    >
-                        {copied ? (
-                            <>
-                                <Check className="h-4 w-4" />
-                                Copiado
-                            </>
-                        ) : (
-                            <>
-                                <Copy className="h-4 w-4" />
-                                Copiar
-                            </>
-                        )}
-                    </button>
-                </div>
+                <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
+                    title="Copiar texto completo"
+                >
+                    {copied ? (
+                        <>
+                            <Check className="h-3.5 w-3.5 text-green-600" />
+                            Copiado!
+                        </>
+                    ) : (
+                        <>
+                            <Copy className="h-3.5 w-3.5" />
+                            Copiar
+                        </>
+                    )}
+                </button>
+            </div>
+
+            {!isExpanded && needsExpand && (
+                <p className="text-xs text-orange-600 font-medium">
+                    ⚠️ Clique em "Ver Texto Completo" para ver o contexto antes de validar
+                </p>
             )}
         </div>
     );
