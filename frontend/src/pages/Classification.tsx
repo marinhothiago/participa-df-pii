@@ -6,6 +6,7 @@ import { FileDropzone } from '@/components/FileDropzone';
 import { IdentifierList } from '@/components/IdentifierBadge';
 import { KPICard } from '@/components/KPICard';
 import { ResultsLegend } from '@/components/ResultsLegend';
+import { TrainingStatus } from '@/components/TrainingStatus';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -253,6 +254,12 @@ export function Classification() {
           variant="highlight"
           tooltip="Média da confiança do modelo em suas classificações. Valores acima de 90% indicam alta certeza nas predições."
         />
+      </div>
+
+      {/* Training Status Dashboard */}
+      <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20 p-4">
+        <h3 className="text-sm font-semibold mb-3 text-foreground">🤖 Status de Aprendizado em Tempo Real</h3>
+        <TrainingStatus />
       </div>
 
       {/* Two Column Layout: Individual + Batch */}

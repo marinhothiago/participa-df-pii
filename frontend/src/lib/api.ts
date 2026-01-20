@@ -473,6 +473,32 @@ class ApiClient {
     }
     return { total_records: 0, feedbacks: [], stats: {}, exported_at: '' };
   }
+
+  async getTrainingStatus(): Promise<Record<string, any>> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(`${API_BASE_URL}/feedback/training-status`, {
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' },
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.error('Erro ao buscar status de treinamento:', error);
+    }
+    return {
+      status: 'never_trained',
+      total_samples_used: 0,
+      accuracy_after: 0,
+      recommendations: [],
+    };
+  }
 }
 
 // === TIPOS DE FEEDBACK ===

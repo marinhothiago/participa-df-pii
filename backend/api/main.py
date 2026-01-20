@@ -352,6 +352,15 @@ async def submit_feedback(feedback: FeedbackRequest) -> Dict:
     
     stats = add_feedback(feedback_entry)
     
+    # ✨ Recalibração automática a cada feedback
+    try:
+        from src.confidence.auto_recalibrate import recalibrate_from_feedbacks
+        feedback_data = load_feedback()
+        recalibration_result = recalibrate_from_feedbacks(feedback_data)
+        print(f"🔄 Recalibração automática: {recalibration_result.get('message')}")
+    except Exception as e:
+        print(f"⚠️ Erro na recalibração automática: {e}")
+    
     return {
         "feedback_id": feedback_entry["feedback_id"],
         "message": "Feedback registrado com sucesso",
@@ -501,6 +510,32 @@ async def get_dataset_stats() -> Dict:
             "error": str(e),
             "total_samples": 0,
             "ready_for_training": False
+        }
+
+
+@app.get("/feedback/training-status")
+async def get_training_status() -> Dict:
+    """Retorna status de treinamento e calibração automática.
+    
+    Mostra:
+    - Última calibração realizada
+    - Acurácia antes/depois
+    - Número de amostras usadas
+    - Recomendações
+    - Métricas por fonte (BERT, spaCy, etc)
+    
+    Returns:
+        Dict com status completo do treinamento
+    """
+    try:
+        from src.confidence.training import get_training_tracker
+        tracker = get_training_tracker()
+        return tracker.get_status()
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "error",
+            "message": "Erro ao obter status de treinamento"
         }
 
 
