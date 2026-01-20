@@ -1,5 +1,6 @@
 import { ApiWakingUpMessage } from '@/components/ApiWakingUpMessage';
 import { ConfidenceBar } from '@/components/ConfidenceBar';
+import { ExpandableText } from '@/components/ExpandableText';
 import { ExportButton } from '@/components/ExportButton';
 import { FeedbackPanel } from '@/components/FeedbackPanel';
 import { FileDropzone } from '@/components/FileDropzone';
@@ -352,20 +353,20 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                           {classification === 'PÚBLICO' ? 'Público' : 'Não Público'} - {riskInfo.label}
                         </p>
                         <p className="text-xs opacity-90">
-                          Confiança: {(probability * 100).toFixed(1)}%
+                          Confiança: {((probability as number) * 100).toFixed(1)}%
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold">{(probability * 100).toFixed(0)}%</p>
+                        <p className="text-lg font-bold">{((probability as number) * 100).toFixed(0)}%</p>
                       </div>
                     </div>
                   );
                 })()}
 
                 {/* Details Badges - usando novo componente */}
-                {getDetails(analysisResult).length > 0 && (
+                {(getDetails(analysisResult) as any[])?.length > 0 && (
                   <IdentifierList
-                    identificadores={getDetails(analysisResult)}
+                    identificadores={getDetails(analysisResult) as any[]}
                     showConfidence={true}
                     size="sm"
                   />
