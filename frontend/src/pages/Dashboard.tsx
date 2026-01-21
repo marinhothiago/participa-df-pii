@@ -8,6 +8,7 @@ import { PIITypesChart } from '@/components/PIITypesChart';
 import { ResultsLegend } from '@/components/ResultsLegend';
 import { RiskDistributionChart } from '@/components/RiskDistributionChart';
 import { RiskThermometer } from '@/components/RiskThermometer';
+import { TrainingStatus } from '@/components/TrainingStatus';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -117,6 +118,12 @@ export function Dashboard() {
         <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
           <strong className="text-foreground">Arquitetura do Motor:</strong> Pipeline de 4 camadas em <span className="text-primary font-medium">estratégia Ensemble OR</span> — (1) <span className="text-warning font-medium">Regex com Validação DV</span> (Módulo 11 para CPF, CNPJ, PIS, CNS), (2) <span className="text-primary font-medium">BERT NER Multilíngue</span> (Davlan/bert-base-multilingual-cased-ner-hrl) como detector primário de nomes, (3) <span className="text-success font-medium">spaCy pt_core_news_lg</span> como NER complementar (captura nomes não detectados pelo BERT), e (4) <span className="text-muted-foreground font-medium">Regras de Negócio</span> (imunidade funcional, contexto GDF). Qualquer camada positiva classifica como PII, garantindo máximo recall para conformidade LGPD/LAI.
         </div>
+      </div>
+
+      {/* Training Status Dashboard */}
+      <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20 p-4">
+        <h3 className="text-sm font-semibold mb-3 text-foreground">🤖 Status de Aprendizado em Tempo Real</h3>
+        <TrainingStatus />
       </div>
 
       {/* Volume KPIs Section */}
