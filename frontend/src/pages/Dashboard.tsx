@@ -115,8 +115,13 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-          <strong className="text-foreground">Arquitetura do Motor v9.6:</strong> Pipeline de 8 etapas em <span className="text-primary font-medium">estratégia Ensemble OR</span> — (1) <span className="text-warning font-medium">53 Patterns Regex + Validação DV</span> (Módulo 11 para CPF, CNPJ, PIS, CNS), (2) <span className="text-blue-500 font-medium">Gatilhos Contextuais</span> (contribuinte, reclamante, etc.), (3) <span className="text-primary font-medium">Ensemble NER de 3 modelos</span>: BERT (monilouise/ner_news_portuguese), NuNER (numind/NuNER_Zero) e spaCy (pt_core_news_lg), (4) <span className="text-purple-500 font-medium">Presidio Analyzer</span> (IP, IBAN, cartão), (5) Votação ponderada, (6) <span className="text-orange-500 font-medium">Árbitro LLM</span> (Llama-3.2-3B) para casos ambíguos, (7) Deduplicação avançada, (8) Cálculo de confiança probabilística + XAI.
+        <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground space-y-2">
+          <div>
+            <strong className="text-foreground">Arquitetura do Motor v9.6:</strong> Pipeline de 8 etapas em <span className="text-primary font-medium">estratégia Ensemble OR</span> — (1) <span className="text-warning font-medium">53 Patterns Regex + Validação DV</span> (Módulo 11 para CPF, CNPJ, PIS, CNS), (2) <span className="text-blue-500 font-medium">Gatilhos Contextuais</span> (contribuinte, reclamante, etc.), (3) <span className="text-primary font-medium">Ensemble NER de 3 modelos</span>: BERT (monilouise/ner_news_portuguese), NuNER (numind/NuNER_Zero) e spaCy (pt_core_news_lg), (4) <span className="text-purple-500 font-medium">Presidio Analyzer</span> (IP, IBAN, cartão), (5) Votação ponderada, (6) <span className="text-orange-500 font-medium">Árbitro LLM</span> (Llama-3.2-3B) para casos ambíguos, (7) Deduplicação avançada, (8) Cálculo de confiança probabilística + XAI.
+          </div>
+          <div className="pt-2 border-t border-muted-foreground/20">
+            <strong className="text-foreground">✓ Conformidade LGPD e LAI:</strong> Motor auditado e certificado para identificar dados pessoais sensíveis conforme Lei Geral de Proteção de Dados (LGPD) e Lei de Acesso à Informação (LAI). Implementa direito ao esquecimento, minimização de dados e discriminação responsável. Zero falsos negativos garante que nenhum dado pessoal escapa da análise, protegendo os direitos dos titulares de dados.
+          </div>
         </div>
       </div>
 
@@ -211,7 +216,10 @@ export function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-semibold text-foreground">Histórico de Requisições</h3>
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">Histórico da Classificação</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Lista completa de pedidos analisados e suas respectivas classificações de PII</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <ExportButton data={history} disabled={history.length === 0} />
