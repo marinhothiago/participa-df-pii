@@ -1807,6 +1807,21 @@ class PIIDetector:
                     if any(ref in ctx_antes for ref in referencias_legais):
                         continue  # Não é processo SEI, é número de referência legal
                     
+                    # NOVO: Ignorar se é processo de órgão FEDERAL (não é GDF, é referência administrativa)
+                    orgaos_federais = ['cgu', 'tcu', 'stf', 'stj', 'pgr', 'mpu', 'advocacia geral', 
+                                       'ministerio', 'ministério', 'receita federal', 'inss', 'ibama',
+                                       'anatel', 'anvisa', 'ana ', ' ana,', 'caixa federal']
+                    ctx_depois = texto[fim:min(len(texto), fim+50)].lower()
+                    # Verifica se menciona órgão federal antes ou depois do número
+                    if any(org in ctx_antes for org in orgaos_federais) or any(org in ctx_depois for org in orgaos_federais):
+                        continue  # É processo de órgão federal, não GDF
+                    
+                    # NOVO: Ignorar se é referência genérica ("Referência:", "ref:", "conforme", etc.)
+                    indicadores_referencia = ['referência:', 'referencia:', 'ref:', 'conforme ', 
+                                              'conforme o ', 'considerando o processo', 'proc.']
+                    if any(ref in ctx_antes.lower() for ref in indicadores_referencia):
+                        continue  # É apenas referência administrativa, não PII
+                    
                     # Protocolos LAI/OUV explícitos: sempre PII, exceto se contexto negativo
                     if tipo in ['PROTOCOLO_LAI', 'PROTOCOLO_OUV']:
                         label_explicito = any(lbl in contexto_norm for lbl in ['protocolo lai', 'protocolo ouv', 'lai-', 'ouv-'])
@@ -1869,14 +1884,13 @@ class PIIDetector:
                             "confianca": self._calcular_confianca(tipo, texto, inicio, fim),
                             "peso": 3, "inicio": inicio, "fim": fim
                         })
-                    # Se não tem contexto mas tem formato válido, marca com menor confiança
-                    # Processos são inerentemente vinculados a pessoas
+                    # IMPORTANTE: SEM contexto de posse, processos são apenas referências administrativas
+                    # Não são PII por si só - apenas quando vinculados a pessoa específica
+                    # Exemplo: "SEI 00040-00098765/2025-00" sem contexto = NÃO é PII
+                    # Exemplo: "Meu processo SEI 00040-00098765/2025-00" = É PII
                     else:
-                        findings.append({
-                            "tipo": tipo, "valor": valor,
-                            "confianca": max(0.6, self._calcular_confianca(tipo, texto, inicio, fim) * 0.8),
-                            "peso": 2, "inicio": inicio, "fim": fim
-                        })
+                        # Não adiciona ao findings - processo sem contexto de posse não é PII
+                        continue
 
                 elif tipo in ['PROTOCOLO_LAI', 'PROTOCOLO_OUV', 'PROTOCOLO_GENERICO']:
                     contexto = texto[max(0, inicio-100):fim+100].lower()
@@ -2501,11 +2515,11 @@ class PIIDetector:
                         })
 
                 elif tipo in ['PROCESSO_SEI', 'PROTOCOLO_LAI', 'PROTOCOLO_OUV']:
-                    findings.append({
-                        "tipo": tipo, "valor": valor,
-                        "confianca": self._calcular_confianca(tipo, texto, inicio, fim),
-                        "peso": 3, "inicio": inicio, "fim": fim
-                    })
+                    # IMPORTANTE: Nunca adicionar processos sem verificação de contexto
+                    # A heurística principal de PROCESSO_SEI está em _detectar_regex
+                    # Esta seção é um fallback que NÃO deve adicionar PIIs sem contexto
+                    # Processos sem contexto de posse/interesse são apenas referências administrativas
+                    continue  # Ignora - a lógica correta está no bloco principal
 
                 elif tipo == 'CONTA_BANCARIA':
                     findings.append({

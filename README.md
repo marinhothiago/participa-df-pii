@@ -33,6 +33,22 @@
 | Documentação da API | https://marinhothiago-desafio-participa-df.hf.space/docs |
 | Health Check | https://marinhothiago-desafio-participa-df.hf.space/health      |
 
+---
+
+## 📑 Sumário Rápido (Avaliação do Edital)
+
+> **Para avaliadores:** As seções abaixo cobrem todos os critérios de avaliação do edital.
+
+| Critério do Edital | Seção | Link |
+|-------------------|-------|------|
+| **1a) Pré-requisitos** (Python, Node.js, etc) | 1.1 | [Ir para Pré-requisitos](#11-pré-requisitos) |
+| **1b) Arquivo de dependências** (requirements.txt, package.json) | 1.2 | [Ir para Dependências](#12-gerenciamento-de-dependências) |
+| **1c) Comandos de instalação** | 1.3 | [Ir para Instalação](#13-instalação-passo-a-passo) |
+| **2a) Comandos de execução** | 2.1, 2.2 | [Ir para Execução](#2️⃣-execução-benchmark-e-testes) |
+| **2b) Formato de entrada/saída** | 2.3 | [Ir para Formato de Dados](#23-formato-de-dados-api-analyze) |
+| **3a) Descrição da solução e arquivos** | Objetivo, Estrutura | [Ir para Objetivo](#-objetivo-da-solução), [Ir para Estrutura](#-estrutura-do-projeto-e-função-de-cada-arquivo) |
+| **3b) Código com comentários** | 3.4 | [Ir para Comentários no Código](#34-comentários-no-código-fonte) |
+| **3c) Estrutura lógica** | Estrutura | [Ir para Estrutura](#32-estrutura-lógica-do-projeto) |
 
 ---
 
@@ -204,7 +220,24 @@ O endpoint principal agora retorna um dicionário estruturado, exemplo:
 - **Testes de benchmark:** performance, recall, precisão, F1-score.
 - **Testes de filtragem:** robustez contra falsos positivos/negativos.
 
-Todos os testes podem ser executados via `pytest` no backend.
+**Executar todos os testes:**
+
+```bash
+cd backend
+
+# Ativar ambiente virtual (se necessário)
+# Windows: venv\Scripts\activate
+# Linux/Mac: source venv/bin/activate
+
+# Rodar todos os testes
+pytest --disable-warnings -q
+
+# Rodar com detalhes
+pytest -v
+
+# Rodar teste específico
+pytest tests/test_benchmark.py -v
+```
 
 ---
 
@@ -217,9 +250,6 @@ Todos os testes podem ser executados via `pytest` no backend.
 5. Teste todos os fluxos do frontend.
 
 Consulte o backend/README.md para exemplos detalhados e documentação técnica.
-
----
-
 
 ---
 
@@ -298,6 +328,9 @@ Consulte [backend/README.md](backend/README.md#-feedback-loop-como-o-motor-apren
 ---
 
 ## 📁 Estrutura do Projeto e Função de Cada Arquivo
+
+> **Critério 3a do Edital:** README descrevendo objetivo e função de cada arquivo ✅  
+> **Critério 3c do Edital:** Estrutura lógica e organizada dos arquivos ✅
 
 ```
 desafio-participa-df/
@@ -391,11 +424,11 @@ desafio-participa-df/
 
 ---
 
----
-
 ## 1️⃣ INSTRUÇÕES DE INSTALAÇÃO E USO RÁPIDO
 
 ### 1.1 Pré-requisitos
+
+> **Critério 1a do Edital:** Lista de pré-requisitos com versões ✅
 
 | Software | Versão Mínima | Verificar Instalação | Como Instalar |
 |----------|---------------|---------------------|---------------|
@@ -411,6 +444,8 @@ O projeto utiliza **dois** sistemas de dependências:
 
 #### Backend: `backend/requirements.txt` (pip)
 
+> **Critério 1b do Edital:** Arquivo de gerenciamento de pacotes ✅
+
 ```txt
 # Framework Web
 fastapi==0.110.0
@@ -419,7 +454,7 @@ python-multipart==0.0.9
 
 # NLP Core
 spacy==3.8.0
-transformers==4.41.2
+transformers==4.36.2
 sentencepiece==0.1.99
 accelerate>=0.21.0
 
@@ -427,10 +462,16 @@ accelerate>=0.21.0
 pandas==2.2.1
 openpyxl==3.1.2
 text-unidecode==1.3
+scikit-learn>=1.3.0
 
-# PyTorch CPU (instalado separadamente)
+# Presidio (PII Detection)
+presidio-analyzer>=2.2.360
+
+# PyTorch CPU (instalado separadamente via Dockerfile)
 # torch==2.1.0+cpu
 ```
+
+📂 **Arquivo completo:** [`backend/requirements.txt`](backend/requirements.txt)
 
 #### Frontend: `frontend/package.json` (npm)
 
@@ -448,40 +489,82 @@ text-unidecode==1.3
     "lucide-react": "^0.462.0",
     "xlsx": "^0.18.5",
     "zod": "^3.25.76"
+  }
+}
+```
 
+📂 **Arquivo completo:** [`frontend/package.json`](frontend/package.json)
+
+### 1.3 Instalação Passo a Passo
+
+> **Critério 1c do Edital:** Comandos exatos e sequenciais para configuração ✅
 
 #### Opção A: Instalação Manual (Desenvolvimento)
 
+**Passos sequenciais para configurar o ambiente de desenvolvimento:**
+
 ```bash
-# 1. Clone o repositório
+# ========================================
+# PASSO 1: Clone o repositório
+# ========================================
+git clone https://github.com/marinhothiago/desafio-participa-df.git
 cd desafio-participa-df
 
-# ========== BACKEND ==========
+# ========================================
+# PASSO 2: Configurar BACKEND (Python)
+# ========================================
 cd backend
 
-# 2. Crie ambiente virtual Python
+# 2.1 Crie o ambiente virtual Python
 python -m venv venv
 
-# 3. Ative o ambiente virtual
-venv\Scripts\activate
+# 2.2 Ative o ambiente virtual
+# Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# Windows (CMD):
+venv\Scripts\activate.bat
 # Linux/Mac:
 source venv/bin/activate
-# 6. Baixe o modelo spaCy para português (obrigatório)
 
-# 7. Crie um arquivo .env e adicione seu HF_TOKEN:
+# 2.3 Instale todas as dependências do backend
+pip install -r requirements.txt
+
+# 2.4 Baixe o modelo spaCy para português (obrigatório)
+python -m spacy download pt_core_news_lg
+
+# 2.5 (Opcional) Configure o token Hugging Face para o árbitro LLM
+# Crie um arquivo .env na pasta backend com:
 echo "HF_TOKEN=seu_token_aqui" > .env
-# 7. Instale dependências do frontend
+
+# ========================================
+# PASSO 3: Configurar FRONTEND (Node.js)
+# ========================================
+cd ../frontend
+
+# 3.1 Instale as dependências do frontend
+npm install
+
+# ========================================
+# INSTALAÇÃO COMPLETA! Veja seção 2.1 para executar
+# ========================================
 ```
 
 #### Opção B: Docker Compose (Produção - Recomendado)
+
+```bash
+# Clone e entre no diretório
+git clone https://github.com/marinhothiago/desafio-participa-df.git
 cd desafio-participa-df
+
 # Suba todos os serviços (backend + frontend)
 docker-compose up -d
+```
 
----
 ---
 
 ## 2️⃣ EXECUÇÃO, BENCHMARK E TESTES
+
+> **Critério 2a do Edital:** Comandos exatos para executar com exemplos ✅
 
 ### 2.1 Execução Local (Desenvolvimento)
 Abra **dois terminais** side-by-side:
@@ -558,6 +641,8 @@ docker-compose down
 
 ### 2.3 Formato de Dados (API /analyze)
 
+> **Critério 2b do Edital:** Formato de entrada e saída esperado ✅
+
 #### Entrada (POST /analyze)
 
 ```json
@@ -611,8 +696,6 @@ man_003,"Email para contato: joao.silva@gmail.com"
 
 ---
 
----
-
 ## 3️⃣ ARQUITETURA, SEGURANÇA E MELHORES PRÁTICAS
 
 ### 3.1 Segurança do Token Hugging Face (HF_TOKEN)
@@ -639,7 +722,13 @@ man_003,"Email para contato: joao.silva@gmail.com"
 
 ---
 
-O código-fonte possui comentários detalhados em trechos complexos. Exemplos:
+### 3.4 Comentários no Código-Fonte
+
+O código-fonte possui **comentários detalhados em trechos complexos**, seguindo boas práticas de documentação.
+
+> **Critério 3b do Edital:** Código com comentários em trechos complexos ✅
+
+**Exemplos de documentação no código:**
 
 #### Motor Principal (`backend/src/detector.py` - 1016 linhas)
 
@@ -929,15 +1018,10 @@ git push origin main
 
 ---
 
-
 ## 📚 Documentação Detalhada
 
 - **Backend (Motor de IA):** [backend/README.md](backend/README.md)
 - **Frontend (Interface):** [frontend/README.md](frontend/README.md)
-
----
-
----
 
 ---
 
@@ -1076,8 +1160,6 @@ Realizada auditoria completa do codebase para identificar e remover código órf
 - ✅ 14 componentes ativos em `src/components/`
 - ✅ 4 páginas ativas em `src/pages/`
 - ✅ `src/contexts/`, `src/hooks/`, `src/lib/`
-
----
 
 ---
 
