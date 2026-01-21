@@ -1,5 +1,5 @@
-import { Eye, BarChart3, Linkedin } from 'lucide-react';
 import { useAnalysis } from '@/contexts/AnalysisContext';
+import { BarChart3, Eye, Linkedin } from 'lucide-react';
 
 export function FooterWithCounters() {
   const { counters } = useAnalysis();
@@ -24,7 +24,8 @@ export function FooterWithCounters() {
               href="https://www.linkedin.com/in/thiagomarinh0/"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-primary-foreground/80 transition-colors"
+              className="inline-flex items-center justify-center bg-white text-primary rounded p-1 hover:opacity-80 transition-opacity"
+              title="Visite meu LinkedIn"
             >
               <Linkedin className="w-4 h-4" />
             </a>
