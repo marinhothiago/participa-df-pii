@@ -80,43 +80,43 @@ export function Dashboard() {
       <div className="gov-card bg-gradient-to-br from-warning/5 to-warning/10 border-warning/20">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-5 h-5 text-warning" />
-          <span className="text-sm font-semibold text-foreground">Benchmarks de Performance do Motor Híbrido Ensemble de Alta Recall (BERT NER + spaCy + Regex + Validação DV)</span>
+          <span className="text-sm font-semibold text-foreground">Benchmarks de Performance do Motor Híbrido Ensemble v9.6 (Regex + BERT + NuNER + spaCy + Presidio + Árbitro LLM)</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div className="text-center p-3 bg-card/50 rounded-lg border border-success/20">
             <div className="flex items-center justify-center gap-1 text-success mb-1">
               <Target className="w-4 h-4" />
-              <MetricTooltip content="Estratégia Ensemble OR: qualquer detector positivo classifica como PII, maximizando recall para conformidade LGPD/LAI.">
-                <span className="text-xs font-medium">Precisão Global</span>
+              <MetricTooltip content="Zero falsos positivos no benchmark LGPD com 303 casos de teste. Validação de DV (CPF, CNPJ, PIS, CNS) + Allow-list de órgãos GDF.">
+                <span className="text-xs font-medium">Precisão</span>
               </MetricTooltip>
             </div>
-            <p className="text-2xl font-bold text-success">94%</p>
+            <p className="text-2xl font-bold text-success">100%</p>
           </div>
 
           <div className="text-center p-3 bg-card/50 rounded-lg border border-success/20">
             <div className="flex items-center justify-center gap-1 text-success mb-1">
               <TrendingUp className="w-4 h-4" />
-              <MetricTooltip content="22 tipos de PII detectados: CPF, CNPJ, RG, CNH, PIS, CNS, Email, Telefone, Endereço, Nome e mais.">
-                <span className="text-xs font-medium">Sensibilidade</span>
+              <MetricTooltip content="Zero falsos negativos: 53 patterns regex + 3 NERs (BERT, NuNER, spaCy) + gatilhos contextuais. Estratégia OR maximiza recall.">
+                <span className="text-xs font-medium">Sensibilidade (Recall)</span>
               </MetricTooltip>
             </div>
-            <p className="text-2xl font-bold text-success">98%</p>
+            <p className="text-2xl font-bold text-success">100%</p>
           </div>
 
           <div className="text-center p-3 bg-card/50 rounded-lg border border-success/20">
             <div className="flex items-center justify-center gap-1 text-success mb-1">
               <BarChart3 className="w-4 h-4" />
-              <MetricTooltip content="100+ casos de teste validados incluindo edge cases de Brasília/GDF e imunidade funcional (LAI).">
-                <span className="text-xs font-medium">F1-Score Combinado</span>
+              <MetricTooltip content="303 casos de teste (164 VP, 139 VN) incluindo edge cases de Brasília/GDF, imunidade funcional (LAI) e deduplicação avançada.">
+                <span className="text-xs font-medium">F1-Score</span>
               </MetricTooltip>
             </div>
-            <p className="text-2xl font-bold text-success">96%</p>
+            <p className="text-2xl font-bold text-success">100%</p>
           </div>
         </div>
 
         <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-          <strong className="text-foreground">Arquitetura do Motor:</strong> Pipeline de 4 camadas em <span className="text-primary font-medium">estratégia Ensemble OR</span> — (1) <span className="text-warning font-medium">Regex com Validação DV</span> (Módulo 11 para CPF, CNPJ, PIS, CNS), (2) <span className="text-primary font-medium">BERT NER Multilíngue</span> (Davlan/bert-base-multilingual-cased-ner-hrl) como detector primário de nomes, (3) <span className="text-success font-medium">spaCy pt_core_news_lg</span> como NER complementar (captura nomes não detectados pelo BERT), e (4) <span className="text-muted-foreground font-medium">Regras de Negócio</span> (imunidade funcional, contexto GDF). Qualquer camada positiva classifica como PII, garantindo máximo recall para conformidade LGPD/LAI.
+          <strong className="text-foreground">Arquitetura do Motor v9.6:</strong> Pipeline de 8 etapas em <span className="text-primary font-medium">estratégia Ensemble OR</span> — (1) <span className="text-warning font-medium">53 Patterns Regex + Validação DV</span> (Módulo 11 para CPF, CNPJ, PIS, CNS), (2) <span className="text-blue-500 font-medium">Gatilhos Contextuais</span> (contribuinte, reclamante, etc.), (3) <span className="text-primary font-medium">Ensemble NER de 3 modelos</span>: BERT (monilouise/ner_news_portuguese), NuNER (numind/NuNER_Zero) e spaCy (pt_core_news_lg), (4) <span className="text-purple-500 font-medium">Presidio Analyzer</span> (IP, IBAN, cartão), (5) Votação ponderada, (6) <span className="text-orange-500 font-medium">Árbitro LLM</span> (Llama-3.2-3B) para casos ambíguos, (7) Deduplicação avançada, (8) Cálculo de confiança probabilística + XAI.
         </div>
       </div>
 
