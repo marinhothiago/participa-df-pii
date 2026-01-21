@@ -474,7 +474,7 @@ class ApiClient {
     return { total_records: 0, feedbacks: [], stats: {}, exported_at: '' };
   }
 
-  async getTrainingStatus(): Promise<Record<string, any>> {
+  async getTrainingStatus(): Promise<Record<string, unknown>> {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);

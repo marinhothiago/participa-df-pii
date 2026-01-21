@@ -11,7 +11,7 @@ interface TrainingStatus {
     accuracy_after: number;
     improvement_percentage: number;
     time_since_last: string;
-    by_source: Record<string, any>;
+    by_source: Record<string, { avg_improvement: number; num_calibrations: number; total_samples: number }>;
     recommendations: Array<{
         type: string;
         message: string;
@@ -31,11 +31,11 @@ export function TrainingStatus() {
     const fetchStatus = async () => {
         try {
             const data = await api.getTrainingStatus();
-            if (data && !data.error) {
-                setStatus(data as TrainingStatus);
+            if (data && !('error' in data)) {
+                setStatus(data as unknown as TrainingStatus);
                 setError(null);
             } else {
-                setError(data?.error || 'Erro ao carregar status');
+                setError((data as { error?: string })?.error || 'Erro ao carregar status');
             }
         } catch (err) {
             console.error('Erro ao buscar status:', err);
@@ -67,7 +67,7 @@ export function TrainingStatus() {
     }, [isAutoRefresh]);
 
     // Exporta função para disparar atualização
-    (TrainingStatus as any).refresh = fetchStatus;
+    (TrainingStatus as unknown as { refresh: () => void }).refresh = fetchStatus;
 
     if (loading) {
         return (
@@ -213,7 +213,7 @@ export function TrainingStatus() {
                         Calibradores por Fonte
                     </h4>
                     <div className="space-y-2">
-                        {Object.entries(status.by_source).map(([source, data]: [string, any]) => (
+                        {Object.entries(status.by_source).map(([source, data]) => (
                             <div key={source} className="bg-background/50 rounded p-2">
                                 <div className="flex justify-between items-start mb-1">
                                     <span className="text-xs font-medium capitalize">{source}</span>

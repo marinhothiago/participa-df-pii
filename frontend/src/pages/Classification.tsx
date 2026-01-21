@@ -364,9 +364,9 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                 })()}
 
                 {/* Details Badges - usando novo componente */}
-                {(getDetails(analysisResult) as any[])?.length > 0 && (
+                {(getDetails(analysisResult) as { tipo: string; valor: string; confianca: number }[])?.length > 0 && (
                   <IdentifierList
-                    identificadores={getDetails(analysisResult) as any[]}
+                    identificadores={getDetails(analysisResult) as { tipo: string; valor: string; confianca: number }[]}
                     showConfidence={true}
                     size="sm"
                   />
