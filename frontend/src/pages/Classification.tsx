@@ -17,11 +17,17 @@ import {
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { getRiskBgClass, getRiskLabel, getRiskLevelFromRisco, useAnalysis } from '@/contexts/AnalysisContext';
 import { api, ApiError, getErrorMessage, type AnalysisResult } from '@/lib/api';
 import { parseFile } from '@/lib/fileParser';
 import { cn } from '@/lib/utils';
-import { AlertCircle, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, Download, Eye, FileText, FolderUp, Info, List, Loader2, Percent, RefreshCw, Search, Shield, ShieldAlert, ShieldX, Upload } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, Download, Eye, FileText, FolderUp, HelpCircle, Info, List, Loader2, Percent, RefreshCw, Search, Shield, ShieldAlert, ShieldX, Upload } from 'lucide-react';
 import { useState } from 'react';
 
 export function Classification() {
@@ -512,8 +518,8 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                     // Calcula o ID sequencial baseado na página atual
                     const sequentialId = ((currentPage - 1) * pageSize) + index + 1;
 
-                    // Verifica se tem explicações para tooltip
-                    const hasExplicacoes = item.details.some(d => d.explicacao);
+                    // Verifica se tem explicações para tooltip (com verificação de segurança)
+                    const hasExplicacoes = item.details?.some(d => d.explicacao) ?? false;
 
                     return (
                       <tr key={item.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
@@ -568,7 +574,7 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                                     <p className="font-semibold text-xs uppercase text-muted-foreground">
                                       Explicação (XAI)
                                     </p>
-                                    {item.details.filter(d => d.explicacao).map((d, i) => (
+                                    {(item.details ?? []).filter(d => d.explicacao).map((d, i) => (
                                       <div key={i} className="text-xs">
                                         <span className="font-semibold text-primary">{d.tipo}:</span>
                                         <ul className="ml-2 mt-1 space-y-0.5">
@@ -580,7 +586,7 @@ Exemplo: Solicito informações sobre o contrato nº 2024/001, firmado com o ser
                                           ))}
                                         </ul>
                                         <p className="text-muted-foreground mt-1">
-                                          Fonte: {d.explicacao?.fontes?.join(', ')}
+                                          Fonte: {d.explicacao?.fontes?.join(', ') ?? 'N/A'}
                                         </p>
                                       </div>
                                     ))}
