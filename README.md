@@ -16,7 +16,7 @@
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade com LGPD e LAI em manifestações do Participa DF.
 > 
-> 🎉 **v9.6.0**: Sistema com **F1-Score = 1.0000** (100% precisão e recall) em auditoria LGPD completa (153 PIIs mapeados) + 438 testes unitários.
+> 🎉 **v9.6.0**: Sistema com **F1-Score = 1.0000** (100% precisão e recall) em auditoria LGPD completa (156 PIIs mapeados) + 452 testes unitários.
 > 
 > 🆕 **Novidades v9.6.0**: Árbitro LLM ativado por padrão, Presidio com recognizers customizados GDF, validação completa de DV (CPF/CNPJ), análise de contexto avançada (reidentificação).
 
@@ -131,7 +131,7 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 | - **Gazetteer institucional GDF**: filtro de falsos positivos para nomes de órgãos, escolas, hospitais e aliases do DF.
 | - **Sistema de confiança probabilística**: calibração isotônica, combinação log-odds, thresholds dinâmicos por tipo, explicabilidade total.
 | - **Novo formato de resposta da API**: dicionário estruturado, pronto para integrações modernas.
-| - **Testes robustos**: 438 testes unitários, edge cases, benchmark LGPD, auditoria completa (153 PIIs).
+| - **Testes robustos**: 452 testes unitários, edge cases, benchmark LGPD, auditoria completa (156 PIIs).
 |
 | Consulte o backend/README.md para exemplos de uso, formato de resposta e detalhes técnicos.
 
@@ -320,7 +320,7 @@ Consulte [backend/README.md](backend/README.md#-feedback-loop-como-o-motor-apren
 - 🔒 **Segurança total do token Hugging Face:** Uso obrigatório de `.env` (não versionado)
 - 🏛️ **Gazetteer institucional GDF:** Filtro de falsos positivos para órgãos, escolas, hospitais
 - 🧠 **Sistema de confiança probabilística:** Calibração isotônica + log-odds, thresholds dinâmicos
-- 🏆 **Benchmark LGPD/LAI:** 438 testes unitários, F1-score 1.0000
+- 🏆 **Benchmark LGPD/LAI:** 452 testes unitários, F1-score 1.0000
 - ⚡ **Pós-processamento de spans:** Normalização, merge/split, deduplicação avançada
 - 🐳 **Deploy profissional:** Docker Compose, Hugging Face Spaces, GitHub Pages
 - 📚 **Documentação detalhada:** Arquitetura completa do pipeline documentada no código
@@ -351,7 +351,7 @@ desafio-participa-df/
 │   │   └── tasks.py              ← Tasks assíncronas para lotes
 │   │
 │   ├── src/
-│   │   ├── detector.py           ← Motor híbrido PII v9.5 (2200+ linhas, 30+ tipos, thresholds dinâmicos, pós-processamento, gazetteer)
+│   │   ├── detector.py           ← Motor híbrido PII v9.6 (3300+ linhas, 30+ tipos, thresholds dinâmicos, pós-processamento, gazetteer)
 │   │   ├── allow_list.py         ← Lista de termos seguros (blocklist, cargos, contextos, 375+ termos)
 │   │   └── confidence/           ← Módulo de confiança probabilística (isotônico, log-odds, thresholds dinâmicos)
 │   │       ├── types.py          ← Dataclasses: PIIEntity, DocumentConfidence
@@ -396,8 +396,8 @@ desafio-participa-df/
     │   │   ├── Documentation.tsx ← Guia de uso integrado
     │   │   └── NotFound.tsx      ← Página 404
     │   │
-    │   ├── components/           ← Componentes reutilizáveis (20+)
-    │   │   ├── ui/               ← Shadcn UI (buttons, cards, etc)
+    │   ├── components/           ← Componentes reutilizáveis (15+)
+    │   │   ├── ui/               ← Shadcn UI (16 componentes otimizados)
     │   │   ├── Header.tsx        ← Cabeçalho DSGOV
     │   │   ├── KPICard.tsx       ← Cards de métricas
     │   │   ├── ResultsTable.tsx  ← Tabela de resultados
@@ -1094,7 +1094,7 @@ python backend/scripts/main_cli.py --input backend/data/input/AMOSTRA_e-SIC.xlsx
 
 ## 📝 Changelog Resumido
 
-- **v9.6.0**: Árbitro LLM ATIVADO por padrão, Presidio com 10 recognizers customizados GDF, validação completa de DV (CPF/CNPJ), análise de contexto avançada (reidentificação), auditoria LGPD completa (153 PIIs), 438 testes passando
+- **v9.6.0**: Árbitro LLM ATIVADO por padrão, Presidio com 10 recognizers customizados GDF, validação completa de DV (CPF/CNPJ), análise de contexto avançada (reidentificação), auditoria LGPD completa (156 PIIs), 452 testes passando, código auditado e otimizado
 - v9.5.0: Reorganização completa do projeto, Celery integrado à API, scripts organizados, CI/CD otimizado
 - v9.4.3: Telefones internacionais, 5 níveis de risco LGPD, IP/Coordenadas/User-Agent, allow_list ampliada, F1-score 1.0000
 - v9.4.2: Benchmark LGPD ampliado, integração NuNER

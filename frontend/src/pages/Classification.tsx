@@ -105,7 +105,7 @@ export function Classification() {
   // ═══════════════════════════════════════════════════════════════════════════
   // HANDLERS - Análise Individual
   // ═══════════════════════════════════════════════════════════════════════════
-  
+
   /**
    * Executa análise de texto individual via API.
    * Atualiza métricas e histórico automaticamente.

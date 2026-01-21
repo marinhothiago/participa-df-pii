@@ -15,7 +15,7 @@ pinned: false
 [![spaCy](https://img.shields.io/badge/spaCy-3.8.0-09A3D5?logo=spacy)](https://spacy.io/)
 [![Presidio](https://img.shields.io/badge/Presidio-2.2+-purple?logo=microsoft)](https://microsoft.github.io/presidio/)
 [![F1--Score](https://img.shields.io/badge/F1--Score-1.0000-success)](./tests/test_benchmark.py)
-[![Testes](https://img.shields.io/badge/Testes-438%20passando-brightgreen)](./tests/)
+[![Testes](https://img.shields.io/badge/Testes-452%20passando-brightgreen)](./tests/)
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade LGPD/LAI em manifestações do Participa DF.
 > 
