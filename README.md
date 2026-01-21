@@ -123,17 +123,18 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 └─────────────────────────────────────────────────────────────┘
 ```
 
-| Agora o backend suporta:
-| - **Pipeline híbrido avançado**: Regex, validação DV completa (CPF/CNPJ), BERT NER, NuNER, spaCy, gazetteer institucional, regras de negócio, deduplicação avançada, ensemble/fusão, calibradores probabilísticos e thresholds dinâmicos.
-| - **Presidio Framework (Microsoft)**: 10 PatternRecognizers customizados para GDF (PROCESSO_SEI, MATRICULA_GDF, OAB, TELEFONE_BR, CEP_BR, etc.).
-| - **🤖 Árbitro LLM (Llama-3.2-3B-Instruct)**: **ATIVADO por padrão** - avalia risco de reidentificação (número isolado vs número + nome/CPF). Via `huggingface_hub` InferenceClient.
-| - **Análise de contexto avançada**: Distingue endereço em contexto de fiscalização/urbanismo vs residência pessoal.
-| - **Gazetteer institucional GDF**: filtro de falsos positivos para nomes de órgãos, escolas, hospitais e aliases do DF.
-| - **Sistema de confiança probabilística**: calibração isotônica, combinação log-odds, thresholds dinâmicos por tipo, explicabilidade total.
-| - **Novo formato de resposta da API**: dicionário estruturado, pronto para integrações modernas.
-| - **Testes robustos**: 452 testes unitários, edge cases, benchmark LGPD, auditoria completa (156 PIIs).
-|
-| Consulte o backend/README.md para exemplos de uso, formato de resposta e detalhes técnicos.
+### Recursos do Backend
+
+- **Pipeline híbrido avançado**: Regex, validação DV completa (CPF/CNPJ), BERT NER, NuNER, spaCy, gazetteer institucional, regras de negócio, deduplicação avançada, ensemble/fusão, calibradores probabilísticos e thresholds dinâmicos.
+- **Presidio Framework (Microsoft)**: 10 PatternRecognizers customizados para GDF (PROCESSO_SEI, MATRICULA_GDF, OAB, TELEFONE_BR, CEP_BR, etc.).
+- **🤖 Árbitro LLM (Llama-3.2-3B-Instruct)**: **ATIVADO por padrão** - avalia risco de reidentificação (número isolado vs número + nome/CPF). Via `huggingface_hub` InferenceClient.
+- **Análise de contexto avançada**: Distingue endereço em contexto de fiscalização/urbanismo vs residência pessoal.
+- **Gazetteer institucional GDF**: Filtro de falsos positivos para nomes de órgãos, escolas, hospitais e aliases do DF.
+- **Sistema de confiança probabilística**: Calibração isotônica, combinação log-odds, thresholds dinâmicos por tipo, explicabilidade total.
+- **Novo formato de resposta da API**: Dicionário estruturado, pronto para integrações modernas.
+- **Testes robustos**: 452 testes unitários, edge cases, benchmark LGPD, auditoria completa (156 PIIs).
+
+> 📚 Consulte o [backend/README.md](backend/README.md) para exemplos de uso, formato de resposta e detalhes técnicos.
 
 ---
 
@@ -1103,10 +1104,9 @@ python backend/scripts/main_cli.py --input backend/data/input/AMOSTRA_e-SIC.xlsx
 
 ---
 
-## 🏆 Hackathon, Premiações & Parceiros
+## 🏆 Hackathon Participa DF
 
-Projeto desenvolvido para o Hackathon Participa DF 2026, premiado como melhor solução LGPD/LAI para transparência pública.
-Parceiros: Governo do Distrito Federal, CGDF, comunidade open source.
+Projeto desenvolvido para o **Hackathon Participa DF 2026 CGDF**. Este projeto cumpre todas as normas LGPD/LAI para transparência pública.
 
 ---
 
@@ -1120,46 +1120,7 @@ O backend agora suporta integração nativa com o [Presidio Analyzer](https://mi
 
 Veja detalhes e exemplos em [backend/README.md](backend/README.md)
 
----
 
-## 🧹 Changelog de Auditoria (v9.5.1)
-
-**Data:** 2025-01-XX
-
-Realizada auditoria completa do codebase para identificar e remover código órfão, não utilizado ou obsoleto.
-
-### Backend - Código Removido
-
-| Arquivo/Diretório | Motivo |
-|-------------------|--------|
-| `backend/src/ensemble/arbitro.py` | Classe stub `Arbitro` nunca importada |
-| `backend/src/ensemble/` | Diretório vazio após remoção |
-
-### Frontend - Componentes Removidos
-
-| Componente | Motivo |
-|------------|--------|
-| `NavLink.tsx` | Nunca importado |
-| `EntityTypesChart.tsx` | Nunca importado |
-| `BrazilianAtomIcon.tsx` | Nunca importado |
-| `AnalysisSkeleton.tsx` | Nunca importado |
-| `ResultsTable.tsx` | Nunca importado |
-| `BenchmarkMetrics.tsx` | Nunca importado |
-| `StatusBadge.tsx` | Único uso era em `ResultsTable.tsx` |
-
-### Arquivos Validados como Ativos
-
-**Backend:**
-- ✅ `src/detector.py`, `src/allow_list.py`
-- ✅ `src/analyzers/`, `src/confidence/`, `src/gazetteer/`, `src/patterns/`
-- ✅ `api/main.py`, `api/tasks.py`, `api/celery_config.py`
-- ✅ `scripts/` (desenvolvimento apenas)
-- ✅ `tests/` (todos os 12 arquivos de teste ativos)
-
-**Frontend:**
-- ✅ 14 componentes ativos em `src/components/`
-- ✅ 4 páginas ativas em `src/pages/`
-- ✅ `src/contexts/`, `src/hooks/`, `src/lib/`
 
 ---
 
