@@ -208,53 +208,119 @@ npm run dev
 
 ## 6. Descrição da Solução
 
-### Objetivo
+## 📋 Objetivo da Solução
 
-Sistema de IA para **detectar e classificar informações pessoais (PII)** em textos do portal Participa DF, garantindo conformidade com **LGPD** e **LAI** antes da publicação de dados abertos.
+O **Participa DF - PII Detector** é um sistema completo para **detectar, classificar e avaliar o risco de vazamento de dados pessoais** em textos de pedidos de acesso a informação recebidos pelo GDF.
 
-### Arquitetura
+### Problema Resolvido
+
+O GDF precisa analisar manifestações de cidadãos em transparência ativa (LAI) sem violar a privacidade garantida pela LGPD. Este sistema automatiza a detecção de:
+
+- **CPF, RG, CNH, Passaporte, PIS, CNS, Título Eleitor, CTPS** (documentos de identificação)
+- **Email, Telefone, Celular, Telefones Internacionais** (dados de contato)
+- **Endereços residenciais, CEP, Endereços Brasília (SQS, SQN, etc)** (localização)
+- **Nomes pessoais** (com análise de contexto via BERT + spaCy + NuNER)
+- **Dados bancários, PIX, Cartão de Crédito, Conta Bancária** (informações financeiras)
+- **Placas de veículos, Processos CNJ, Matrículas** (outros identificadores)
+- **Dados de Saúde (CID), Dados Biométricos, Menores Identificados** (dados sensíveis LGPD)
+- **IP Address, Coordenadas GPS, User-Agent** (identificação indireta - risco baixo)
+
+### Resultado
+
+Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBLICO"** (contém PII), com nível de risco (CRÍTICO, ALTO, MODERADO, BAIXO, SEGURO) e score de confiança normalizado (0-1).
+
+---
+
+## 🏗️ Arquitetura do Sistema
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      ENTRADA DE TEXTO                       │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
+│                  FRONTEND (React + Vite)                    │
+│              GitHub Pages / Docker (nginx)                  │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ • Dashboard com métricas em tempo real                 │ │
+│  │ • Análise individual de textos                         │ │
+│  │ • Processamento em lote (CSV/XLSX)                     │ │
+│  │ • Design System DSGOV (Gov.br)                         │ │
+│  └────────────────────────────────────────────────────────┘ │
+└────────────────────────┬────────────────────────────────────┘
+                         │ HTTP POST /analyze
+                         ↓
 ┌─────────────────────────────────────────────────────────────┐
-│              ENSEMBLE DE DETECTORES (OR)                    │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌──────────┐ │
-│  │  Regex    │  │  BERT     │  │  Presidio │  │  spaCy   │ │
-│  │  + DV     │  │  NER      │  │  + Custom │  │  NER     │ │
-│  └───────────┘  └───────────┘  └───────────┘  └──────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│              ÁRBITRO LLM (Llama-3.2-3B)                     │
-│  • Resolve conflitos entre detectores                       │
-│  • Analisa contexto semântico profundo                      │
-│  • Decide: PII real vs falso positivo                       │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     RESULTADO                               │
-│  • PIIs detectados com confiança probabilística             │
-│  • Classificação de risco (5 níveis LGPD)                   │
-│  • Explicabilidade (XAI) de cada decisão                    │
+│                 BACKEND (FastAPI + Python)                  │
+│           HuggingFace Spaces / Docker                       │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ Motor Híbrido de Detecção PII (v9.6.0)                 │ │
+│  │                                                      │ │
+│  │ ┌─────────────────────────────┐   ┌─────────────────┐ │ │
+│  │ │ Pipeline Híbrido Original   │   │ Presidio (MSFT) │ │ │
+│  │ │ 1. REGEX + Validação DV     │   │ • AnalyzerEngine│ │ │
+│  │ │ 2. BERT Davlan NER          │   │ • Recognizers   │ │ │
+│  │ │ 3. NuNER pt-BR              │   │   Customizados  │ │ │
+│  │ │ 4. spaCy pt_core_news_lg    │   │   GDF (10+)     │ │ │
+│  │ │ 5. Gazetteer GDF            │   └─────────────────┘ │ │
+│  │ │ 6. Regras de Negócio        │           │           │ │
+│  │ │ 7. Confiança Probabilística │           │           │ │
+│  │ │ 8. Thresholds Dinâmicos     │           │           │ │
+│  │ │ 9. Deduplicação Avançada    │           │           │ │
+│  │ └─────────────┬───────────────┘           │           │ │
+│  │               │                           │           │ │
+│  │         ┌─────▼─────────────┐             │           │ │
+│  │         │   Ensemble/Fusão  │◄────────────┘           │ │
+│  │         └─────────┬─────────┘                         │ │
+│  │                   │                                   │ │
+│  │         ┌─────────▼─────────┐                         │ │
+│  │         │ Árbitro LLM       │                         │ │
+│  │         │ Llama-3.2-3B (HF) │  ← ✅ ATIVADO PADRÃO    │ │
+│  │         │ • Reidentificação │                         │ │
+│  │         │ • Decisão ambígua │                         │ │
+│  │         └────────────────────┘                        │ │
+│  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
+---
 
-### Tecnologias Principais
+### Tecnologias Utilizadas
 
-| Componente | Tecnologia | Função |
-|------------|------------|--------|
-| Backend | FastAPI + Python 3.10 | API REST de análise |
-| NLP | spaCy + BERT NER (ONNX) | Reconhecimento de entidades |
-| Validação | Regex + Dígitos Verificadores | CPF, CNPJ, PIS, CNH |
-| LLM | Llama-3.2-3B | Árbitro de conflitos |
-| Presidio | Microsoft Presidio | 10 recognizers customizados |
-| Frontend | React + TypeScript + Vite | Interface de usuário |
+#### Backend (Motor de IA)
+
+| Tecnologia | Versão | Função |
+|------------|--------|--------|
+| **Python** | 3.10+ | Linguagem principal |
+| **FastAPI** | 0.110.0 | Framework web assíncrono |
+| **spaCy** | 3.8.0 | NLP para português (`pt_core_news_lg`) |
+| **Transformers** | 4.41.2 | BERT NER (`monilouise/ner_news_portuguese`) |
+| **NuNER** | - | NER multilíngue (`numind/NuNER_Zero`) |
+| **PyTorch** | 2.1.0 | Deep learning (CPU) |
+| **Presidio Analyzer** | 2.2.360+ | Framework Microsoft para detecção de PII |
+| **Llama 3.2** | 3B-Instruct | Árbitro LLM via HuggingFace Inference API |
+| **huggingface_hub** | latest | InferenceClient para chamadas LLM |
+| **scikit-learn** | 1.3.0+ | Calibração isotônica de confiança |
+| **Pandas** | 2.2.1 | Processamento de dados tabulares |
+| **Celery** | 5.3.0+ | Processamento assíncrono de lotes |
+| **Redis** | - | Broker para filas Celery |
+
+#### Modelos de IA
+
+| Modelo | Tipo | Função |
+|--------|------|--------|
+| `monilouise/ner_news_portuguese` | BERT NER | Detecção de nomes (pt-BR especializado) |
+| `numind/NuNER_Zero` | NER Zero-shot | Detecção multilíngue (backup) |
+| `pt_core_news_lg` | spaCy | NER português (fallback) |
+| `meta-llama/Llama-3.2-3B-Instruct` | LLM | Árbitro para casos ambíguos |
+
+#### Frontend (Interface)
+
+| Tecnologia | Versão | Função |
+|------------|--------|--------|
+| React | 18.3.1 | Biblioteca UI |
+| TypeScript | 5.8.3 | Tipagem estática |
+| Vite | 5.4.19 | Build tool ultra-rápido |
+| TailwindCSS | 3.4.17 | Estilização (Design DSGOV) |
+| Shadcn/UI | latest | Componentes acessíveis |
+| Recharts | 2.15.4 | Gráficos e visualizações |
+| React Query | 5.83.0 | Cache e estado de requisições |
+| XLSX | 0.18.5 | Parser de arquivos Excel |
 
 ---
 
