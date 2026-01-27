@@ -185,8 +185,9 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
       riskDistribution[item.riskLevel]++;
 
-      item.details.forEach(detail => {
-        const tipo = detail.tipo.toUpperCase();
+      // Proteção contra details undefined ou malformados
+      (item.details ?? []).forEach(detail => {
+        const tipo = (detail?.tipo ?? 'UNKNOWN').toUpperCase();
         piiTypeCounts[tipo] = (piiTypeCounts[tipo] || 0) + 1;
       });
     });
@@ -272,16 +273,17 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         date,
         time,
         type: 'batch' as const,
-        text: result.fullText || result.text_preview, // Usar texto completo se disponível
+        text: result.fullText || result.text_preview || '', // Usar texto completo se disponível
         classification,
-        probability: result.probability,
+        probability: result.probability ?? 0,
         riskLevel,
         risco,
-        details: result.entities.map(e => ({
-          tipo: e.type,
-          valor: e.value,
-          confianca: e.confidence,
-          explicacao: e.explicacao,
+        // Proteção contra entities undefined
+        details: (result.entities ?? []).map(e => ({
+          tipo: e?.type ?? 'UNKNOWN',
+          valor: e?.value ?? '',
+          confianca: e?.confidence,
+          explicacao: e?.explicacao,
         })),
       };
       return item;

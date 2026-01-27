@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/tooltip";
 import { getRiskBgClass, getRiskLabel, useAnalysis } from '@/contexts/AnalysisContext';
 import { cn } from '@/lib/utils';
-import { AlertCircle, AlertTriangle, BarChart3, CheckCircle, ChevronLeft, ChevronRight, Clock, Eye, FileText, Info, Percent, Shield, ShieldX, Target, TrendingUp, Zap } from 'lucide-react';
+import { AlertCircle, AlertTriangle, BarChart3, CheckCircle, ChevronLeft, ChevronRight, Clock, Eye, FileText, HelpCircle, Info, Percent, Shield, ShieldX, Target, TrendingUp, Zap } from 'lucide-react';
 import { useState } from 'react';
 
 function MetricTooltip({ children, content }: { children: React.ReactNode; content: string }) {
