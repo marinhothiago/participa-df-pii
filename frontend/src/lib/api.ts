@@ -9,7 +9,7 @@
  * 1. DETECÇÃO AUTOMÁTICA DE BACKEND
  *    - Tenta conectar em localhost:7860 primeiro (desenvolvimento)
  *    - Fallback para HuggingFace Spaces em produção
- *    - Health check assíncrono no carregamento do módulo
+ *    - Health check assíncrono no carregamento do módulo (GET /health)
  * 
  * 2. RETRY COM BACKOFF EXPONENCIAL
  *    - Até MAX_RETRIES tentativas em caso de falha
@@ -27,7 +27,7 @@
  * Endpoints consumidos:
  * - POST /analyze     → Análise de texto único
  * - POST /batch       → Processamento em lote
- * - GET  /health      → Status do backend
+ * - GET  /health      → Status do backend (usado para checkConnection)
  * - GET  /stats       → Métricas agregadas
  * - POST /feedback    → Coleta de feedback do usuário
  * 
