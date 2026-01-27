@@ -323,12 +323,18 @@ class ApiClient {
     }
   }
 
+  /**
+   * Verifica se o backend está online usando GET /health.
+   * NÃO infla o contador de requisições (usa endpoint dedicado de health check).
+   * @returns true se o backend responder (mesmo com erro < 500)
+   */
   async checkConnection(): Promise<boolean> {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      // Usa o endpoint /health para verificar se está online (não conta como requisição)
+      // IMPORTANTE: Usa GET /health para não inflar o contador de requisições
+      // Histórico: Antes usava POST /analyze com "teste", inflando estatísticas
       const response = await fetch(`${API_BASE_URL}/health`, {
         method: 'GET',
         signal: controller.signal,
