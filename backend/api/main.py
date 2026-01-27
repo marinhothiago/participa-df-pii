@@ -91,49 +91,53 @@ else:
 # === SISTEMA DE CONTADORES GLOBAIS ===
 STATS_FILE = os.path.join(backend_dir, "data", "stats.json")
 FEEDBACK_FILE = os.path.join(backend_dir, "data", "feedback.json")
+TRAINING_STATUS_FILE = os.path.join(backend_dir, "data", "training_status.json")
 stats_lock = threading.Lock()
 feedback_lock = threading.Lock()
 
 # Cache local para reduzir chamadas ao HF
 _stats_cache: Dict = None
 _stats_cache_time: float = 0
+_feedback_cache: Dict = None
+_feedback_cache_time: float = 0
 STATS_CACHE_TTL = 60  # segundos
+FEEDBACK_CACHE_TTL = 30  # segundos (feedback muda mais frequentemente)
 
-def _load_stats_from_hf() -> Dict:
-    """Carrega stats do HuggingFace Dataset."""
+def _load_from_hf(filename: str) -> Dict:
+    """Carrega arquivo JSON do HuggingFace Dataset."""
     try:
         path = hf_hub_download(
             repo_id=HF_STATS_REPO,
-            filename="stats.json",
+            filename=filename,
             repo_type="dataset",
             token=HF_TOKEN
         )
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
-        print(f"⚠️ Erro ao carregar stats do HF: {e}")
+        print(f"⚠️ Erro ao carregar {filename} do HF: {e}")
         return None
 
-def _save_stats_to_hf(stats: Dict) -> bool:
-    """Salva stats no HuggingFace Dataset."""
+def _save_to_hf(data: Dict, filename: str, commit_message: str = None) -> bool:
+    """Salva arquivo JSON no HuggingFace Dataset."""
     try:
         import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            json.dump(stats, f, indent=2)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
             temp_path = f.name
         
         api = HfApi(token=HF_TOKEN)
         api.upload_file(
             path_or_fileobj=temp_path,
-            path_in_repo="stats.json",
+            path_in_repo=filename,
             repo_id=HF_STATS_REPO,
             repo_type="dataset",
-            commit_message=f"Update stats: {stats.get('site_visits', 0)} visits, {stats.get('classification_requests', 0)} requests"
+            commit_message=commit_message or f"Update {filename}"
         )
-        os.unlink(temp_path)  # Limpa arquivo temporário
+        os.unlink(temp_path)
         return True
     except Exception as e:
-        print(f"⚠️ Erro ao salvar stats no HF: {e}")
+        print(f"⚠️ Erro ao salvar {filename} no HF: {e}")
         return False
 
 def load_stats() -> Dict:
@@ -149,7 +153,7 @@ def load_stats() -> Dict:
     
     # Tenta carregar do HF primeiro
     if USE_HF_STORAGE:
-        stats = _load_stats_from_hf()
+        stats = _load_from_hf("stats.json")
     
     # Fallback para arquivo local
     if stats is None:
@@ -186,7 +190,7 @@ def save_stats(stats: Dict) -> None:
     
     # Salva no HF Dataset se disponível
     if USE_HF_STORAGE:
-        _save_stats_to_hf(stats)
+        _save_to_hf(stats, "stats.json", f"Update stats: {stats.get('site_visits', 0)} visits, {stats.get('classification_requests', 0)} requests")
     
     # Atualiza cache
     _stats_cache = stats.copy()
@@ -203,36 +207,73 @@ def increment_stat(key: str, amount: int = 1) -> Dict:
 
 # === SISTEMA DE FEEDBACK HUMANO ===
 def load_feedback() -> Dict:
-    """Carrega feedbacks do arquivo JSON."""
-    try:
-        if os.path.exists(FEEDBACK_FILE):
-            with open(FEEDBACK_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception as e:
-        print(f"Erro ao carregar feedback: {e}")
-    return {
-        "feedbacks": [],
-        "stats": {
-            "total_feedbacks": 0,
-            "total_entities_reviewed": 0,
-            "correct": 0,
-            "incorrect": 0,
-            "partial": 0,
-            "by_type": {}
-        },
-        "last_updated": None
-    }
+    """Carrega feedbacks (HF Dataset ou arquivo local)."""
+    global _feedback_cache, _feedback_cache_time
+    import time
+    
+    # Verifica cache primeiro
+    if _feedback_cache is not None and (time.time() - _feedback_cache_time) < FEEDBACK_CACHE_TTL:
+        return _feedback_cache.copy()
+    
+    data = None
+    
+    # Tenta carregar do HF primeiro
+    if USE_HF_STORAGE:
+        data = _load_from_hf("feedback.json")
+    
+    # Fallback para arquivo local
+    if data is None:
+        try:
+            if os.path.exists(FEEDBACK_FILE):
+                with open(FEEDBACK_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+        except Exception as e:
+            print(f"Erro ao carregar feedback local: {e}")
+    
+    if data is None:
+        data = {
+            "feedbacks": [],
+            "stats": {
+                "total_feedbacks": 0,
+                "total_entities_reviewed": 0,
+                "correct": 0,
+                "incorrect": 0,
+                "partial": 0,
+                "by_type": {}
+            },
+            "last_updated": None
+        }
+    
+    # Atualiza cache
+    _feedback_cache = data.copy()
+    _feedback_cache_time = time.time()
+    
+    return data
 
 
 def save_feedback(data: Dict) -> None:
-    """Salva feedbacks no arquivo JSON com lock para concorrência."""
+    """Salva feedbacks (HF Dataset e arquivo local)."""
+    global _feedback_cache, _feedback_cache_time
+    import time
+    
+    data["last_updated"] = datetime.now().isoformat()
+    
+    # Sempre salva localmente (backup)
     try:
-        data["last_updated"] = datetime.now().isoformat()
         os.makedirs(os.path.dirname(FEEDBACK_FILE), exist_ok=True)
         with open(FEEDBACK_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
     except Exception as e:
-        print(f"Erro ao salvar feedback: {e}")
+        print(f"Erro ao salvar feedback local: {e}")
+    
+    # Salva no HF Dataset se disponível
+    if USE_HF_STORAGE:
+        total_fb = data.get("stats", {}).get("total_feedbacks", 0)
+        _save_to_hf(data, "feedback.json", f"Update feedback: {total_fb} feedbacks")
+    
+    # Atualiza cache
+    _feedback_cache = data.copy()
+    _feedback_cache_time = time.time()
 
 
 def add_feedback(feedback_entry: Dict) -> Dict:
