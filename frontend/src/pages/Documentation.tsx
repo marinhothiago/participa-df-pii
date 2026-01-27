@@ -837,34 +837,58 @@ npm run dev
                     <tr>
                       <th className="py-2 px-3 text-left">ID</th>
                       <th className="py-2 px-3 text-left">Classificação</th>
-                      <th className="py-2 px-3 text-left">Risco</th>
-                      <th className="py-2 px-3 text-left">PIIs</th>
+                      <th className="py-2 px-3 text-left">Confiança</th>
+                      <th className="py-2 px-3 text-left">Nível de Risco</th>
+                      <th className="py-2 px-3 text-left">Identificadores</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="bg-red-100 dark:bg-red-950/30">
+                    {/* CRÍTICO - Vermelho Escuro */}
+                    <tr>
                       <td className="py-2 px-3">12345</td>
-                      <td className="py-2 px-3">NÃO PÚBLICO</td>
-                      <td className="py-2 px-3 font-bold text-red-600">CRÍTICO</td>
+                      <td className="py-2 px-3 bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200">[X] NÃO PÚBLICO</td>
+                      <td className="py-2 px-3">99.2%</td>
+                      <td className="py-2 px-3 bg-red-300 dark:bg-red-800/60 text-red-900 dark:text-red-100 font-bold">CRÍTICO</td>
                       <td className="py-2 px-3">CPF, NOME</td>
                     </tr>
-                    <tr className="bg-green-100 dark:bg-green-950/30">
+                    {/* ALTO - Vermelho Claro */}
+                    <tr>
                       <td className="py-2 px-3">12346</td>
-                      <td className="py-2 px-3">PÚBLICO</td>
-                      <td className="py-2 px-3 font-bold text-green-600">SEGURO</td>
-                      <td className="py-2 px-3">-</td>
-                    </tr>
-                    <tr className="bg-orange-100 dark:bg-orange-950/30">
-                      <td className="py-2 px-3">12347</td>
-                      <td className="py-2 px-3">NÃO PÚBLICO</td>
-                      <td className="py-2 px-3 font-bold text-orange-600">ALTO</td>
+                      <td className="py-2 px-3 bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200">[X] NÃO PÚBLICO</td>
+                      <td className="py-2 px-3">87.5%</td>
+                      <td className="py-2 px-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 font-bold">ALTO</td>
                       <td className="py-2 px-3">EMAIL, TELEFONE</td>
+                    </tr>
+                    {/* MODERADO - Amarelo */}
+                    <tr>
+                      <td className="py-2 px-3">12347</td>
+                      <td className="py-2 px-3 bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200">[X] NÃO PÚBLICO</td>
+                      <td className="py-2 px-3">65.0%</td>
+                      <td className="py-2 px-3 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 font-bold">MODERADO</td>
+                      <td className="py-2 px-3">MATRICULA_GDF</td>
+                    </tr>
+                    {/* BAIXO - Azul Claro */}
+                    <tr>
+                      <td className="py-2 px-3">12348</td>
+                      <td className="py-2 px-3 bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200">[X] NÃO PÚBLICO</td>
+                      <td className="py-2 px-3">45.0%</td>
+                      <td className="py-2 px-3 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold">BAIXO</td>
+                      <td className="py-2 px-3">PROCESSO_GDF</td>
+                    </tr>
+                    {/* SEGURO - Verde */}
+                    <tr>
+                      <td className="py-2 px-3">12349</td>
+                      <td className="py-2 px-3 bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200">[OK] PÚBLICO</td>
+                      <td className="py-2 px-3">100.0%</td>
+                      <td className="py-2 px-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-bold">SEGURO</td>
+                      <td className="py-2 px-3">-</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                📊 Linhas coloridas automaticamente por nível de risco para facilitar triagem visual.
+                📊 Células coloridas: <strong>Classificação</strong> (🟢 verde = PÚBLICO, 🔴 vermelho = NÃO PÚBLICO) |
+                <strong> Nível de Risco</strong> (🔴 CRÍTICO, 🟠 ALTO, 🟡 MODERADO, 🔵 BAIXO, 🟢 SEGURO)
               </p>
             </div>
           </div>
