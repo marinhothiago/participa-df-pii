@@ -77,13 +77,52 @@ import time
 # RATE LIMITING POR IP
 # ═══════════════════════════════════════════════════════════════════════════════
 # Configuração: máximo de requisições por IP por janela de tempo
-RATE_LIMIT_REQUESTS = 60  # Máximo de requisições
-RATE_LIMIT_WINDOW = 60    # Janela de tempo em segundos (1 minuto)
-MIN_TEXT_LENGTH = 10      # Comprimento mínimo do texto para análise válida
+# NOTA: Limite alto (300) para suportar upload de arquivos em lote (até 200 linhas)
+RATE_LIMIT_REQUESTS = 300  # Máximo de requisições por minuto
+RATE_LIMIT_WINDOW = 60     # Janela de tempo em segundos (1 minuto)
+MIN_TEXT_LENGTH = 10       # Comprimento mínimo do texto para análise válida
+MAX_BATCH_SIZE = 200       # Máximo de itens por requisição batch
 
 # Armazena contagem de requisições por IP: {ip: [(timestamp, count), ...]}
 rate_limit_store: Dict[str, list] = defaultdict(list)
 rate_limit_lock = threading.Lock()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DETECÇÃO DE BOTS E CRAWLERS
+# ═══════════════════════════════════════════════════════════════════════════════
+# Padrões de User-Agent conhecidos de bots/crawlers
+BOT_USER_AGENTS = [
+    "bot", "crawler", "spider", "scraper", "curl", "wget", "python-requests",
+    "httpx", "aiohttp", "go-http-client", "java", "perl", "ruby", "php",
+    "headless", "phantom", "selenium", "puppeteer", "playwright",
+    "googlebot", "bingbot", "yandex", "baidu", "duckduck", "facebookexternal",
+    "twitterbot", "linkedinbot", "slackbot", "telegrambot", "whatsapp",
+    "applebot", "semrush", "ahrefs", "mj12bot", "dotbot", "petalbot",
+    "dataforseo", "bytespider", "gptbot", "claudebot", "anthropic",
+]
+
+# Armazena requisições suspeitas para análise: {ip: {ua, count, first_seen, texts}}
+suspicious_requests: Dict[str, Dict] = defaultdict(lambda: {"ua": "", "count": 0, "first_seen": None, "texts": []})
+suspicious_lock = threading.Lock()
+
+
+def is_bot_user_agent(user_agent: str) -> bool:
+    """Verifica se o User-Agent parece ser de um bot/crawler."""
+    ua_lower = user_agent.lower()
+    return any(bot in ua_lower for bot in BOT_USER_AGENTS)
+
+
+def track_suspicious_request(ip: str, user_agent: str, text: str) -> None:
+    """Registra requisição suspeita para análise posterior."""
+    with suspicious_lock:
+        entry = suspicious_requests[ip]
+        entry["ua"] = user_agent
+        entry["count"] += 1
+        if entry["first_seen"] is None:
+            entry["first_seen"] = datetime.now().isoformat()
+        # Guarda apenas os primeiros 5 textos para análise
+        if len(entry["texts"]) < 5:
+            entry["texts"].append(text[:100])
 
 # === HUGGINGFACE HUB PARA PERSISTÊNCIA ===
 try:
@@ -479,6 +518,76 @@ detector = PIIDetector(
 from src.confidence.combiners import merge_spans_custom
 
 
+def analyze_single_text(text: str, request_id: Optional[str] = None, force_llm: bool = False, merge_preset: str = "f1") -> Dict:
+    """
+    Função auxiliar para analisar um único texto.
+    Usada tanto pelo /analyze quanto pelo /analyze/batch.
+    
+    Args:
+        text: Texto a ser analisado
+        request_id: ID opcional da requisição
+        force_llm: Forçar uso do árbitro LLM
+        merge_preset: Estratégia de merge de spans
+    
+    Returns:
+        Dict com resultado da análise no formato padrão
+    """
+    # Validação de texto mínimo
+    text_length = len(text.strip()) if text else 0
+    if text_length < MIN_TEXT_LENGTH:
+        return {
+            "id": request_id,
+            "has_pii": False,
+            "entities": [],
+            "risk_level": "BAIXO",
+            "confidence_all_found": 1.0,
+            "total_entities": 0,
+            "sources_used": [],
+            "classificacao": "PÚBLICO",
+            "risco": "BAIXO",
+            "confianca": 1.0,
+            "detalhes": [],
+            "_warning": f"Texto muito curto ({text_length} caracteres). Mínimo: {MIN_TEXT_LENGTH} caracteres.",
+            "_valid_for_stats": False
+        }
+    
+    # Executa detecção usando detector híbrido
+    has_pii, findings, risco, confianca = detector.detect(text, force_llm=force_llm)
+    
+    # Estratégias de merge (mantido para compatibilidade)
+    if findings:
+        if merge_preset == "recall":
+            criterio = "longest"
+            tie_breaker = "all"
+        elif merge_preset == "precision":
+            criterio = "score"
+            tie_breaker = "leftmost"
+        elif merge_preset == "f1":
+            criterio = "longest"
+            tie_breaker = "leftmost"
+        elif merge_preset == "custom":
+            criterio = "custom"
+            tie_breaker = "leftmost"
+        else:
+            criterio = "longest"
+            tie_breaker = "leftmost"
+    
+    return {
+        "id": request_id,
+        "has_pii": has_pii,
+        "entities": findings,
+        "risk_level": risco,
+        "confidence_all_found": confianca,
+        "total_entities": len(findings) if findings else 0,
+        "sources_used": list(set(f.get("fonte", "regex") for f in findings)) if findings else [],
+        "classificacao": "NÃO PÚBLICO" if has_pii else "PÚBLICO",
+        "risco": risco,
+        "confianca": confianca,
+        "detalhes": findings,
+        "_valid_for_stats": True
+    }
+
+
 def check_rate_limit(ip: str) -> tuple[bool, int]:
     """
     Verifica se o IP excedeu o rate limit.
@@ -533,8 +642,19 @@ async def analyze(
     # Log para debug de requisições
     client_ip = request.client.host if request.client else "unknown"
     user_agent = request.headers.get("user-agent", "unknown")
-    text_preview = data.get("text", "")[:50].replace("\n", " ") if data.get("text") else ""
-    logging.info(f"📊 POST /analyze | IP: {client_ip} | UA: {user_agent[:60]} | Text: '{text_preview}...'")
+    text = data.get("text", "")
+    text_preview = text[:50].replace("\n", " ") if text else ""
+    request_id = data.get("id", None)
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # DETECÇÃO DE BOTS: Registra requisições suspeitas para análise
+    # ═══════════════════════════════════════════════════════════════════════════
+    is_bot = is_bot_user_agent(user_agent)
+    if is_bot:
+        logging.warning(f"🤖 BOT DETECTADO | IP: {client_ip} | UA: {user_agent[:80]} | Text: '{text_preview}...'")
+        track_suspicious_request(client_ip, user_agent, text)
+    else:
+        logging.info(f"📊 POST /analyze | IP: {client_ip} | UA: {user_agent[:60]} | Text: '{text_preview}...'")
     
     # ═══════════════════════════════════════════════════════════════════════════
     # RATE LIMITING: Verifica se IP excedeu limite de requisições
@@ -553,76 +673,104 @@ async def analyze(
             headers={"Retry-After": str(RATE_LIMIT_WINDOW)}
         )
     
-    text = data.get("text", "")
-    request_id = data.get("id", None)
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ANÁLISE: Usa função auxiliar para processar o texto
+    # ═══════════════════════════════════════════════════════════════════════════
+    result = analyze_single_text(text, request_id, force_llm=use_llm, merge_preset=merge_preset)
     
-    # ═══════════════════════════════════════════════════════════════════════════
-    # VALIDAÇÃO: Texto mínimo para análise válida
-    # ═══════════════════════════════════════════════════════════════════════════
-    text_length = len(text.strip()) if text else 0
-    is_valid_text = text_length >= MIN_TEXT_LENGTH
+    # Só conta nas estatísticas se for texto válido (não-bot e tamanho mínimo)
+    if result.get("_valid_for_stats") and not is_bot:
+        increment_stat("classification_requests")
     
-    if not is_valid_text:
-        logging.info(f"📝 Texto muito curto ({text_length} chars) - análise simplificada, sem contar estatísticas")
-        # Retorna resposta válida mas não conta nas estatísticas
-        return {
-            "id": request_id,
-            "has_pii": False,
-            "entities": [],
-            "risk_level": "BAIXO",
-            "confidence_all_found": 1.0,
-            "total_entities": 0,
-            "sources_used": [],
-            "classificacao": "PÚBLICO",
-            "risco": "BAIXO",
-            "confianca": 1.0,
-            "detalhes": [],
-            "_warning": f"Texto muito curto ({text_length} caracteres). Mínimo: {MIN_TEXT_LENGTH} caracteres."
-        }
+    # Remove campo interno antes de retornar
+    result.pop("_valid_for_stats", None)
+    
+    return result
 
-    # Executa detecção usando detector híbrido
-    has_pii, findings, risco, confianca = detector.detect(text, force_llm=use_llm)
 
-    # Estratégias de merge
-    if findings:
-        if merge_preset == "recall":
-            criterio = "longest"
-            tie_breaker = "all"
-        elif merge_preset == "precision":
-            criterio = "score"
-            tie_breaker = "leftmost"
-        elif merge_preset == "f1":
-            criterio = "longest"
-            tie_breaker = "leftmost"
-        elif merge_preset == "custom":
-            criterio = "custom"
-            tie_breaker = "leftmost"
-        else:
-            criterio = "longest"
-            tie_breaker = "leftmost"
-        # TODO: aplicar merge_spans_custom se necessário
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # ESTATÍSTICAS: Só conta requisições com texto válido (>= MIN_TEXT_LENGTH chars)
-    # Isso evita que bots/crawlers/testes inflem as estatísticas
-    # ═══════════════════════════════════════════════════════════════════════════
-    increment_stat("classification_requests")
-
-    # Retorna resultado no formato documentado (compatível com frontend)
+@app.post("/analyze/batch")
+async def analyze_batch(
+    request: Request,
+    data: Dict[str, List],
+    merge_preset: str = Query(
+        default="f1",
+        description="Estratégia de merge de spans: 'recall', 'precision', 'f1', 'custom'."
+    ),
+    use_llm: bool = Query(
+        default=False,
+        description="Força uso do árbitro LLM para arbitragem de PII."
+    )
+) -> Dict:
+    """
+    Analisa múltiplos textos em uma única requisição.
+    Ideal para processamento de arquivos em lote.
+    
+    Body:
+        {"items": [{"id": "1", "text": "..."}, {"id": "2", "text": "..."}, ...]}
+    
+    Limite: 200 itens por requisição.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "unknown")
+    items = data.get("items", [])
+    
+    logging.info(f"📦 POST /analyze/batch | IP: {client_ip} | Items: {len(items)}")
+    
+    # Validação do tamanho do batch
+    if len(items) > MAX_BATCH_SIZE:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "batch_too_large",
+                "message": f"Máximo de {MAX_BATCH_SIZE} itens por requisição. Recebido: {len(items)}",
+                "max_batch_size": MAX_BATCH_SIZE
+            }
+        )
+    
+    # Rate limiting: conta como 1 requisição + número de itens / 10
+    # Isso permite batches grandes sem bloquear, mas limita abuso
+    rate_cost = 1 + (len(items) // 10)
+    for _ in range(rate_cost):
+        is_allowed, _ = check_rate_limit(client_ip)
+        if not is_allowed:
+            logging.warning(f"⚠️ Rate limit excedido para IP: {client_ip} (batch)")
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": "rate_limit_exceeded",
+                    "message": f"Limite de requisições excedido. Tente novamente em breve.",
+                    "retry_after": RATE_LIMIT_WINDOW
+                },
+                headers={"Retry-After": str(RATE_LIMIT_WINDOW)}
+            )
+    
+    # Processa todos os itens
+    results = []
+    valid_count = 0
+    
+    for item in items:
+        item_id = item.get("id")
+        item_text = item.get("text", "")
+        
+        result = analyze_single_text(item_text, item_id, force_llm=use_llm, merge_preset=merge_preset)
+        
+        if result.get("_valid_for_stats"):
+            valid_count += 1
+        
+        # Remove campo interno
+        result.pop("_valid_for_stats", None)
+        results.append(result)
+    
+    # Conta apenas textos válidos nas estatísticas
+    if valid_count > 0 and not is_bot_user_agent(user_agent):
+        increment_stat("classification_requests", valid_count)
+    
     return {
-        "id": request_id,
-        # Formato novo (documentado no README)
-        "has_pii": has_pii,
-        "entities": findings,
-        "risk_level": risco,
-        "confidence_all_found": confianca,
-        "total_entities": len(findings) if findings else 0,
-        "sources_used": list(set(f.get("fonte", "regex") for f in findings)) if findings else [],
-        # Formato legado (para retrocompatibilidade)
-        "classificacao": "NÃO PÚBLICO" if has_pii else "PÚBLICO",
-        "risco": risco,
-        "confianca": confianca,
-        "detalhes": findings
+        "total": len(results),
+        "valid_texts": valid_count,
+        "results": results
     }
 
 
@@ -1058,6 +1206,7 @@ async def rate_limit_status(request: Request) -> Dict:
             - remaining (int): Requisições restantes
             - window_seconds (int): Tamanho da janela em segundos
             - min_text_length (int): Comprimento mínimo de texto aceito
+            - max_batch_size (int): Máximo de itens por requisição batch
     """
     client_ip = request.client.host if request.client else "unknown"
     current_time = time.time()
@@ -1076,8 +1225,64 @@ async def rate_limit_status(request: Request) -> Dict:
         "limit": RATE_LIMIT_REQUESTS,
         "remaining": max(0, RATE_LIMIT_REQUESTS - requests_in_window),
         "window_seconds": RATE_LIMIT_WINDOW,
-        "min_text_length": MIN_TEXT_LENGTH
+        "min_text_length": MIN_TEXT_LENGTH,
+        "max_batch_size": MAX_BATCH_SIZE
     }
+
+
+@app.get("/admin/suspicious-requests")
+async def get_suspicious_requests(key: str = Query(..., description="Chave de administrador")) -> Dict:
+    """
+    [ADMIN] Lista requisições suspeitas de bots detectados.
+    
+    Requer a chave de administrador configurada em ADMIN_KEY.
+    
+    Returns:
+        Dict com:
+            - total_ips (int): Quantidade de IPs suspeitos
+            - requests (Dict): Mapa de IP -> detalhes das requisições
+    """
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=403,
+            content={"error": "forbidden", "message": "Chave de administrador inválida"}
+        )
+    
+    with suspicious_lock:
+        # Copia dados para evitar race condition
+        data = dict(suspicious_requests)
+    
+    return {
+        "total_ips": len(data),
+        "bot_patterns": BOT_USER_AGENTS[:10],  # Mostra os primeiros 10 padrões
+        "requests": data
+    }
+
+
+@app.delete("/admin/suspicious-requests")
+async def clear_suspicious_requests(key: str = Query(..., description="Chave de administrador")) -> Dict:
+    """
+    [ADMIN] Limpa o registro de requisições suspeitas.
+    
+    Requer a chave de administrador configurada em ADMIN_KEY.
+    """
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=403,
+            content={"error": "forbidden", "message": "Chave de administrador inválida"}
+        )
+    
+    with suspicious_lock:
+        count = len(suspicious_requests)
+        suspicious_requests.clear()
+    
+    return {
+        "cleared": count,
+        "message": f"Removidos {count} IPs suspeitos do registro"
+    }
+
 
 @app.post('/api/lote')
 def submit_lote(file: UploadFile = File(...)):
