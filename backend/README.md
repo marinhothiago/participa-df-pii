@@ -19,7 +19,7 @@ pinned: false
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade LGPD/LAI em manifestações do Participa DF.
 > 
-> 🏆 **v9.6.0 - F1-Score = 1.0000** (100% precisão, 100% recall) em auditoria LGPD completa (153 PIIs mapeados).
+> 🏆 **F1-Score = 1.0000** (100% precisão, 100% recall) em auditoria LGPD completa (153 PIIs mapeados).
 
 | 🌐 **Links de Produção** | URL |
 |--------------------------|-----|
