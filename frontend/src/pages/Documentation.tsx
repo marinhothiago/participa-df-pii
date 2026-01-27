@@ -571,72 +571,221 @@ export function Documentation() {
               3. Guia de Instalação
             </h3>
 
-            {/* Pré-requisitos */}
-            <div className="mb-6">
-              <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-success" />
-                Pré-requisitos
-              </h4>
-              <div className="flex flex-wrap gap-3 mb-4">
-                <SoftwareBadge name="Docker" version="24.0+" color="primary" />
-                <SoftwareBadge name="Docker Compose" version="2.20+" color="success" />
-                <SoftwareBadge name="Git" version="2.40+" color="warning" />
+            {/* Opção 1: Docker */}
+            <div className="mb-8">
+              <div className="p-5 bg-gradient-to-br from-success/10 via-success/5 to-transparent border-2 border-success/30 rounded-xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-lg bg-success/20">
+                    <Server className="w-6 h-6 text-success" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-foreground text-lg">Opção 1: Via Docker (Recomendado)</h4>
+                    <p className="text-sm text-muted-foreground">Um comando para rodar o sistema completo</p>
+                  </div>
+                  <span className="ml-auto px-3 py-1 bg-success/20 text-success rounded-full text-xs font-semibold">
+                    ⚡ Avaliadores
+                  </span>
+                </div>
+
+                {/* Pré-requisitos Docker */}
+                <div className="mb-4">
+                  <h5 className="font-semibold text-foreground mb-2 text-sm">Pré-requisitos:</h5>
+                  <div className="flex flex-wrap gap-2">
+                    <SoftwareBadge name="Docker" version="24.0+" color="primary" />
+                    <SoftwareBadge name="Docker Compose" version="2.20+" color="success" />
+                    <SoftwareBadge name="Git" version="2.40+" color="warning" />
+                  </div>
+                </div>
+
+                {/* Passos Docker */}
+                <div className="space-y-3">
+                  <div className="p-3 bg-background/50 rounded-lg border-l-4 border-primary">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                      <span className="font-medium text-foreground text-sm">Clonar o repositório</span>
+                    </div>
+                    <CodeBlock>{`git clone https://github.com/marinhothiago/desafio-participa-df.git
+cd desafio-participa-df`}</CodeBlock>
+                  </div>
+
+                  <div className="p-3 bg-background/50 rounded-lg border-l-4 border-success">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-5 h-5 bg-success text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                      <span className="font-medium text-foreground text-sm">Subir os containers (Backend + Frontend)</span>
+                    </div>
+                    <CodeBlock>{`docker compose up --build`}</CodeBlock>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      ⏱️ Aguarde o download das imagens (~2-5 min na primeira vez)
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-background/50 rounded-lg border-l-4 border-warning">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-5 h-5 bg-warning text-white rounded-full flex items-center justify-center text-xs font-bold">✓</span>
+                      <span className="font-medium text-foreground text-sm">Verificar se está funcionando</span>
+                    </div>
+                    <div className="grid md:grid-cols-3 gap-2 mt-2">
+                      <div className="text-center p-2 bg-muted/50 rounded-lg">
+                        <p className="font-medium text-foreground text-xs">Frontend</p>
+                        <code className="text-xs text-primary">http://localhost:80</code>
+                      </div>
+                      <div className="text-center p-2 bg-muted/50 rounded-lg">
+                        <p className="font-medium text-foreground text-xs">Backend API</p>
+                        <code className="text-xs text-success">http://localhost:7860</code>
+                      </div>
+                      <div className="text-center p-2 bg-muted/50 rounded-lg">
+                        <p className="font-medium text-foreground text-xs">Swagger Docs</p>
+                        <code className="text-xs text-warning">http://localhost:7860/docs</code>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground">⚡ Para avaliadores:</strong> Apenas Docker é necessário para rodar o projeto completo.
-              </p>
             </div>
 
-            {/* Comandos Sequenciais */}
-            <div className="space-y-4">
+            {/* Opção 2: Desenvolvimento Local */}
+            <div className="mb-6">
+              <div className="p-5 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/30 rounded-xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-lg bg-primary/20">
+                    <Terminal className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-foreground text-lg">Opção 2: Desenvolvimento Local (Sem Docker)</h4>
+                    <p className="text-sm text-muted-foreground">Para contribuir ou modificar o código</p>
+                  </div>
+                  <span className="ml-auto px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-semibold">
+                    🛠️ Desenvolvedores
+                  </span>
+                </div>
+
+                {/* Pré-requisitos Local */}
+                <div className="mb-4">
+                  <h5 className="font-semibold text-foreground mb-2 text-sm">Pré-requisitos:</h5>
+                  <div className="flex flex-wrap gap-2">
+                    <SoftwareBadge name="Python" version="3.10+" color="success" />
+                    <SoftwareBadge name="Node.js" version="20+" color="primary" />
+                    <SoftwareBadge name="Git" version="2.40+" color="warning" />
+                  </div>
+                </div>
+
+                {/* Backend Setup */}
+                <div className="mb-4">
+                  <h5 className="font-semibold text-foreground mb-3 text-sm flex items-center gap-2">
+                    <Server className="w-4 h-4 text-success" />
+                    Backend (Python + FastAPI)
+                  </h5>
+                  <div className="space-y-3">
+                    <div className="p-3 bg-background/50 rounded-lg border-l-4 border-success">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-5 h-5 bg-success text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                        <span className="font-medium text-foreground text-sm">Clonar e entrar no diretório</span>
+                      </div>
+                      <CodeBlock>{`git clone https://github.com/marinhothiago/desafio-participa-df.git
+cd desafio-participa-df/backend`}</CodeBlock>
+                    </div>
+
+                    <div className="p-3 bg-background/50 rounded-lg border-l-4 border-success">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-5 h-5 bg-success text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                        <span className="font-medium text-foreground text-sm">Criar ambiente virtual Python</span>
+                      </div>
+                      <CodeBlock>{`# Windows
+python -m venv .venv
+.venv\\Scripts\\activate
+
+# Linux/macOS
+python3 -m venv .venv
+source .venv/bin/activate`}</CodeBlock>
+                    </div>
+
+                    <div className="p-3 bg-background/50 rounded-lg border-l-4 border-success">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-5 h-5 bg-success text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                        <span className="font-medium text-foreground text-sm">Instalar dependências</span>
+                      </div>
+                      <CodeBlock>{`pip install -r requirements.txt
+
+# Baixar modelo spaCy pt-BR
+python -m spacy download pt_core_news_lg`}</CodeBlock>
+                    </div>
+
+                    <div className="p-3 bg-background/50 rounded-lg border-l-4 border-success">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-5 h-5 bg-success text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                        <span className="font-medium text-foreground text-sm">Iniciar servidor backend</span>
+                      </div>
+                      <CodeBlock>{`python -m uvicorn api.main:app --host 0.0.0.0 --port 7860 --reload`}</CodeBlock>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        ✅ Backend rodando em <code className="bg-muted px-1 rounded">http://localhost:7860</code>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Frontend Setup */}
+                <div>
+                  <h5 className="font-semibold text-foreground mb-3 text-sm flex items-center gap-2">
+                    <Layout className="w-4 h-4 text-primary" />
+                    Frontend (React + Vite)
+                  </h5>
+                  <div className="space-y-3">
+                    <div className="p-3 bg-background/50 rounded-lg border-l-4 border-primary">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                        <span className="font-medium text-foreground text-sm">Entrar no diretório frontend</span>
+                      </div>
+                      <CodeBlock>{`cd ../frontend  # ou cd desafio-participa-df/frontend`}</CodeBlock>
+                    </div>
+
+                    <div className="p-3 bg-background/50 rounded-lg border-l-4 border-primary">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                        <span className="font-medium text-foreground text-sm">Instalar dependências Node.js</span>
+                      </div>
+                      <CodeBlock>{`npm install`}</CodeBlock>
+                    </div>
+
+                    <div className="p-3 bg-background/50 rounded-lg border-l-4 border-primary">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                        <span className="font-medium text-foreground text-sm">Iniciar servidor de desenvolvimento</span>
+                      </div>
+                      <CodeBlock>{`npm run dev`}</CodeBlock>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        ✅ Frontend rodando em <code className="bg-muted px-1 rounded">http://localhost:5173</code>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dica de desenvolvimento */}
+                <div className="mt-4 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-muted-foreground">
+                      <strong className="text-foreground">Dica:</strong> Abra dois terminais - um para o backend e outro para o frontend.
+                      O frontend detecta automaticamente o backend local em <code className="bg-muted px-1 rounded">localhost:7860</code>.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Executar Testes */}
+            <div className="p-4 bg-muted/30 rounded-lg border border-border">
               <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-primary" />
-                Instalação via Docker (Recomendado)
+                <CheckCircle2 className="w-4 h-4 text-success" />
+                Executar Testes (452 casos)
               </h4>
-
-              <div className="space-y-4">
-                {/* Passo 1 */}
-                <div className="p-4 bg-muted/50 rounded-lg border-l-4 border-primary">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                    <span className="font-semibold text-foreground">Clonar o Repositório</span>
-                  </div>
-                  <CodeBlock>{`git clone https://github.com/marinhothiago/desafio-participa-df.git
-cd desafio-participa-df`}</CodeBlock>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Via Docker:</p>
+                  <CodeBlock>{`docker compose exec backend pytest -q`}</CodeBlock>
                 </div>
-
-                {/* Passo 2 */}
-                <div className="p-4 bg-muted/50 rounded-lg border-l-4 border-success">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 bg-success text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                    <span className="font-semibold text-foreground">Subir os Containers (Backend + Frontend)</span>
-                  </div>
-                  <CodeBlock>{`docker compose up --build`}</CodeBlock>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Aguarde o download das imagens (~2-5 minutos na primeira vez).
-                  </p>
-                </div>
-
-                {/* URLs */}
-                <div className="p-4 bg-muted/50 rounded-lg border-l-4 border-warning">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 bg-warning text-white rounded-full flex items-center justify-center text-xs font-bold">✓</span>
-                    <span className="font-semibold text-foreground">Verificar se está funcionando</span>
-                  </div>
-                  <div className="grid md:grid-cols-3 gap-3 mt-3">
-                    <div className="text-center p-3 bg-background rounded-lg">
-                      <p className="font-medium text-foreground text-sm">Frontend</p>
-                      <code className="text-xs text-primary">http://localhost:80</code>
-                    </div>
-                    <div className="text-center p-3 bg-background rounded-lg">
-                      <p className="font-medium text-foreground text-sm">Backend API</p>
-                      <code className="text-xs text-success">http://localhost:7860</code>
-                    </div>
-                    <div className="text-center p-3 bg-background rounded-lg">
-                      <p className="font-medium text-foreground text-sm">Swagger Docs</p>
-                      <code className="text-xs text-warning">http://localhost:7860/docs</code>
-                    </div>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Local (dentro de /backend):</p>
+                  <CodeBlock>{`pytest --disable-warnings -q`}</CodeBlock>
                 </div>
               </div>
             </div>
