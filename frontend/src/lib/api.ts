@@ -3,7 +3,7 @@
  * api.ts - Cliente HTTP para Backend de Detecção de PII
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
- * @version 2.0.0 - checkConnection agora usa GET /health (não infla contador)
+ * @version 2.0.1 - Build: 2026-01-27T15:20 - checkConnection usa GET /health
  * 
  * Este módulo implementa a camada de comunicação com o backend FastAPI,
  * oferecendo:
