@@ -1,7 +1,55 @@
 import { api, type EntityFeedback, type FeedbackRequest } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { Check, ChevronDown, ChevronUp, Loader2, MessageSquare, X } from 'lucide-react';
-import { useState } from 'react';
+import { Check, ChevronDown, ChevronUp, Loader2, MessageSquare, RefreshCw, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+// Chave para armazenar feedbacks no localStorage
+const FEEDBACK_STORAGE_KEY = 'participa_df_feedbacks';
+
+// Função para gerar hash simples do texto (para identificar análises únicas)
+function hashText(text: string): string {
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+        const char = text.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(36);
+}
+
+// Função para carregar feedbacks salvos
+function loadSavedFeedbacks(): Record<string, { timestamp: string; entityCount: number }> {
+    try {
+        const saved = localStorage.getItem(FEEDBACK_STORAGE_KEY);
+        return saved ? JSON.parse(saved) : {};
+    } catch {
+        return {};
+    }
+}
+
+// Função para salvar feedback
+function saveFeedback(textHash: string, entityCount: number): void {
+    try {
+        const feedbacks = loadSavedFeedbacks();
+        feedbacks[textHash] = {
+            timestamp: new Date().toISOString(),
+            entityCount,
+        };
+        localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(feedbacks));
+    } catch {
+        console.error('Erro ao salvar feedback no localStorage');
+    }
+}
+
+// Função para verificar se já enviou feedback
+function hasSentFeedback(textHash: string): { sent: boolean; timestamp?: string; entityCount?: number } {
+    const feedbacks = loadSavedFeedbacks();
+    const feedback = feedbacks[textHash];
+    if (feedback) {
+        return { sent: true, timestamp: feedback.timestamp, entityCount: feedback.entityCount };
+    }
+    return { sent: false };
+}
 
 // Tipos de PII disponíveis para reclassificação
 const PII_TYPES = [
@@ -191,9 +239,24 @@ export function FeedbackPanel({
 }: FeedbackPanelProps) {
     const [entityFeedbacks, setEntityFeedbacks] = useState<EntityFeedback[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [status, setStatus] = useState<'idle' | 'success' | 'error' | 'already_sent'>('idle');
     const [statusMessage, setStatusMessage] = useState('');
     const [classificacaoCorrigida, setClassificacaoCorrigida] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+
+    // Verificar se já enviou feedback para este texto
+    const textHash = hashText(originalText);
+    
+    useEffect(() => {
+        const previousFeedback = hasSentFeedback(textHash);
+        if (previousFeedback.sent && !isEditing) {
+            setStatus('already_sent');
+            const date = previousFeedback.timestamp 
+                ? new Date(previousFeedback.timestamp).toLocaleString('pt-BR')
+                : '';
+            setStatusMessage(`Enviado em ${date} (${previousFeedback.entityCount} entidades)`);
+        }
+    }, [textHash, isEditing]);
 
     const handleEntityFeedback = (feedback: EntityFeedback) => {
         setEntityFeedbacks(prev => {
@@ -223,8 +286,12 @@ export function FeedbackPanel({
 
             const response = await api.submitFeedback(feedbackRequest);
 
+            // Salvar no localStorage que já enviou feedback
+            saveFeedback(textHash, entityFeedbacks.length);
+
             setStatus('success');
             setStatusMessage(`Acurácia: ${(response.stats.accuracy * 100).toFixed(1)}%`);
+            setIsEditing(false);
 
             // Dispara evento para atualizar TrainingStatus
             window.dispatchEvent(new CustomEvent('feedbackSubmitted'));
@@ -239,8 +306,38 @@ export function FeedbackPanel({
         }
     };
 
+    const handleResubmit = () => {
+        setIsEditing(true);
+        setStatus('idle');
+        setEntityFeedbacks([]);
+    };
+
     const validatedCount = entityFeedbacks.length;
 
+    // Estado: Já foi enviado anteriormente
+    if (status === 'already_sent') {
+        return (
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <Check className="h-5 w-5 text-blue-600" />
+                        <p className="text-sm font-medium text-blue-600">Feedback já enviado</p>
+                    </div>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">{statusMessage}</p>
+                <button
+                    type="button"
+                    onClick={handleResubmit}
+                    className="w-full h-8 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                    <RefreshCw className="h-3 w-3" />
+                    Reenviar Feedback
+                </button>
+            </div>
+        );
+    }
+
+    // Estado: Feedback enviado com sucesso agora
     if (status === 'success') {
         return (
             <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-center">
