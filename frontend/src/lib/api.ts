@@ -326,15 +326,13 @@ class ApiClient {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      // Tenta o endpoint /analyze com um texto curto para verificar se está online
-      const response = await fetch(`${API_BASE_URL}/analyze`, {
-        method: 'POST',
+      // Usa o endpoint /health para verificar se está online (não conta como requisição)
+      const response = await fetch(`${API_BASE_URL}/health`, {
+        method: 'GET',
         signal: controller.signal,
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ text: 'teste' }),
       });
 
       clearTimeout(timeoutId);
