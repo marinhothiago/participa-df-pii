@@ -374,17 +374,30 @@ export function Documentation() {
               <FolderTree className="w-4 h-4 text-success" />
               Estrutura de Diretórios do Backend
             </h4>
-            <CodeBlock title="backend-desafio-participa-df/">{`backend-desafio-participa-df/
+            <CodeBlock title="backend/">{`backend/
 ├── api/
-│   └── main.py              # Gateway da API (FastAPI)
+│   ├── main.py              # Gateway da API (FastAPI)
+│   ├── celery_config.py     # Configuração Celery (async)
+│   └── tasks.py             # Tasks assíncronas
 │
 ├── src/
-│   ├── detector.py          # Core do Motor de Detecção (NLP + Regex + Módulo 11)
-│   └── allow_list.py        # Lista de termos públicos permitidos
+│   ├── detector.py          # Core do Motor de Detecção
+│   ├── allow_list.py        # Lista de termos públicos
+│   ├── analyzers/           # Presidio + Regex analyzers
+│   ├── confidence/          # Sistema de confiança probabilística
+│   ├── gazetteer/           # Dados geográficos GDF
+│   └── patterns/            # Padrões regex GDF
 │
-├── main_cli.py              # Interface CLI para processamento em Lote
+├── scripts/
+│   ├── main_cli.py          # Interface CLI (Lote)
+│   └── auditoria_*.py       # Scripts de auditoria
+│
+├── tests/                   # 452 testes automatizados
+├── models/                  # BERT NER ONNX otimizado
+├── data/                    # Dados de entrada/saída
+├── Dockerfile               # Container Docker
 ├── requirements.txt         # Dependências Python
-└── README.md                # Documentação do projeto`}</CodeBlock>
+└── README.md                # Documentação`}</CodeBlock>
 
             {/* Estrutura de Diretórios Frontend */}
             <h4 className="font-semibold text-foreground mb-3 mt-6 flex items-center gap-2">
@@ -597,6 +610,31 @@ cd desafio-participa-df`}</CodeBlock>
                 </div>
               </div>
             </div>
+
+            {/* Desenvolvimento Local */}
+            <div className="mt-6 p-5 bg-gradient-to-br from-warning/10 via-warning/5 to-transparent border-2 border-warning/30 rounded-xl">
+              <h4 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                <Code className="w-5 h-5 text-warning" />
+                Desenvolvimento Local (sem Docker)
+              </h4>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <h5 className="font-semibold text-foreground text-sm mb-2">Backend</h5>
+                  <CodeBlock>{`cd backend
+python -m venv venv
+.\\venv\\Scripts\\activate  # Windows
+pip install -r requirements.txt
+python -m uvicorn api.main:app --port 7860 --reload`}</CodeBlock>
+                </div>
+                <div>
+                  <h5 className="font-semibold text-foreground text-sm mb-2">Frontend</h5>
+                  <CodeBlock>{`cd frontend
+npm install
+npm run dev
+# Acesse http://localhost:8080`}</CodeBlock>
+                </div>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
@@ -784,14 +822,35 @@ cd desafio-participa-df`}</CodeBlock>
                     <td className="py-3 px-4 text-center">
                       <span className="px-3 py-1 bg-success/10 text-success rounded-full text-lg font-bold">1.0000</span>
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground text-xs">Perfeito equilíbrio entre Precisão e Recall no benchmark LGPD.</td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs">Perfeito equilíbrio entre Precisão (100%) e Recall (100%) no benchmark LGPD.</td>
+                  </tr>
+                  <tr className="border-t border-border">
+                    <td className="py-3 px-4 font-medium text-foreground">Precisão</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="px-3 py-1 bg-success/10 text-success rounded-full text-lg font-bold">100%</span>
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs">VP=164, FP=0 — Zero falsos positivos no benchmark de 303 casos.</td>
+                  </tr>
+                  <tr className="border-t border-border">
+                    <td className="py-3 px-4 font-medium text-foreground">Sensibilidade</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="px-3 py-1 bg-success/10 text-success rounded-full text-lg font-bold">100%</span>
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs">VP=164, FN=0 — Todos os PIIs detectados, zero falsos negativos.</td>
+                  </tr>
+                  <tr className="border-t border-border">
+                    <td className="py-3 px-4 font-medium text-foreground">Casos de Benchmark</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-lg font-bold">303</span>
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs">164 com PII (VP) + 139 sem PII (VN) — Dataset balanceado.</td>
                   </tr>
                   <tr className="border-t border-border">
                     <td className="py-3 px-4 font-medium text-foreground">Testes Automatizados</td>
                     <td className="py-3 px-4 text-center">
                       <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-lg font-bold">452</span>
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground text-xs">Cobertura de 156 tipos de PII com validação matemática e edge cases.</td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs">Cobertura de 30+ tipos de PII com validação matemática e edge cases.</td>
                   </tr>
                   <tr className="border-t border-border">
                     <td className="py-3 px-4 font-medium text-foreground">Tipos de PII</td>
@@ -917,12 +976,45 @@ cd desafio-participa-df`}</CodeBlock>
               </div>
             </div>
 
+            {/* Padrão DSGOV */}
+            <div className="p-5 bg-gradient-to-br from-warning/10 via-warning/5 to-transparent border-2 border-warning/30 rounded-xl mt-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-warning/20">
+                  <Layout className="w-6 h-6 text-warning" />
+                </div>
+                <h4 className="font-bold text-foreground">Design System Gov.br (DSGOV)</h4>
+              </div>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+                  <span>
+                    <strong className="text-foreground">Identidade Visual Gov.br:</strong> Cores institucionais (#1351B4, #0C326F),
+                    tipografia e componentes seguindo o padrão do governo federal.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+                  <span>
+                    <strong className="text-foreground">Acessibilidade WCAG 2.1:</strong> Contraste adequado, navegação por teclado,
+                    suporte a leitores de tela e modo escuro.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+                  <span>
+                    <strong className="text-foreground">Responsividade:</strong> Interface adaptável para desktop, tablet e mobile
+                    seguindo breakpoints do DSGOV.
+                  </span>
+                </li>
+              </ul>
+            </div>
+
             {/* Conformidade */}
             <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border">
               <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-success" /> Conformidade Legal
+                <ShieldCheck className="w-5 h-5 text-success" /> Conformidade Legal e Técnica
               </h4>
-              <div className="grid sm:grid-cols-3 gap-4 text-sm">
+              <div className="grid sm:grid-cols-4 gap-4 text-sm">
                 <div className="flex items-center gap-2 p-3 bg-background rounded-lg">
                   <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                   <span className="text-muted-foreground"><strong className="text-foreground">LGPD</strong> — Lei 13.709/2018</span>
@@ -933,7 +1025,11 @@ cd desafio-participa-df`}</CodeBlock>
                 </div>
                 <div className="flex items-center gap-2 p-3 bg-background rounded-lg">
                   <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                  <span className="text-muted-foreground"><strong className="text-foreground">OWASP</strong> — Boas práticas</span>
+                  <span className="text-muted-foreground"><strong className="text-foreground">OWASP</strong> — Top 10</span>
+                </div>
+                <div className="flex items-center gap-2 p-3 bg-background rounded-lg">
+                  <CheckCircle2 className="w-4 h-4 text-warning shrink-0" />
+                  <span className="text-muted-foreground"><strong className="text-foreground">DSGOV</strong> — Gov.br</span>
                 </div>
               </div>
             </div>
