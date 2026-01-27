@@ -5,6 +5,12 @@ on:
     branches: [main]
     paths: ['frontend/**'] # Só roda se mudar algo no front
 
+# Permissões necessárias para deploy
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
