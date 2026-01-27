@@ -1,9 +1,21 @@
-﻿# 🔐 Detector de PII - Participa DF
+﻿# 🛡️ Participa DF - Detector Inteligente de Dados Pessoais
 
 > **Motor de IA para Detecção de Informações Pessoais em Textos Públicos**  
 > Hackathon Participa DF 2026 CGDF | F1-Score: 1.0000 | 452 Testes | 156 PIIs detectados
 
-[![Build Status](https://github.com/marinhothiago/desafio-participa-df/actions/workflows/test.yml/badge.svg)](https://github.com/marinhothiago/desafio-participa-df/actions)
+[![Status](https://img.shields.io/badge/Status-Produção-brightgreen)](https://marinhothiago.github.io/desafio-participa-df/)
+[![Versão](https://img.shields.io/badge/Versão-9.6.0-blue)](./backend/README.md)
+[![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python)](https://www.python.org/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-ready-blue?logo=docker)](https://www.docker.com/)
+[![Licença](https://img.shields.io/badge/Licença-LGPD%2FLAI-green)](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![F1--Score](https://img.shields.io/badge/F1--Score-1.0000-success)](./backend/benchmark.py)
+[![CI](https://github.com/marinhothiago/desafio-participa-df/actions/workflows/ci.yml/badge.svg)](https://github.com/marinhothiago/desafio-participa-df/actions/workflows/ci.yml)
+[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://prettier.io/)
+[![GitHub last commit](https://img.shields.io/github/last-commit/marinhothiago/desafio-participa-df)](https://github.com/marinhothiago/desafio-participa-df/commits/main)
 [![Frontend](https://img.shields.io/badge/Demo-GitHub%20Pages-blue)](https://marinhothiago.github.io/desafio-participa-df/)
 [![API](https://img.shields.io/badge/API-HuggingFace-yellow)](https://marinhothiago-desafio-participa-df.hf.space/docs)
 
