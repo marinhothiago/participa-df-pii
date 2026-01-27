@@ -121,6 +121,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     const loadGlobalStats = async () => {
       // Buscar stats atuais do backend
       const stats = await api.getStats();
+      console.log('📊 Stats carregados:', stats);
       setCounters({
         siteVisits: stats.site_visits,
         totalClassificationRequests: stats.classification_requests,
@@ -128,11 +129,15 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
       // Registrar visita uma vez por sessão
       const hasVisited = sessionStorage.getItem(VISIT_SESSION_KEY);
+      console.log('👁️ Sessão já visitada?', hasVisited);
       if (!hasVisited) {
-        sessionStorage.setItem(VISIT_SESSION_KEY, 'true');
-        await api.registerVisit();
-        // Atualizar contador local após registrar
-        setCounters(prev => ({ ...prev, siteVisits: prev.siteVisits + 1 }));
+        console.log('🚀 Registrando nova visita...');
+        const success = await api.registerVisit();
+        if (success) {
+          sessionStorage.setItem(VISIT_SESSION_KEY, 'true');
+          // Atualizar contador local após registrar
+          setCounters(prev => ({ ...prev, siteVisits: prev.siteVisits + 1 }));
+        }
       }
     };
 

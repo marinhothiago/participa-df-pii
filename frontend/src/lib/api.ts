@@ -465,20 +465,29 @@ class ApiClient {
     return { site_visits: 0, classification_requests: 0, last_updated: null };
   }
 
-  async registerVisit(): Promise<void> {
+  async registerVisit(): Promise<boolean> {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      await fetch(`${API_BASE_URL}/stats/visit`, {
+      const response = await fetch(`${API_BASE_URL}/stats/visit`, {
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
       });
 
       clearTimeout(timeoutId);
+
+      if (response.ok) {
+        console.log('✅ Visita registrada com sucesso');
+        return true;
+      } else {
+        console.error('❌ Erro ao registrar visita:', response.status, response.statusText);
+        return false;
+      }
     } catch (error) {
-      console.error('Erro ao registrar visita:', error);
+      console.error('❌ Erro ao registrar visita:', error);
+      return false;
     }
   }
 
