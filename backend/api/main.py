@@ -69,6 +69,7 @@ import json
 import threading
 from datetime import datetime
 import shutil
+import atexit
 
 # === HUGGINGFACE HUB PARA PERSISTÊNCIA ===
 try:
@@ -85,6 +86,7 @@ USE_HF_STORAGE = HF_HUB_AVAILABLE and HF_TOKEN is not None
 
 if USE_HF_STORAGE:
     print(f"✅ Persistência HuggingFace ativada: {HF_STATS_REPO}")
+    print(f"   📦 Modo BATCH: commits a cada 5 minutos (evita rate limit)")
 else:
     print("📁 Usando storage local (HF_TOKEN não configurado)")
 
@@ -101,7 +103,101 @@ _stats_cache_time: float = 0
 _feedback_cache: Dict = None
 _feedback_cache_time: float = 0
 STATS_CACHE_TTL = 60  # segundos
-FEEDBACK_CACHE_TTL = 30  # segundos (feedback muda mais frequentemente)
+FEEDBACK_CACHE_TTL = 30  # segundos
+
+# === SISTEMA DE BATCH PARA HF (evita rate limit de 128 commits/hora) ===
+_pending_hf_sync: Dict[str, bool] = {"stats.json": False, "feedback.json": False}
+_last_hf_sync: float = 0
+HF_SYNC_INTERVAL = 300  # 5 minutos entre commits (máx 12/hora)
+_sync_lock = threading.Lock()
+
+def _sync_to_hf_if_needed(force: bool = False) -> None:
+    """Sincroniza arquivos pendentes com HF Dataset (batch)."""
+    global _last_hf_sync, _pending_hf_sync
+    import time
+    
+    if not USE_HF_STORAGE:
+        return
+    
+    with _sync_lock:
+        now = time.time()
+        time_since_last = now - _last_hf_sync
+        
+        # Só sincroniza se passou tempo suficiente ou forçado
+        if not force and time_since_last < HF_SYNC_INTERVAL:
+            return
+        
+        # Verifica se há algo pendente
+        files_to_sync = [f for f, pending in _pending_hf_sync.items() if pending]
+        if not files_to_sync:
+            return
+        
+        print(f"🔄 Sincronizando {len(files_to_sync)} arquivo(s) com HuggingFace...")
+        
+        try:
+            import tempfile
+            api = HfApi(token=HF_TOKEN)
+            
+            # Prepara arquivos para upload em batch
+            operations = []
+            for filename in files_to_sync:
+                local_path = STATS_FILE if filename == "stats.json" else FEEDBACK_FILE
+                if os.path.exists(local_path):
+                    with open(local_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    
+                    # Cria arquivo temporário
+                    temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8')
+                    json.dump(data, temp_file, indent=2, ensure_ascii=False)
+                    temp_file.close()
+                    
+                    from huggingface_hub import CommitOperationAdd
+                    operations.append(CommitOperationAdd(
+                        path_in_repo=filename,
+                        path_or_fileobj=temp_file.name
+                    ))
+            
+            if operations:
+                # Commit único com todos os arquivos
+                stats = _stats_cache or {}
+                api.create_commit(
+                    repo_id=HF_STATS_REPO,
+                    repo_type="dataset",
+                    operations=operations,
+                    commit_message=f"Batch sync: {stats.get('site_visits', 0)} visits, {stats.get('classification_requests', 0)} requests"
+                )
+                
+                # Limpa arquivos temporários
+                for op in operations:
+                    try:
+                        os.unlink(op.path_or_fileobj)
+                    except:
+                        pass
+                
+                # Marca como sincronizado
+                for filename in files_to_sync:
+                    _pending_hf_sync[filename] = False
+                
+                _last_hf_sync = now
+                print(f"✅ Sincronizado com HuggingFace: {', '.join(files_to_sync)}")
+        
+        except Exception as e:
+            print(f"⚠️ Erro ao sincronizar com HF: {e}")
+
+def _mark_pending_sync(filename: str) -> None:
+    """Marca arquivo como pendente de sincronização."""
+    global _pending_hf_sync
+    _pending_hf_sync[filename] = True
+    # Tenta sincronizar (só vai se passou tempo suficiente)
+    _sync_to_hf_if_needed()
+
+def _force_sync_on_shutdown() -> None:
+    """Força sincronização ao encerrar a aplicação."""
+    print("🛑 Encerrando - sincronizando dados pendentes...")
+    _sync_to_hf_if_needed(force=True)
+
+# Registra sincronização ao encerrar
+atexit.register(_force_sync_on_shutdown)
 
 def _load_from_hf(filename: str) -> Dict:
     """Carrega arquivo JSON do HuggingFace Dataset."""
@@ -118,30 +214,8 @@ def _load_from_hf(filename: str) -> Dict:
         print(f"⚠️ Erro ao carregar {filename} do HF: {e}")
         return None
 
-def _save_to_hf(data: Dict, filename: str, commit_message: str = None) -> bool:
-    """Salva arquivo JSON no HuggingFace Dataset."""
-    try:
-        import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-            temp_path = f.name
-        
-        api = HfApi(token=HF_TOKEN)
-        api.upload_file(
-            path_or_fileobj=temp_path,
-            path_in_repo=filename,
-            repo_id=HF_STATS_REPO,
-            repo_type="dataset",
-            commit_message=commit_message or f"Update {filename}"
-        )
-        os.unlink(temp_path)
-        return True
-    except Exception as e:
-        print(f"⚠️ Erro ao salvar {filename} no HF: {e}")
-        return False
-
 def load_stats() -> Dict:
-    """Carrega estatísticas (HF Dataset ou arquivo local)."""
+    """Carrega estatísticas (cache > local > HF)."""
     global _stats_cache, _stats_cache_time
     import time
     
@@ -151,18 +225,25 @@ def load_stats() -> Dict:
     
     stats = None
     
-    # Tenta carregar do HF primeiro
-    if USE_HF_STORAGE:
-        stats = _load_from_hf("stats.json")
+    # Tenta carregar do arquivo local primeiro (mais rápido)
+    try:
+        if os.path.exists(STATS_FILE):
+            with open(STATS_FILE, 'r') as f:
+                stats = json.load(f)
+    except Exception as e:
+        print(f"Erro ao carregar stats local: {e}")
     
-    # Fallback para arquivo local
-    if stats is None:
-        try:
-            if os.path.exists(STATS_FILE):
-                with open(STATS_FILE, 'r') as f:
-                    stats = json.load(f)
-        except Exception as e:
-            print(f"Erro ao carregar stats local: {e}")
+    # Fallback para HF se local não existe
+    if stats is None and USE_HF_STORAGE:
+        stats = _load_from_hf("stats.json")
+        # Salva localmente para próximas leituras
+        if stats:
+            try:
+                os.makedirs(os.path.dirname(STATS_FILE), exist_ok=True)
+                with open(STATS_FILE, 'w') as f:
+                    json.dump(stats, f, indent=2)
+            except:
+                pass
     
     if stats is None:
         stats = {"site_visits": 0, "classification_requests": 0, "last_updated": None}
@@ -174,13 +255,13 @@ def load_stats() -> Dict:
     return stats
 
 def save_stats(stats: Dict) -> None:
-    """Salva estatísticas (HF Dataset e arquivo local)."""
+    """Salva estatísticas (local imediato + HF em batch)."""
     global _stats_cache, _stats_cache_time
     import time
     
     stats["last_updated"] = datetime.now().isoformat()
     
-    # Sempre salva localmente (backup)
+    # Sempre salva localmente (imediato)
     try:
         os.makedirs(os.path.dirname(STATS_FILE), exist_ok=True)
         with open(STATS_FILE, 'w') as f:
@@ -188,9 +269,9 @@ def save_stats(stats: Dict) -> None:
     except Exception as e:
         print(f"Erro ao salvar stats local: {e}")
     
-    # Salva no HF Dataset se disponível
+    # Marca para sincronização em batch com HF
     if USE_HF_STORAGE:
-        _save_to_hf(stats, "stats.json", f"Update stats: {stats.get('site_visits', 0)} visits, {stats.get('classification_requests', 0)} requests")
+        _mark_pending_sync("stats.json")
     
     # Atualiza cache
     _stats_cache = stats.copy()
@@ -207,7 +288,7 @@ def increment_stat(key: str, amount: int = 1) -> Dict:
 
 # === SISTEMA DE FEEDBACK HUMANO ===
 def load_feedback() -> Dict:
-    """Carrega feedbacks (HF Dataset ou arquivo local)."""
+    """Carrega feedbacks (cache > local > HF)."""
     global _feedback_cache, _feedback_cache_time
     import time
     
@@ -217,18 +298,25 @@ def load_feedback() -> Dict:
     
     data = None
     
-    # Tenta carregar do HF primeiro
-    if USE_HF_STORAGE:
-        data = _load_from_hf("feedback.json")
+    # Tenta carregar do arquivo local primeiro (mais rápido)
+    try:
+        if os.path.exists(FEEDBACK_FILE):
+            with open(FEEDBACK_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+    except Exception as e:
+        print(f"Erro ao carregar feedback local: {e}")
     
-    # Fallback para arquivo local
-    if data is None:
-        try:
-            if os.path.exists(FEEDBACK_FILE):
-                with open(FEEDBACK_FILE, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-        except Exception as e:
-            print(f"Erro ao carregar feedback local: {e}")
+    # Fallback para HF se local não existe
+    if data is None and USE_HF_STORAGE:
+        data = _load_from_hf("feedback.json")
+        # Salva localmente para próximas leituras
+        if data:
+            try:
+                os.makedirs(os.path.dirname(FEEDBACK_FILE), exist_ok=True)
+                with open(FEEDBACK_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+            except:
+                pass
     
     if data is None:
         data = {
@@ -252,13 +340,13 @@ def load_feedback() -> Dict:
 
 
 def save_feedback(data: Dict) -> None:
-    """Salva feedbacks (HF Dataset e arquivo local)."""
+    """Salva feedbacks (local imediato + HF em batch)."""
     global _feedback_cache, _feedback_cache_time
     import time
     
     data["last_updated"] = datetime.now().isoformat()
     
-    # Sempre salva localmente (backup)
+    # Sempre salva localmente (imediato)
     try:
         os.makedirs(os.path.dirname(FEEDBACK_FILE), exist_ok=True)
         with open(FEEDBACK_FILE, 'w', encoding='utf-8') as f:
@@ -266,10 +354,9 @@ def save_feedback(data: Dict) -> None:
     except Exception as e:
         print(f"Erro ao salvar feedback local: {e}")
     
-    # Salva no HF Dataset se disponível
+    # Marca para sincronização em batch com HF
     if USE_HF_STORAGE:
-        total_fb = data.get("stats", {}).get("total_feedbacks", 0)
-        _save_to_hf(data, "feedback.json", f"Update feedback: {total_fb} feedbacks")
+        _mark_pending_sync("feedback.json")
     
     # Atualiza cache
     _feedback_cache = data.copy()
