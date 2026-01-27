@@ -120,8 +120,21 @@ class PresidioAnalyzer:
             return
             
         try:
-            # Inicializa o engine
-            self.engine = AnalyzerEngine()
+            # Configura Presidio com modelo pt-BR (já instalado no Dockerfile)
+            # Evita download do modelo de inglês (400MB)
+            configuration = {
+                "nlp_engine_name": "spacy",
+                "models": [{"lang_code": "pt", "model_name": "pt_core_news_lg"}]
+            }
+            
+            provider = NlpEngineProvider(nlp_configuration=configuration)
+            nlp_engine = provider.create_engine()
+            
+            # Inicializa o engine com pt-BR
+            self.engine = AnalyzerEngine(
+                nlp_engine=nlp_engine,
+                supported_languages=["pt"]
+            )
             
             # Adiciona recognizers customizados do GDF
             custom_recognizers = _criar_recognizers_customizados()
