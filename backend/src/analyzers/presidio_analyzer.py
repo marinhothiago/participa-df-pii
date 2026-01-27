@@ -141,11 +141,10 @@ class PresidioAnalyzer:
             for recognizer in custom_recognizers:
                 self.engine.registry.add_recognizer(recognizer)
             
-            # Lista de entidades suportadas (built-in + customizadas)
-            self.supported_entities = list(GDF_PATTERNS.keys()) + [
-                "PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD",
-                "IBAN_CODE", "IP_ADDRESS", "DATE_TIME", "NRP", "LOCATION"
-            ]
+            # Lista de entidades suportadas (apenas customizadas do GDF)
+            # Nota: Não incluímos CREDIT_CARD, IBAN_CODE etc pois não têm recognizers em pt
+            # Os recognizers built-in do Presidio são apenas para inglês
+            self.supported_entities = list(GDF_PATTERNS.keys())
             
         except Exception as e:
             print(f"[PresidioAnalyzer] Erro ao inicializar: {e}")
