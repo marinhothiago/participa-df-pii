@@ -263,6 +263,13 @@ export function Documentation() {
                 </div>
                 <p className="text-sm text-muted-foreground">Recalibração contínua via feedback humano com IsotonicRegression para melhoria constante.</p>
               </div>
+              <div className="p-4 border border-border rounded-lg hover:border-primary/50 transition-colors">
+                <div className="flex items-center gap-3 text-success mb-2">
+                  <Github className="w-5 h-5" />
+                  <h4 className="font-semibold text-foreground">Código Versionado</h4>
+                </div>
+                <p className="text-sm text-muted-foreground">Repositório Git público com histórico completo, CI/CD e documentação técnica no GitHub.</p>
+              </div>
             </div>
 
             {/* Documentação Markdown */}
