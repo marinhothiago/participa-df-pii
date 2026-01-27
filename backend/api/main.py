@@ -84,6 +84,9 @@ HF_TOKEN = os.environ.get("HF_TOKEN")
 HF_STATS_REPO = os.environ.get("HF_STATS_REPO", "marinhothiago/desafio-participa-df")
 USE_HF_STORAGE = HF_HUB_AVAILABLE and HF_TOKEN is not None
 
+# Chave secreta para endpoints administrativos
+ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
+
 if USE_HF_STORAGE:
     print(f"✅ Persistência HuggingFace ativada: {HF_STATS_REPO}")
     print(f"   📦 Modo BATCH: commits a cada 5 minutos (evita rate limit)")
@@ -553,6 +556,54 @@ async def register_visit() -> Dict:
         Dict com estatísticas atualizadas
     """
     return increment_stat("site_visits")
+
+
+from fastapi import Header, HTTPException
+
+@app.post("/admin/reset-stats")
+async def reset_stats(x_admin_key: str = Header(None, alias="X-Admin-Key")) -> Dict:
+    """Reseta todos os contadores e feedbacks.
+    
+    Requer header X-Admin-Key com a chave secreta configurada em ADMIN_KEY.
+    
+    Returns:
+        Dict com confirmação do reset
+    """
+    global _stats_cache, _feedback_cache, _stats_cache_time, _feedback_cache_time
+    
+    # Validar chave de admin
+    if not ADMIN_KEY:
+        raise HTTPException(status_code=503, detail="ADMIN_KEY não configurada no servidor")
+    
+    if not x_admin_key or x_admin_key != ADMIN_KEY:
+        raise HTTPException(status_code=401, detail="Chave de administrador inválida")
+    
+    # Resetar stats
+    empty_stats = {"site_visits": 0, "classification_requests": 0, "last_updated": None}
+    with stats_lock:
+        save_stats(empty_stats)
+        _stats_cache = None
+        _stats_cache_time = 0
+    
+    # Resetar feedbacks
+    empty_feedback = {"feedbacks": [], "total_count": 0}
+    with feedback_lock:
+        save_feedback(empty_feedback)
+        _feedback_cache = None
+        _feedback_cache_time = 0
+    
+    # Forçar sync imediato com HF
+    if USE_HF_STORAGE:
+        _sync_to_hf_if_needed(force=True)
+    
+    print("🗑️ ADMIN: Todos os contadores e feedbacks foram resetados")
+    
+    return {
+        "success": True,
+        "message": "Todos os contadores e feedbacks foram resetados",
+        "stats": empty_stats,
+        "feedback": empty_feedback
+    }
 
 
 # === ENDPOINTS DE FEEDBACK HUMANO ===
