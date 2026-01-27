@@ -50,7 +50,7 @@ except ImportError:
     pass
 
 from typing import Dict, Optional, List
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -239,6 +239,7 @@ from src.confidence.combiners import merge_spans_custom
 
 @app.post("/analyze")
 async def analyze(
+    request: Request,
     data: Dict[str, Optional[str]],
     merge_preset: str = Query(
         default="f1",
@@ -253,6 +254,12 @@ async def analyze(
     Analisa texto para detecção de PII com contexto Brasília/GDF.
     Permite selecionar estratégia de merge de spans via parâmetro merge_preset.
     """
+    # Log para debug de requisições
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "unknown")
+    text_preview = data.get("text", "")[:50].replace("\n", " ") if data.get("text") else ""
+    logging.info(f"📊 POST /analyze | IP: {client_ip} | UA: {user_agent[:60]} | Text: '{text_preview}...'")
+    
     text = data.get("text", "")
     request_id = data.get("id", None)
 
