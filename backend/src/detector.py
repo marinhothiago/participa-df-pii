@@ -35,11 +35,11 @@ ARQUITETURA COMPLETA DO PIPELINE DE DETECÇÃO
 └─────────────────────────────────────────────────────────────────────────────┘
                                     ↓
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ ETAPA 4: PRESIDIO ANALYZER (Recognizers GDF)                                │
+│ ETAPA 4: PRESIDIO ANALYZER (Complementar)                                   │
 │ ─────────────────────────────────────────────────────────────────────────── │
-│ • Recognizers customizados GDF: PROCESSO_SEI, MATRICULA_GDF, CEP_BR, etc.  │
-│ • Modelo spaCy pt_core_news_lg para NLP em português                        │
-│ • NÃO usa recognizers built-in (não existem para pt)                        │
+│ • Recognizers customizados para GDF (PROCESSO_SEI, MATRICULA_GDF, etc.)    │
+│ • Entidades complementares: IP_ADDRESS, IBAN_CODE, CREDIT_CARD             │
+│ • NÃO duplica detecção de PERSON/PHONE (já cobertos pelo NER)              │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     ↓
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -184,8 +184,6 @@ except ImportError:
 # === INTEGRAÇÃO PRESIDIO FRAMEWORK ===
 try:
     from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer, EntityRecognizer
-    from presidio_analyzer import RecognizerRegistry
-    from presidio_analyzer.predefined_recognizers import SpacyRecognizer
     PRESIDIO_AVAILABLE = True
 except ImportError:
     PRESIDIO_AVAILABLE = False
@@ -193,8 +191,6 @@ except ImportError:
     Pattern = None
     PatternRecognizer = None
     EntityRecognizer = None
-    RecognizerRegistry = None
-    SpacyRecognizer = None
 
 
 # === ÁRBITRO LLM ===
@@ -920,6 +916,7 @@ class PIIDetector:
             "DADO_SAUDE": 0.90,
             "DADO_BIOMETRICO": 0.90,
             "MENOR_IDENTIFICADO": 0.90,
+            "IP_ADDRESS": 0.75,
             "COORDENADAS_GEO": 0.80,
             "PIX": 0.90,
             "CEP": 0.70,
@@ -1481,15 +1478,15 @@ class PIIDetector:
             logger.warning(f"⚠️ spaCy indisponível: {e}")
     
     def _inicializar_presidio(self) -> None:
-        """Inicializa o Presidio Analyzer com recognizers customizados GDF.
+        """Inicializa o Presidio Analyzer para entidades complementares.
         
-        Presidio é configurado APENAS com recognizers customizados para
-        padrões brasileiros/GDF: PROCESSO_SEI, MATRICULA_GDF, CEP_BR, etc.
+        Presidio é usado APENAS para detectar entidades que nosso sistema
+        não cobre bem: IP_ADDRESS, IBAN_CODE, CREDIT_CARD, URL.
         
-        NÃO usamos recognizers built-in do Presidio pois não existem para
-        português (apenas inglês). Nosso sistema já cobre via:
+        NÃO registramos nossos patterns aqui pois já temos:
         - Regex próprio (53 patterns pt-BR)
         - NER BERT (monilouise/ner_news_portuguese)
+        - NER NuNER (pt-BR)
         - NER spaCy (pt_core_news_lg)
         """
         try:
@@ -1505,29 +1502,15 @@ class PIIDetector:
             provider = NlpEngineProvider(nlp_configuration=configuration)
             nlp_engine = provider.create_engine()
             
-            # === REGISTRY CUSTOMIZADO SEM BUILT-INS ===
-            # Cria registry vazio para não carregar recognizers de en/es/it/pl
-            # que geram warnings "Entity X doesn't support language pt"
-            registry = RecognizerRegistry()
-            registry.supported_languages = ["pt"]
-            
-            # Adiciona SpacyRecognizer para NER básico em português
-            spacy_recognizer = SpacyRecognizer(
-                supported_language="pt",
-                supported_entities=["PERSON", "LOCATION", "ORGANIZATION", "DATE"]
-            )
-            registry.add_recognizer(spacy_recognizer)
-            
             self.presidio_analyzer = AnalyzerEngine(
                 nlp_engine=nlp_engine,
-                supported_languages=["pt"],
-                registry=registry  # Registry customizado SEM built-ins
+                supported_languages=["pt"]
             )
             
             # NÃO registra nossos patterns - evita duplicação
             # Presidio serve apenas como complemento para tipos específicos
             
-            logger.info("✅ Presidio Analyzer inicializado (pt-BR, registry customizado sem built-ins)")
+            logger.info("✅ Presidio Analyzer inicializado (pt-BR, modo complementar)")
         except Exception as e:
             self.presidio_analyzer = None
             logger.warning(f"⚠️ Presidio indisponível: {e}")
@@ -2970,31 +2953,49 @@ class PIIDetector:
         return findings
     
     def _detectar_presidio(self, texto: str) -> List[Dict]:
-        """Detecta PII usando Presidio com recognizers customizados GDF.
+        """Detecta PII complementar usando Presidio (apenas tipos que não cobrimos bem).
         
-        Presidio detecta apenas entidades dos nossos recognizers customizados:
-        - PROCESSO_SEI, PROCESSO_CNJ, PROTOCOLO_LAI
-        - MATRICULA_GDF, INSCRICAO_CAESB, OAB_REGISTRO
-        - TELEFONE_BR, CEP_BR, CPF_BR, CNPJ_BR, DATA_NASCIMENTO
+        Presidio é usado APENAS para:
+        - IP_ADDRESS: Endereços IP (nosso regex é básico)
+        - IBAN_CODE: Códigos bancários internacionais
+        - CREDIT_CARD: Cartões de crédito internacionais
+        - URL: URLs (complementar ao nosso)
         
-        Recognizers built-in (CREDIT_CARD, IBAN_CODE, IP_ADDRESS) NÃO estão
-        disponíveis em português, apenas inglês.
+        NÃO usamos Presidio para PERSON, PHONE, EMAIL, LOCATION pois já temos:
+        - BERT NER (melhor para pt-BR)
+        - NuNER (melhor para pt-BR)  
+        - spaCy NER (pt_core_news_lg)
+        - Regex customizado (53 patterns)
         """
         findings = []
         if not self.presidio_analyzer:
             return findings
         
         try:
-            # Analisa com todos os recognizers customizados disponíveis
+            # Apenas entidades que COMPLEMENTAM nosso sistema
+            entidades_complementares = [
+                'IP_ADDRESS',      # Nosso regex é básico
+                'IBAN_CODE',       # Não temos pattern
+                'CREDIT_CARD',     # Presidio tem validação de Luhn
+            ]
+            
+            # Mapeamento para nossos tipos
+            entity_map = {
+                'IP_ADDRESS': 'IP',
+                'IBAN_CODE': 'CONTA_BANCARIA_INTERNACIONAL',
+                'CREDIT_CARD': 'CARTAO_CREDITO',
+            }
+            
+            # Analisa em português (consistente com o resto do sistema)
             results = self.presidio_analyzer.analyze(
                 text=texto,
                 language="pt",
+                entities=entidades_complementares,
                 score_threshold=0.5
             )
             
             for result in results:
-                # Usa o tipo diretamente (já são nossos tipos customizados GDF)
-                tipo = result.entity_type
+                tipo = entity_map.get(result.entity_type, result.entity_type)
                 valor = texto[result.start:result.end]
                 
                 # Ignora se já detectamos pelo nosso regex
@@ -3015,7 +3016,7 @@ class PIIDetector:
                 })
             
             if findings:
-                logger.debug(f"[Presidio] Detectou {len(findings)} entidades GDF")
+                logger.debug(f"[Presidio] Detectou {len(findings)} entidades complementares")
                 
         except Exception as e:
             logger.debug(f"[Presidio] Erro na análise: {e}")
@@ -3228,9 +3229,6 @@ def detect_pii_presidio(text: str, entities: List[str] = None, language: str = '
     """
     Detecta entidades PII usando o Presidio Analyzer.
     
-    NOTA: Usa registry customizado para evitar warnings de idioma não suportado.
-    Os recognizers built-in do Presidio (en/es/it/pl) NÃO são carregados.
-    
     Args:
         text: Texto de entrada
         entities: Lista de entidades a buscar (opcional)
@@ -3242,21 +3240,7 @@ def detect_pii_presidio(text: str, entities: List[str] = None, language: str = '
     if not PRESIDIO_AVAILABLE:
         raise RuntimeError("Presidio não está instalado. Execute: pip install presidio-analyzer")
     
-    # Cria registry customizado SEM recognizers built-in
-    registry = RecognizerRegistry()
-    registry.supported_languages = ["pt"]
-    
-    # Adiciona SpacyRecognizer para NER básico em português
-    spacy_recognizer = SpacyRecognizer(
-        supported_language="pt",
-        supported_entities=["PERSON", "LOCATION", "ORGANIZATION", "DATE"]
-    )
-    registry.add_recognizer(spacy_recognizer)
-    
-    analyzer = AnalyzerEngine(
-        supported_languages=["pt"],
-        registry=registry
-    )
+    analyzer = AnalyzerEngine()
     results = analyzer.analyze(text=text, entities=entities, language=language)
     
     return [
