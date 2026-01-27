@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Eye,
   FileInput, FileOutput,
+  FileText,
   FolderTree,
   Github,
   Globe,
@@ -484,6 +485,59 @@ export function Documentation() {
 ├── package.json             # Dependências npm
 ├── tailwind.config.ts       # Configuração Tailwind
 └── vite.config.ts           # Configuração Vite`}</CodeBlock>
+
+            {/* Documentação Markdown */}
+            <h4 className="font-semibold text-foreground mb-3 mt-6 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-warning" />
+              Documentação Markdown (README.md)
+            </h4>
+            <div className="grid md:grid-cols-3 gap-4">
+              <a
+                href="https://github.com/marinhothiago/desafio-participa-df/blob/main/README.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-4 bg-muted/50 rounded-lg border border-border hover:border-primary/50 transition-colors group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <span className="font-semibold text-foreground group-hover:text-primary transition-colors">README.md (Raiz)</span>
+                  <ExternalLink className="w-3 h-3 text-muted-foreground ml-auto" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Documentação geral do projeto: visão geral, instalação, execução e metodologia completa.
+                </p>
+              </a>
+              <a
+                href="https://github.com/marinhothiago/desafio-participa-df/blob/main/backend/README.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-4 bg-muted/50 rounded-lg border border-border hover:border-success/50 transition-colors group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Server className="w-5 h-5 text-success" />
+                  <span className="font-semibold text-foreground group-hover:text-success transition-colors">backend/README.md</span>
+                  <ExternalLink className="w-3 h-3 text-muted-foreground ml-auto" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Motor Híbrido v9.6.0: arquitetura do detector, API endpoints, CLI e configuração.
+                </p>
+              </a>
+              <a
+                href="https://github.com/marinhothiago/desafio-participa-df/blob/main/frontend/README.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-4 bg-muted/50 rounded-lg border border-border hover:border-blue-500/50 transition-colors group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Layout className="w-5 h-5 text-blue-500" />
+                  <span className="font-semibold text-foreground group-hover:text-blue-500 transition-colors">frontend/README.md</span>
+                  <ExternalLink className="w-3 h-3 text-muted-foreground ml-auto" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Interface React: componentes, páginas, integração com backend e padrão DSGOV.
+                </p>
+              </a>
+            </div>
           </div>
         </TabsContent>
 
