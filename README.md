@@ -16,15 +16,7 @@
 
 > **Motor híbrido de detecção de Informações Pessoais Identificáveis (PII)** para conformidade com LGPD e LAI em manifestações do Participa DF.
 > 
-> 🎉 **v9.6.0**: Sistema com **F1-Score = 1.0000** (100% precisão e recall) em auditoria LGPD completa (156 PIIs mapeados) + 452 testes unitários.
-> 
-> 🆕 **Novidades v9.6.0**: Árbitro LLM ativado por padrão, Presidio com recognizers customizados GDF, validação completa de DV (CPF/CNPJ), análise de contexto avançada (reidentificação).
-
-> **Política de Deploy:**
-> - O build de produção (Docker/Hugging Face) inclui apenas código-fonte, dependências e a amostra oficial `AMOSTRA_e-SIC.xlsx`.
-> - O diretório `scripts/` é exclusivo para automações/limpeza local e nunca vai para produção.
-> - O `.dockerignore` garante que apenas arquivos essenciais e a amostra permitida vão para o build.
-
+> 🎉 Sistema com **F1-Score = 1.0000** (100% precisão e recall) em auditoria LGPD completa (156 PIIs mapeados) + 452 testes unitários.
 
 | 🌐 **Links de Produção**                                               |  URL |
 |------------------------------------------------------------------------|-------|
@@ -54,7 +46,7 @@
 
 ## 📋 Objetivo da Solução
 
-O **Participa DF - PII Detector** é um sistema completo para **detectar, classificar e avaliar o risco de vazamento de dados pessoais** em textos de manifestações públicas do Governo do Distrito Federal.
+O **Participa DF - PII Detector** é um sistema completo para **detectar, classificar e avaliar o risco de vazamento de dados pessoais** em textos de pedidos de acesso a informação recebidos pelo GDF.
 
 ### Problema Resolvido
 
@@ -75,7 +67,7 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 
 ---
 
-## 🏗️ Arquitetura do Sistema (2026)
+## 🏗️ Arquitetura do Sistema
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -122,6 +114,51 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
+---
+
+### Tecnologias Utilizadas
+
+#### Backend (Motor de IA)
+
+| Tecnologia | Versão | Função |
+|------------|--------|--------|
+| **Python** | 3.10+ | Linguagem principal |
+| **FastAPI** | 0.110.0 | Framework web assíncrono |
+| **spaCy** | 3.8.0 | NLP para português (`pt_core_news_lg`) |
+| **Transformers** | 4.41.2 | BERT NER (`monilouise/ner_news_portuguese`) |
+| **NuNER** | - | NER multilíngue (`numind/NuNER_Zero`) |
+| **PyTorch** | 2.1.0 | Deep learning (CPU) |
+| **Presidio Analyzer** | 2.2.360+ | Framework Microsoft para detecção de PII |
+| **Llama 3.2** | 3B-Instruct | Árbitro LLM via HuggingFace Inference API |
+| **huggingface_hub** | latest | InferenceClient para chamadas LLM |
+| **scikit-learn** | 1.3.0+ | Calibração isotônica de confiança |
+| **Pandas** | 2.2.1 | Processamento de dados tabulares |
+| **Celery** | 5.3.0+ | Processamento assíncrono de lotes |
+| **Redis** | - | Broker para filas Celery |
+
+#### Modelos de IA
+
+| Modelo | Tipo | Função |
+|--------|------|--------|
+| `monilouise/ner_news_portuguese` | BERT NER | Detecção de nomes (pt-BR especializado) |
+| `numind/NuNER_Zero` | NER Zero-shot | Detecção multilíngue (backup) |
+| `pt_core_news_lg` | spaCy | NER português (fallback) |
+| `meta-llama/Llama-3.2-3B-Instruct` | LLM | Árbitro para casos ambíguos |
+
+#### Frontend (Interface)
+
+| Tecnologia | Versão | Função |
+|------------|--------|--------|
+| React | 18.3.1 | Biblioteca UI |
+| TypeScript | 5.8.3 | Tipagem estática |
+| Vite | 5.4.19 | Build tool ultra-rápido |
+| TailwindCSS | 3.4.17 | Estilização (Design DSGOV) |
+| Shadcn/UI | latest | Componentes acessíveis |
+| Recharts | 2.15.4 | Gráficos e visualizações |
+| React Query | 5.83.0 | Cache e estado de requisições |
+| XLSX | 0.18.5 | Parser de arquivos Excel |
+
+---
 
 ### Recursos do Backend
 
@@ -131,7 +168,7 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 - **Análise de contexto avançada**: Distingue endereço em contexto de fiscalização/urbanismo vs residência pessoal.
 - **Gazetteer institucional GDF**: Filtro de falsos positivos para nomes de órgãos, escolas, hospitais e aliases do DF.
 - **Sistema de confiança probabilística**: Calibração isotônica, combinação log-odds, thresholds dinâmicos por tipo, explicabilidade total.
-- **Novo formato de resposta da API**: Dicionário estruturado, pronto para integrações modernas.
+- **Formato de resposta da API**: Dicionário estruturado, pronto para integrações modernas.
 - **Testes robustos**: 452 testes unitários, edge cases, benchmark LGPD, auditoria completa (156 PIIs).
 
 > 📚 Consulte o [backend/README.md](backend/README.md) para exemplos de uso, formato de resposta e detalhes técnicos.
@@ -142,7 +179,7 @@ Classificação automática como **"PÚBLICO"** (pode publicar) ou **"NÃO PÚBL
 
 O sistema utiliza o **Llama-3.2-3B-Instruct** como árbitro inteligente para casos ambíguos de detecção de PII.
 
-### Status: ✅ ATIVADO POR PADRÃO (v9.6.0)
+### Status: ✅ ATIVADO POR PADRÃO 
 
 | Aspecto | Detalhe |
 |---------|---------|
@@ -171,107 +208,13 @@ O árbitro LLM agora avalia **risco de reidentificação**:
 | Cidadão em manifestação | PII | "Me chamo Maria e moro na SQN 302" |
 | Dados sensíveis LGPD | CRÍTICO | Saúde, biométricos, menores |
 
-### Configuração Rápida
-
-```bash
-# .env (OBRIGATÓRIO)
-HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxx
-HF_MODEL=meta-llama/Llama-3.2-3B-Instruct  # Opcional (este é o padrão)
-PII_USE_LLM_ARBITRATION=false  # Opcional: desativar LLM em CI/testes
-```
 
 > 📚 **Documentação completa**: Consulte [backend/README.md](backend/README.md#-árbitro-llm-llama-32-3b-instruct-v950) ou [LLAMA_ARBITRAGE_LOGIC.md](LLAMA_ARBITRAGE_LOGIC.md)
 
----
-
-## 🆕 NOVO FORMATO DE RESPOSTA DA API
-
-O endpoint principal agora retorna um dicionário estruturado, exemplo:
-
-```json
-{
-  "has_pii": true,
-  "entities": [
-    {"tipo": "CPF", "valor": "123.456.789-09", "confianca": 0.98, "fonte": "regex"}
-  ],
-  "risk_level": "ALTO",
-  "confidence_all_found": 0.97,
-  "total_entities": 1,
-  "sources_used": ["regex", "bert_ner"]
-}
-```
-
-**Principais campos:**
-- `has_pii`: se encontrou dado pessoal
-- `entities`: lista detalhada de entidades (tipo, valor, confiança, fonte)
-- `risk_level`: nível de risco LGPD
-- `confidence_all_found`: confiança global
-- `total_entities`: total de entidades detectadas
-- `sources_used`: fontes usadas na detecção
-
-**Atenção:** O frontend agora deve consumir este novo formato. O formato antigo (tupla) foi descontinuado.
-
----
-
-## 🧪 ESTRATÉGIA DE TESTES
-
-- **Cobertura total:** edge cases, benchmark LGPD, análise de confiança, integração, regressão.
-- **Testes unitários:** funções isoladas (regex, validadores, calibradores).
-- **Testes de integração:** fluxo completo (detector + confiança + API).
-- **Testes de benchmark:** performance, recall, precisão, F1-score.
-- **Testes de filtragem:** robustez contra falsos positivos/negativos.
-
-**Executar todos os testes:**
-
-```bash
-cd backend
-
-# Ativar ambiente virtual (se necessário)
-# Windows: venv\Scripts\activate
-# Linux/Mac: source venv/bin/activate
-
-# Rodar todos os testes
-pytest --disable-warnings -q
-
-# Rodar com detalhes
-pytest -v
-
-# Rodar teste específico
-pytest tests/test_benchmark.py -v
-```
-
----
-
-## 🚦 MIGRAÇÃO DO FRONTEND PARA NOVA API
-
-1. Atualize o consumo da API para o novo formato de resposta (dicionário estruturado).
-2. Ajuste o parsing dos campos: use `has_pii`, `entities`, `risk_level`, `confidence_all_found`, etc.
-3. Aproveite os novos campos para exibir mais detalhes (confiança por entidade, fontes, etc).
-4. Remova qualquer dependência do formato antigo (tupla).
-5. Teste todos os fluxos do frontend.
-
-Consulte o backend/README.md para exemplos detalhados e documentação técnica.
-
----
-
-## 🚀 DESTAQUES E MELHORIAS RECENTES (v9.6.0)
-
-### 🆕 Novidades v9.6.0
-
-- 🤖 **Árbitro LLM ATIVADO por padrão:** Llama-3.2-3B-Instruct agora é ativado automaticamente para casos ambíguos
-- 🎯 **System Prompt Inteligente:** Avalia risco de reidentificação (número isolado vs número + nome/CPF)
-- ✅ **Validação completa de DV:** CPF e CNPJ com algoritmo oficial de dígito verificador
-- 🏛️ **Presidio com Recognizers Customizados:** 10 PatternRecognizers para padrões GDF (PROCESSO_SEI, MATRICULA_GDF, etc.)
-- 📍 **Análise de Contexto Avançada:** Distingue endereço em contexto de fiscalização vs residência
-- � **Explicabilidade (XAI):** Cada detecção inclui motivos, fontes, validações e contexto
-- 🔄 **Aprendizado Contínuo:** Feedback humano recalibra modelos automaticamente
-- 📊 **Auditoria LGPD Completa:** 153 PIIs mapeados manualmente, F1=100%
-
----
 
 ## 🔍 Explicabilidade (XAI)
 
-Cada entidade detectada agora inclui justificativa detalhada:
+Cada entidade detectada inclui justificativa detalhada:
 
 ```json
 {
@@ -313,18 +256,6 @@ O sistema implementa um ciclo de melhoria contínua:
 **Endpoints:** `POST /feedback`, `GET /feedback/stats`, `POST /feedback/generate-dataset`
 
 Consulte [backend/README.md](backend/README.md#-feedback-loop-como-o-motor-aprende-com-feedbacks-humanos) para documentação completa.
-
----
-
-### Melhorias Anteriores
-
-- 🔒 **Segurança total do token Hugging Face:** Uso obrigatório de `.env` (não versionado)
-- 🏛️ **Gazetteer institucional GDF:** Filtro de falsos positivos para órgãos, escolas, hospitais
-- 🧠 **Sistema de confiança probabilística:** Calibração isotônica + log-odds, thresholds dinâmicos
-- 🏆 **Benchmark LGPD/LAI:** 452 testes unitários, F1-score 1.0000
-- ⚡ **Pós-processamento de spans:** Normalização, merge/split, deduplicação avançada
-- 🐳 **Deploy profissional:** Docker Compose, Hugging Face Spaces, GitHub Pages
-- 📚 **Documentação detalhada:** Arquitetura completa do pipeline documentada no código
 
 ---
 
@@ -640,6 +571,37 @@ docker-compose down
 - Backend: http://localhost:7860
 - Frontend: http://localhost:3000
 
+---
+
+## 🧪 ESTRATÉGIA DE TESTES
+
+- **Cobertura total:** edge cases, benchmark LGPD, análise de confiança, integração, regressão.
+- **Testes unitários:** funções isoladas (regex, validadores, calibradores).
+- **Testes de integração:** fluxo completo (detector + confiança + API).
+- **Testes de benchmark:** performance, recall, precisão, F1-score.
+- **Testes de filtragem:** robustez contra falsos positivos/negativos.
+
+**Executar todos os testes:**
+
+```bash
+cd backend
+
+# Ativar ambiente virtual (se necessário)
+# Windows: venv\Scripts\activate
+# Linux/Mac: source venv/bin/activate
+
+# Rodar todos os testes
+pytest --disable-warnings -q
+
+# Rodar com detalhes
+pytest -v
+
+# Rodar teste específico
+pytest tests/test_benchmark.py -v
+```
+
+---
+
 ### 2.3 Formato de Dados (API /analyze)
 
 > **Critério 2b do Edital:** Formato de entrada e saída esperado ✅
@@ -694,6 +656,34 @@ man_001,"Solicito informações sobre minha situação cadastral."
 man_002,"Meu CPF é 123.456.789-09 e preciso de ajuda urgente."
 man_003,"Email para contato: joao.silva@gmail.com"
 ```
+
+---
+## 🆕 FORMATO DE RESPOSTA DA API
+
+O endpoint principal retorna um dicionário estruturado, exemplo:
+
+```json
+{
+  "has_pii": true,
+  "entities": [
+    {"tipo": "CPF", "valor": "123.456.789-09", "confianca": 0.98, "fonte": "regex"}
+  ],
+  "risk_level": "ALTO",
+  "confidence_all_found": 0.97,
+  "total_entities": 1,
+  "sources_used": ["regex", "bert_ner"]
+}
+```
+
+**Principais campos:**
+- `has_pii`: se encontrou dado pessoal
+- `entities`: lista detalhada de entidades (tipo, valor, confiança, fonte)
+- `risk_level`: nível de risco LGPD
+- `confidence_all_found`: confiança global
+- `total_entities`: total de entidades detectadas
+- `sources_used`: fontes usadas na detecção
+
+**Atenção:** O frontend deve consumir este formato.
 
 ---
 
@@ -767,6 +757,20 @@ class PIIDetector:
         # Ensemble OR: combina todos os achados com deduplicação
         # ...
 ```
+
+---
+
+## 🚀 Detecção PII com Microsoft Presidio
+
+O backend  suporta integração nativa com o [Presidio Analyzer](https://microsoft.github.io/presidio/), framework open-source da Microsoft para detecção e anonimização de dados sensíveis (PII).
+
+- Detectores customizáveis, manutenção facilitada
+- Suporte a múltiplos idiomas e entidades
+- Usado em conjunto com outros detectores (ensemble)
+
+Veja detalhes e exemplos em [backend/README.md](backend/README.md)
+
+---
 
 #### Arquitetura NER Dual (BERT + spaCy)
 
@@ -915,61 +919,7 @@ async def analyze(data: Dict[str, Optional[str]]) -> Dict:
     """
 ```
 
-### 3.2 Estrutura Lógica do Projeto
 
-| Pasta | Responsabilidade |
-|-------|------------------|
-| `backend/api/` | Endpoints HTTP (FastAPI) |
-| `backend/src/` | Lógica de negócio (detector PII) |
-| `backend/data/` | Entrada/saída de arquivos |
-| `frontend/src/pages/` | Páginas da aplicação |
-| `frontend/src/components/` | Componentes reutilizáveis |
-| `frontend/src/lib/` | Utilitários e cliente API |
-| `frontend/src/contexts/` | Estado global (React Context) |
-
-### 3.3 Tecnologias Utilizadas
-
-#### Backend (Motor de IA)
-
-| Tecnologia | Versão | Função |
-|------------|--------|--------|
-| **Python** | 3.10+ | Linguagem principal |
-| **FastAPI** | 0.110.0 | Framework web assíncrono |
-| **spaCy** | 3.8.0 | NLP para português (`pt_core_news_lg`) |
-| **Transformers** | 4.41.2 | BERT NER (`monilouise/ner_news_portuguese`) |
-| **NuNER** | - | NER multilíngue (`numind/NuNER_Zero`) |
-| **PyTorch** | 2.1.0 | Deep learning (CPU) |
-| **Presidio Analyzer** | 2.2.360+ | Framework Microsoft para detecção de PII |
-| **Llama 3.2** | 3B-Instruct | Árbitro LLM via HuggingFace Inference API |
-| **huggingface_hub** | latest | InferenceClient para chamadas LLM |
-| **scikit-learn** | 1.3.0+ | Calibração isotônica de confiança |
-| **Pandas** | 2.2.1 | Processamento de dados tabulares |
-| **Celery** | 5.3.0+ | Processamento assíncrono de lotes |
-| **Redis** | - | Broker para filas Celery |
-
-#### Modelos de IA
-
-| Modelo | Tipo | Função |
-|--------|------|--------|
-| `monilouise/ner_news_portuguese` | BERT NER | Detecção de nomes (pt-BR especializado) |
-| `numind/NuNER_Zero` | NER Zero-shot | Detecção multilíngue (backup) |
-| `pt_core_news_lg` | spaCy | NER português (fallback) |
-| `meta-llama/Llama-3.2-3B-Instruct` | LLM | Árbitro para casos ambíguos |
-
-#### Frontend (Interface)
-
-| Tecnologia | Versão | Função |
-|------------|--------|--------|
-| React | 18.3.1 | Biblioteca UI |
-| TypeScript | 5.8.3 | Tipagem estática |
-| Vite | 5.4.19 | Build tool ultra-rápido |
-| TailwindCSS | 3.4.17 | Estilização (Design DSGOV) |
-| Shadcn/UI | latest | Componentes acessíveis |
-| Recharts | 2.15.4 | Gráficos e visualizações |
-| React Query | 5.83.0 | Cache e estado de requisições |
-| XLSX | 0.18.5 | Parser de arquivos Excel |
-
----
 
 ## 🧪 Testes Automatizados & CI/CD (Novidades 2026)
 
@@ -1123,22 +1073,6 @@ python backend/scripts/main_cli.py --input backend/data/input/AMOSTRA_e-SIC.xlsx
 ## 🏆 Hackathon Participa DF
 
 Projeto desenvolvido para o **Hackathon Participa DF 2026 CGDF**. Este projeto cumpre todas as normas LGPD/LAI para transparência pública.
-
----
-
-## 🚀 Detecção PII com Microsoft Presidio
-
-O backend agora suporta integração nativa com o [Presidio Analyzer](https://microsoft.github.io/presidio/), framework open-source da Microsoft para detecção e anonimização de dados sensíveis (PII).
-
-- Detectores customizáveis, manutenção facilitada
-- Suporte a múltiplos idiomas e entidades
-- Pode ser usado em conjunto com outros detectores (ensemble)
-
-Veja detalhes e exemplos em [backend/README.md](backend/README.md)
-
-
-
----
 
 ## 📄 Licença
 
