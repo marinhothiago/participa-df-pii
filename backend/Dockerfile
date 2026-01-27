@@ -40,6 +40,10 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 RUN pip install --no-cache-dir \
     https://github.com/explosion/spacy-models/releases/download/pt_core_news_lg-3.8.0/pt_core_news_lg-3.8.0-py3-none-any.whl
 
+# 5.4 Modelo spaCy para inglês (usado pelo Presidio - 400MB, melhor baixar no build)
+RUN pip install --no-cache-dir \
+    https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+
 # 6. Pré-download dos modelos NER
 # 6.1 BERT Davlan multilíngue (PER, ORG, LOC, DATE)
 RUN python -c "from transformers import pipeline; print('📥 Baixando modelo BERT Davlan NER multilíngue...'); pipeline('ner', model='Davlan/bert-base-multilingual-cased-ner-hrl', aggregation_strategy='simple'); print('✅ BERT Davlan pronto!')"
