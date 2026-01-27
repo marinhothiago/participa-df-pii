@@ -1,3 +1,4 @@
+// Participa DF - Versão Final para Inscrição do Hackathon 2025
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";

@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║     DETECTOR DE PII - HACKATHON PARTICIPA-DF 2025                           ║
-║     Versão: 9.6.0 - Ensemble Híbrido + Árbitro LLM                          ║
+║     Versão: 9.6.1 - Versão Final para Inscrição                             ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 ARQUITETURA COMPLETA DO PIPELINE DE DETECÇÃO
