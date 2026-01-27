@@ -697,81 +697,175 @@ npm run dev
               5. Formatos de Dados
             </h3>
 
-            <div className="grid lg:grid-cols-2 gap-6">
-              {/* Entrada */}
-              <div className="p-5 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/30 rounded-xl">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 rounded-lg bg-primary/20">
-                    <FileInput className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-foreground">Entrada</h4>
-                    <p className="text-xs text-muted-foreground">Arquivo fonte para processamento</p>
-                  </div>
+            {/* Entrada */}
+            <div className="p-5 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/30 rounded-xl mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <FileInput className="w-6 h-6 text-primary" />
                 </div>
-
-                <p className="text-sm text-muted-foreground mb-4">
-                  Arquivo <strong className="text-foreground">Excel (.xlsx)</strong> ou <strong className="text-foreground">CSV</strong> com as seguintes colunas obrigatórias:
-                </p>
-
-                <div className="overflow-x-auto mb-4">
-                  <table className="w-full text-sm border border-border rounded overflow-hidden">
-                    <thead className="bg-muted">
-                      <tr>
-                        <th className="py-2 px-3 text-left font-semibold text-foreground">Coluna</th>
-                        <th className="py-2 px-3 text-left font-semibold text-foreground">Descrição</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-border">
-                        <td className="py-2 px-3"><code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs">ID</code></td>
-                        <td className="py-2 px-3 text-muted-foreground text-xs">Identificador único da manifestação</td>
-                      </tr>
-                      <tr className="border-t border-border">
-                        <td className="py-2 px-3"><code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs">Texto Mascarado</code></td>
-                        <td className="py-2 px-3 text-muted-foreground text-xs">Conteúdo do pedido/manifestação</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div>
+                  <h4 className="font-bold text-foreground">Entrada</h4>
+                  <p className="text-xs text-muted-foreground">Arquivo fonte para processamento</p>
                 </div>
+              </div>
 
-                <CodeBlock title="Exemplo CSV">{`ID,Texto Mascarado
+              <p className="text-sm text-muted-foreground mb-4">
+                Arquivo <strong className="text-foreground">Excel (.xlsx)</strong> ou <strong className="text-foreground">CSV</strong> com as seguintes colunas obrigatórias:
+              </p>
+
+              <div className="overflow-x-auto mb-4">
+                <table className="w-full text-sm border border-border rounded overflow-hidden">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="py-2 px-3 text-left font-semibold text-foreground">Coluna</th>
+                      <th className="py-2 px-3 text-left font-semibold text-foreground">Descrição</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-border">
+                      <td className="py-2 px-3"><code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs">ID</code></td>
+                      <td className="py-2 px-3 text-muted-foreground text-xs">Identificador único da manifestação</td>
+                    </tr>
+                    <tr className="border-t border-border">
+                      <td className="py-2 px-3"><code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs">Texto Mascarado</code></td>
+                      <td className="py-2 px-3 text-muted-foreground text-xs">Conteúdo do pedido/manifestação</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <CodeBlock title="Exemplo CSV">{`ID,Texto Mascarado
 12345,"Solicito informações sobre o servidor José Silva, CPF 123.456.789-00"
 12346,"Qual o orçamento da Secretaria de Educação em 2024?"`}</CodeBlock>
-              </div>
+            </div>
 
-              {/* Saída */}
-              <div className="p-5 bg-gradient-to-br from-success/10 via-success/5 to-transparent border-2 border-success/30 rounded-xl">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 rounded-lg bg-success/20">
-                    <FileOutput className="w-6 h-6 text-success" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-foreground">Saída</h4>
-                    <p className="text-xs text-muted-foreground">JSON estruturado com análise</p>
-                  </div>
+            {/* Saídas - Grid 3 colunas */}
+            <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <FileOutput className="w-4 h-4 text-success" />
+              Formatos de Saída
+            </h4>
+
+            <div className="grid lg:grid-cols-3 gap-4 mb-6">
+              {/* Saída API */}
+              <div className="p-4 bg-gradient-to-br from-success/10 via-success/5 to-transparent border-2 border-success/30 rounded-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <Server className="w-5 h-5 text-success" />
+                  <h5 className="font-bold text-foreground">API (JSON)</h5>
                 </div>
-
-                <p className="text-sm text-muted-foreground mb-4">
-                  Objeto JSON contendo classificação, risco, confiança e detalhes dos achados:
+                <p className="text-xs text-muted-foreground mb-3">
+                  Response estruturado com classificação, risco e achados detalhados.
                 </p>
-
-                <CodeBlock title="Response JSON">{`{
-  "classificacao": "NAO_PUBLICO",
-  "risco": "CRITICO",
-  "confianca": 0.98,
-  "detalhes": [
-    {
-      "tipo": "CPF",
-      "valor": "123.456.789-00"
-    },
-    {
-      "tipo": "NOME_PESSOAL",
-      "valor": "José Silva"
-    }
-  ]
+                <CodeBlock title="POST /analyze">{`{
+  "contem_pii": true,
+  "nivel_risco": "CRÍTICO",
+  "peso_risco": 5,
+  "tipos_pii": ["CPF", "NOME"],
+  "texto_anonimizado": "...",
+  "findings": [{...}],
+  "confianca": {...}
 }`}</CodeBlock>
               </div>
+
+              {/* Saída CLI */}
+              <div className="p-4 bg-gradient-to-br from-warning/10 via-warning/5 to-transparent border-2 border-warning/30 rounded-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <Terminal className="w-5 h-5 text-warning" />
+                  <h5 className="font-bold text-foreground">CLI (Lote)</h5>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Processamento em massa com múltiplos formatos de exportação.
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="px-2 py-0.5 bg-success/20 text-success rounded font-medium">XLSX</span>
+                    <span className="text-muted-foreground">Colorido por nível de risco</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="px-2 py-0.5 bg-primary/20 text-primary rounded font-medium">CSV</span>
+                    <span className="text-muted-foreground">Compatível com planilhas</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="px-2 py-0.5 bg-warning/20 text-warning rounded font-medium">JSON</span>
+                    <span className="text-muted-foreground">Integração com sistemas</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Saída Frontend */}
+              <div className="p-4 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/30 rounded-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <Layout className="w-5 h-5 text-primary" />
+                  <h5 className="font-bold text-foreground">Frontend</h5>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Interface completa com recursos interativos.
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs">
+                    <CheckCircle2 className="w-3 h-3 text-success" />
+                    <span className="text-muted-foreground">Relatório dinâmico em tempo real</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <CheckCircle2 className="w-3 h-3 text-success" />
+                    <span className="text-muted-foreground">Dashboard com métricas</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <CheckCircle2 className="w-3 h-3 text-success" />
+                    <span className="text-muted-foreground">Aprendizado por feedback</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <CheckCircle2 className="w-3 h-3 text-success" />
+                    <span className="text-muted-foreground">Exportação XLSX, CSV, JSON</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <CheckCircle2 className="w-3 h-3 text-success" />
+                    <span className="text-muted-foreground">Documentação integrada</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Exemplo XLSX Colorido */}
+            <div className="p-4 bg-muted/50 rounded-lg border border-border">
+              <h5 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-warning" />
+                Exemplo: Saída XLSX Colorida (CLI)
+              </h5>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border border-border rounded">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="py-2 px-3 text-left">ID</th>
+                      <th className="py-2 px-3 text-left">Classificação</th>
+                      <th className="py-2 px-3 text-left">Risco</th>
+                      <th className="py-2 px-3 text-left">PIIs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="bg-red-100 dark:bg-red-950/30">
+                      <td className="py-2 px-3">12345</td>
+                      <td className="py-2 px-3">NÃO PÚBLICO</td>
+                      <td className="py-2 px-3 font-bold text-red-600">CRÍTICO</td>
+                      <td className="py-2 px-3">CPF, NOME</td>
+                    </tr>
+                    <tr className="bg-green-100 dark:bg-green-950/30">
+                      <td className="py-2 px-3">12346</td>
+                      <td className="py-2 px-3">PÚBLICO</td>
+                      <td className="py-2 px-3 font-bold text-green-600">SEGURO</td>
+                      <td className="py-2 px-3">-</td>
+                    </tr>
+                    <tr className="bg-orange-100 dark:bg-orange-950/30">
+                      <td className="py-2 px-3">12347</td>
+                      <td className="py-2 px-3">NÃO PÚBLICO</td>
+                      <td className="py-2 px-3 font-bold text-orange-600">ALTO</td>
+                      <td className="py-2 px-3">EMAIL, TELEFONE</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                📊 Linhas coloridas automaticamente por nível de risco para facilitar triagem visual.
+              </p>
             </div>
           </div>
         </TabsContent>
