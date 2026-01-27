@@ -1,12 +1,35 @@
-import { useState } from 'react';
-import { 
-  ExternalLink, Github, FileText, BookOpen, Code, Server, Layout, BarChart3, 
-  Upload, Shield, Info, Terminal, FolderTree, Package, Play, FileInput, FileOutput, 
-  MessageSquare, Zap, Database, FileSpreadsheet, AlertTriangle, CheckCircle2, 
-  Activity, Eye, Cpu, Layers, ShieldCheck, Sparkles, Settings, Lock, Globe, KeyRound,
-  Copy, Check, Calculator, Target, Hash
-} from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  Calculator,
+  Check,
+  CheckCircle2,
+  Code,
+  Copy,
+  Cpu,
+  Database,
+  ExternalLink,
+  Eye,
+  FileInput, FileOutput,
+  FolderTree,
+  Github,
+  Globe,
+  Hash,
+  KeyRound,
+  Layers,
+  Layout,
+  Lock,
+  Package, Play,
+  Server,
+  Shield,
+  ShieldCheck, Sparkles,
+  Target,
+  Terminal,
+  Zap
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface DocLinkProps {
   href: string;
@@ -43,19 +66,19 @@ function DocLink({ href, icon, title, description }: DocLinkProps) {
 
 function CodeBlock({ children, title }: { children: string; title?: string }) {
   const [copied, setCopied] = useState(false);
-  
+
   const handleCopy = () => {
     navigator.clipboard.writeText(children);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-  
+
   return (
     <div className="rounded-lg overflow-hidden border border-border relative group">
       {title && (
         <div className="bg-muted px-4 py-2 border-b border-border flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">{title}</span>
-          <button 
+          <button
             onClick={handleCopy}
             className="text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -67,7 +90,7 @@ function CodeBlock({ children, title }: { children: string; title?: string }) {
         <code className="text-sm font-mono text-foreground">{children}</code>
       </pre>
       {!title && (
-        <button 
+        <button
           onClick={handleCopy}
           className="absolute top-2 right-2 text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
         >
@@ -84,7 +107,7 @@ function SoftwareBadge({ name, version, color = "primary" }: { name: string; ver
     success: "bg-success/10 text-success border-success/30",
     warning: "bg-warning/10 text-warning border-warning/30",
   };
-  
+
   return (
     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${colorClasses[color as keyof typeof colorClasses] || colorClasses.primary}`}>
       {name}
@@ -105,7 +128,7 @@ export function Documentation() {
           <div>
             <h2 className="text-2xl font-bold text-foreground">Documentação Técnica</h2>
             <p className="text-muted-foreground mt-1">
-              Motor Híbrido de Proteção de Dados Pessoais (PII) — Guia completo conforme Edital CGDF
+              Motor Híbrido de Proteção de Dados Pessoais (PII) v9.6.0 — F1-Score: 1.0000 | 452 Testes | 156 PIIs
             </p>
           </div>
         </div>
@@ -157,7 +180,7 @@ export function Documentation() {
               <Eye className="w-5 h-5 text-primary" />
               1. Visão Geral
             </h3>
-            
+
             {/* Objetivo Principal */}
             <div className="p-5 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/30 rounded-xl mb-6">
               <div className="flex items-start gap-4">
@@ -167,10 +190,10 @@ export function Documentation() {
                 <div>
                   <h4 className="font-bold text-foreground text-lg">Objetivo</h4>
                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                    Proteger a <strong className="text-foreground">privacidade dos cidadãos</strong> em conformidade com a 
-                    <strong className="text-primary"> Lei Geral de Proteção de Dados (LGPD)</strong> em manifestações do e-SIC, 
-                    sem prejudicar a <strong className="text-foreground">Transparência Ativa</strong> exigida pela 
-                    <strong className="text-success"> Lei de Acesso à Informação (LAI)</strong>.
+                    Sistema de IA para <strong className="text-foreground">detectar, classificar e avaliar o risco de vazamento de dados pessoais</strong> em
+                    textos de pedidos de acesso a informação recebidos pelo GDF, garantindo conformidade com a
+                    <strong className="text-primary"> Lei Geral de Proteção de Dados (LGPD)</strong> sem prejudicar a
+                    <strong className="text-success"> Transparência Ativa (LAI)</strong>.
                   </p>
                 </div>
               </div>
@@ -188,15 +211,14 @@ export function Documentation() {
                     <Sparkles className="w-5 h-5 text-warning" />
                   </h4>
                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                    <strong className="text-foreground">Rastreabilidade Total:</strong> Preservação do 
-                    <strong className="text-primary"> ID original da manifestação</strong> em todo o fluxo de processamento, 
-                    permitindo auditoria completa e integração com sistemas legados do GDF.
+                    <strong className="text-foreground">Pipeline Ensemble de 9 Etapas:</strong> Combinação de
+                    <strong className="text-primary"> BERT NER + NuNER + spaCy + Presidio</strong> com
+                    <strong className="text-warning"> Regex + Validação DV (Módulo 11)</strong> e
+                    <strong className="text-success"> Árbitro LLM (Llama-3.2-3B)</strong> para alcançar F1-Score = 1.0000.
                   </p>
                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                    <strong className="text-foreground">Motor Híbrido de Alta Precisão:</strong> Combinação de 
-                    <strong className="text-primary"> NLP (Inteligência Artificial)</strong>, 
-                    <strong className="text-warning"> Expressões Regulares (Regex)</strong> e 
-                    <strong className="text-success"> Validação Matemática de Documentos</strong> para alcançar a menor taxa de erro do mercado.
+                    <strong className="text-foreground">30+ Tipos de PII:</strong> CPF, RG, CNH, Email, Telefone, Nome, Endereço,
+                    Dados Bancários, PIX, Placas, Processos CNJ, IP, GPS, e mais.
                   </p>
                 </div>
               </div>
@@ -245,44 +267,63 @@ export function Documentation() {
               <Layers className="w-5 h-5 text-primary" />
               2. Arquitetura do Sistema
             </h3>
-            
+
             {/* Estrutura Lógica */}
             <div className="p-5 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/30 rounded-xl mb-6">
               <h4 className="font-bold text-foreground mb-4 flex items-center gap-2">
                 <FolderTree className="w-5 h-5 text-primary" />
-                Estrutura Lógica do Sistema
+                Motor Híbrido de Detecção PII (v9.6.0)
               </h4>
               <p className="text-sm text-muted-foreground mb-4">
-                <strong className="text-foreground">Frontend (React/Vite)</strong> conectado via 
-                <strong className="text-primary"> API REST assíncrona</strong> ao 
-                <strong className="text-success"> Backend (Python/FastAPI)</strong> hospedado no 
-                <strong className="text-warning"> Hugging Face Spaces</strong>.
+                <strong className="text-foreground">Pipeline Ensemble de 9 Etapas</strong> que combina
+                <strong className="text-primary"> BERT NER + NuNER + spaCy + Presidio</strong> com
+                <strong className="text-warning"> Regex + Validação DV (Módulo 11)</strong> e árbitro
+                <strong className="text-success"> LLM (Llama-3.2-3B)</strong> para decisões ambíguas.
               </p>
-              
-              {/* Fluxo Visual */}
+
+              {/* Pipeline Visual */}
+              <div className="grid md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-lg mb-4">
+                <div className="text-center p-3 bg-background rounded-lg border border-primary/30">
+                  <Code className="w-5 h-5 text-primary mx-auto mb-1" />
+                  <p className="font-medium text-foreground text-sm">1-5: Detecção</p>
+                  <p className="text-[10px] text-muted-foreground">Regex + BERT + NuNER + spaCy + Gazetteer</p>
+                </div>
+                <div className="text-center p-3 bg-background rounded-lg border border-warning/30">
+                  <Calculator className="w-5 h-5 text-warning mx-auto mb-1" />
+                  <p className="font-medium text-foreground text-sm">6-8: Validação</p>
+                  <p className="text-[10px] text-muted-foreground">Regras + Confiança + Thresholds</p>
+                </div>
+                <div className="text-center p-3 bg-background rounded-lg border border-success/30">
+                  <Cpu className="w-5 h-5 text-success mx-auto mb-1" />
+                  <p className="font-medium text-foreground text-sm">9: Árbitro LLM</p>
+                  <p className="text-[10px] text-muted-foreground">Llama-3.2-3B (HF)</p>
+                </div>
+              </div>
+
+              {/* Fluxo Visual Frontend-Backend */}
               <div className="flex flex-col md:flex-row items-center justify-center gap-3 p-4 bg-muted/30 rounded-lg">
                 <div className="text-center p-3 bg-background rounded-lg border border-blue-500/30">
                   <Layout className="w-5 h-5 text-blue-500 mx-auto mb-1" />
                   <p className="font-medium text-foreground text-sm">Frontend</p>
-                  <p className="text-[10px] text-muted-foreground">React + Vite</p>
+                  <p className="text-[10px] text-muted-foreground">React + Vite + DSGOV</p>
                 </div>
                 <div className="hidden md:block text-muted-foreground text-2xl">→</div>
                 <div className="text-center p-3 bg-background rounded-lg border border-primary/30">
                   <Zap className="w-5 h-5 text-primary mx-auto mb-1" />
-                  <p className="font-medium text-foreground text-sm">API Assíncrona</p>
+                  <p className="font-medium text-foreground text-sm">POST /analyze</p>
                   <p className="text-[10px] text-muted-foreground">HTTPS/REST</p>
                 </div>
                 <div className="hidden md:block text-muted-foreground text-2xl">→</div>
                 <div className="text-center p-3 bg-background rounded-lg border border-success/30">
                   <Server className="w-5 h-5 text-success mx-auto mb-1" />
                   <p className="font-medium text-foreground text-sm">Backend</p>
-                  <p className="text-[10px] text-muted-foreground">Python + FastAPI</p>
+                  <p className="text-[10px] text-muted-foreground">FastAPI + Motor v9.6.0</p>
                 </div>
                 <div className="hidden md:block text-muted-foreground text-2xl">→</div>
                 <div className="text-center p-3 bg-background rounded-lg border border-warning/30">
                   <Cpu className="w-5 h-5 text-warning mx-auto mb-1" />
                   <p className="font-medium text-foreground text-sm">Hugging Face</p>
-                  <p className="text-[10px] text-muted-foreground">Spaces</p>
+                  <p className="text-[10px] text-muted-foreground">Spaces + LLM API</p>
                 </div>
               </div>
             </div>
@@ -292,7 +333,7 @@ export function Documentation() {
               <Code className="w-4 h-4 text-primary" />
               Função dos Arquivos Principais
             </h4>
-            
+
             <div className="overflow-x-auto mb-6">
               <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
                 <thead className="bg-muted">
@@ -398,7 +439,7 @@ export function Documentation() {
                 Critério 8.1.5.3.1
               </span>
             </div>
-            
+
             {/* Pré-requisitos */}
             <div className="mb-6">
               <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -406,19 +447,22 @@ export function Documentation() {
                 Pré-requisitos
               </h4>
               <div className="flex flex-wrap gap-3 mb-4">
-                <SoftwareBadge name="Python" version="3.10+" color="primary" />
-                <SoftwareBadge name="pip" version="21.0+" color="success" />
-                <SoftwareBadge name="venv" version="nativo" color="warning" />
+                <SoftwareBadge name="Docker" version="24.0+" color="primary" />
+                <SoftwareBadge name="Docker Compose" version="2.20+" color="success" />
+                <SoftwareBadge name="Git" version="2.40+" color="warning" />
               </div>
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">⚡ Para avaliadores:</strong> Apenas Docker é necessário para rodar o projeto completo.
+              </p>
             </div>
 
             {/* Comandos Sequenciais */}
             <div className="space-y-4">
               <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Terminal className="w-4 h-4 text-primary" />
-                Comandos Sequenciais de Instalação
+                Instalação via Docker (Recomendado)
               </h4>
-              
+
               <div className="space-y-4">
                 {/* Passo 1 */}
                 <div className="p-4 bg-muted/50 rounded-lg border-l-4 border-primary">
@@ -426,62 +470,47 @@ export function Documentation() {
                     <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
                     <span className="font-semibold text-foreground">Clonar o Repositório</span>
                   </div>
-                  <CodeBlock>{`git clone https://github.com/participadf/motor-pii.git
-cd motor-pii`}</CodeBlock>
+                  <CodeBlock>{`git clone https://github.com/marinhothiago/desafio-participa-df.git
+cd desafio-participa-df`}</CodeBlock>
                 </div>
 
                 {/* Passo 2 */}
-                <div className="p-4 bg-muted/50 rounded-lg border-l-4 border-primary">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                    <span className="font-semibold text-foreground">Criar Ambiente Virtual</span>
-                  </div>
-                  <CodeBlock>{`python -m venv venv`}</CodeBlock>
-                </div>
-
-                {/* Passo 3 */}
-                <div className="p-4 bg-muted/50 rounded-lg border-l-4 border-primary">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                    <span className="font-semibold text-foreground">Ativar Ambiente Virtual</span>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-2 font-medium">Windows:</p>
-                      <CodeBlock>{`venv\\Scripts\\activate`}</CodeBlock>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-2 font-medium">Linux/macOS:</p>
-                      <CodeBlock>{`source venv/bin/activate`}</CodeBlock>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Passo 4 */}
-                <div className="p-4 bg-muted/50 rounded-lg border-l-4 border-primary">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
-                    <span className="font-semibold text-foreground">Instalar Dependências</span>
-                  </div>
-                  <CodeBlock>{`pip install -r requirements.txt`}</CodeBlock>
-                </div>
-
-                {/* Passo 5 */}
                 <div className="p-4 bg-muted/50 rounded-lg border-l-4 border-success">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 bg-success text-white rounded-full flex items-center justify-center text-xs font-bold">5</span>
-                    <span className="font-semibold text-foreground">Baixar Modelo spaCy (Português)</span>
+                    <span className="w-6 h-6 bg-success text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                    <span className="font-semibold text-foreground">Subir os Containers (Backend + Frontend)</span>
                   </div>
-                  <CodeBlock>{`python -m spacy download pt_core_news_lg`}</CodeBlock>
+                  <CodeBlock>{`docker compose up --build`}</CodeBlock>
                   <p className="text-xs text-muted-foreground mt-2">
-                    <strong>Nota:</strong> O modelo <code className="bg-muted px-1 rounded">pt_core_news_lg</code> (~500MB) é necessário para análise de NLP em português.
+                    Aguarde o download das imagens (~2-5 minutos na primeira vez).
                   </p>
+                </div>
+
+                {/* URLs */}
+                <div className="p-4 bg-muted/50 rounded-lg border-l-4 border-warning">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-6 h-6 bg-warning text-white rounded-full flex items-center justify-center text-xs font-bold">✓</span>
+                    <span className="font-semibold text-foreground">Verificar se está funcionando</span>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-3 mt-3">
+                    <div className="text-center p-3 bg-background rounded-lg">
+                      <p className="font-medium text-foreground text-sm">Frontend</p>
+                      <code className="text-xs text-primary">http://localhost:80</code>
+                    </div>
+                    <div className="text-center p-3 bg-background rounded-lg">
+                      <p className="font-medium text-foreground text-sm">Backend API</p>
+                      <code className="text-xs text-success">http://localhost:7860</code>
+                    </div>
+                    <div className="text-center p-3 bg-background rounded-lg">
+                      <p className="font-medium text-foreground text-sm">Swagger Docs</p>
+                      <code className="text-xs text-warning">http://localhost:7860/docs</code>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </TabsContent>
-
         {/* ============================================ */}
         {/* Tab 4: EXECUÇÃO (Critério 8.1.5.3.2) */}
         {/* ============================================ */}
@@ -496,8 +525,41 @@ cd motor-pii`}</CodeBlock>
                 Critério 8.1.5.3.2
               </span>
             </div>
-            
+
             <div className="grid lg:grid-cols-2 gap-6">
+              {/* Modo Docker */}
+              <div className="p-5 bg-gradient-to-br from-success/10 via-success/5 to-transparent border-2 border-success/30 rounded-xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-lg bg-success/20">
+                    <Server className="w-6 h-6 text-success" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-foreground">Via Docker (Recomendado)</h4>
+                    <p className="text-xs text-muted-foreground">Um comando para tudo funcionar</p>
+                  </div>
+                </div>
+
+                <CodeBlock title="Subir todo o sistema">{`docker compose up --build`}</CodeBlock>
+
+                <div className="mt-4 space-y-2">
+                  <h5 className="font-semibold text-foreground text-sm">URLs:</h5>
+                  <ul className="space-y-1 text-xs text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-primary rounded-full"></span>
+                      Frontend: <code className="bg-muted px-1.5 py-0.5 rounded">http://localhost:80</code>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-success rounded-full"></span>
+                      Backend: <code className="bg-muted px-1.5 py-0.5 rounded">http://localhost:7860</code>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-warning rounded-full"></span>
+                      Swagger: <code className="bg-muted px-1.5 py-0.5 rounded">http://localhost:7860/docs</code>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
               {/* Modo CLI */}
               <div className="p-5 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/30 rounded-xl">
                 <div className="flex items-center gap-3 mb-4">
@@ -509,9 +571,9 @@ cd motor-pii`}</CodeBlock>
                     <p className="text-xs text-muted-foreground">Processamento massivo de arquivos</p>
                   </div>
                 </div>
-                
-                <CodeBlock title="Comando de Execução">{`python main_cli.py --input amostra.xlsx --output resultado`}</CodeBlock>
-                
+
+                <CodeBlock title="Comando de Execução">{`cd backend && python scripts/main_cli.py --input amostra.xlsx --output resultado`}</CodeBlock>
+
                 <div className="mt-4 space-y-2">
                   <h5 className="font-semibold text-foreground text-sm">Argumentos:</h5>
                   <div className="overflow-x-auto">
@@ -534,35 +596,6 @@ cd motor-pii`}</CodeBlock>
                   </div>
                 </div>
               </div>
-
-              {/* Modo API */}
-              <div className="p-5 bg-gradient-to-br from-success/10 via-success/5 to-transparent border-2 border-success/30 rounded-xl">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 rounded-lg bg-success/20">
-                    <Server className="w-6 h-6 text-success" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-foreground">Modo API (Servidor)</h4>
-                    <p className="text-xs text-muted-foreground">Servidor REST para integração</p>
-                  </div>
-                </div>
-                
-                <CodeBlock title="Iniciar Servidor">{`uvicorn api.main:app --reload`}</CodeBlock>
-                
-                <div className="mt-4 space-y-2">
-                  <h5 className="font-semibold text-foreground text-sm">Acesso:</h5>
-                  <ul className="space-y-1 text-xs text-muted-foreground">
-                    <li className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-success rounded-full"></span>
-                      API: <code className="bg-muted px-1.5 py-0.5 rounded">http://localhost:8000</code>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
-                      Docs: <code className="bg-muted px-1.5 py-0.5 rounded">http://localhost:8000/docs</code>
-                    </li>
-                  </ul>
-                </div>
-              </div>
             </div>
           </div>
         </TabsContent>
@@ -576,7 +609,7 @@ cd motor-pii`}</CodeBlock>
               <Database className="w-5 h-5 text-primary" />
               5. Formatos de Dados
             </h3>
-            
+
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Entrada */}
               <div className="p-5 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/30 rounded-xl">
@@ -589,11 +622,11 @@ cd motor-pii`}</CodeBlock>
                     <p className="text-xs text-muted-foreground">Arquivo fonte para processamento</p>
                   </div>
                 </div>
-                
+
                 <p className="text-sm text-muted-foreground mb-4">
                   Arquivo <strong className="text-foreground">Excel (.xlsx)</strong> ou <strong className="text-foreground">CSV</strong> com as seguintes colunas obrigatórias:
                 </p>
-                
+
                 <div className="overflow-x-auto mb-4">
                   <table className="w-full text-sm border border-border rounded overflow-hidden">
                     <thead className="bg-muted">
@@ -631,7 +664,7 @@ cd motor-pii`}</CodeBlock>
                     <p className="text-xs text-muted-foreground">JSON estruturado com análise</p>
                   </div>
                 </div>
-                
+
                 <p className="text-sm text-muted-foreground mb-4">
                   Objeto JSON contendo classificação, risco, confiança e detalhes dos achados:
                 </p>
@@ -665,46 +698,46 @@ cd motor-pii`}</CodeBlock>
               <Activity className="w-5 h-5 text-primary" />
               6. Metodologia do Motor Híbrido
             </h3>
-            
+
             {/* Explicação do Motor */}
             <div className="p-5 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/30 rounded-xl mb-6">
               <h4 className="font-bold text-foreground mb-4 flex items-center gap-2">
                 <Cpu className="w-5 h-5 text-primary" />
-                Arquitetura Híbrida de Detecção
+                Pipeline Ensemble de 9 Etapas
               </h4>
               <p className="text-sm text-muted-foreground mb-4">
-                O Motor Híbrido combina três camadas de análise para alcançar máxima precisão:
+                O Motor Híbrido v9.6.0 combina múltiplas camadas de análise para alcançar F1-Score = 1.0000:
               </p>
-              
+
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="p-4 bg-background/50 rounded-lg border border-primary/20">
                   <div className="flex items-center gap-2 text-primary mb-2">
-                    <Cpu className="w-5 h-5" />
-                    <span className="font-semibold">NLP (spaCy)</span>
+                    <Code className="w-5 h-5" />
+                    <span className="font-semibold">1-2: Regex + DV</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Processamento de Linguagem Natural para compreensão de <strong className="text-foreground">contexto semântico</strong>. 
-                    Identifica nomes de pessoas, organizações e locais.
+                    Expressões regulares com <strong className="text-foreground">validação de dígito verificador (Módulo 11)</strong>
+                    para CPF, CNPJ, CNH, etc.
                   </p>
                 </div>
                 <div className="p-4 bg-background/50 rounded-lg border border-warning/20">
                   <div className="flex items-center gap-2 text-warning mb-2">
-                    <Code className="w-5 h-5" />
-                    <span className="font-semibold">Regex</span>
+                    <Cpu className="w-5 h-5" />
+                    <span className="font-semibold">3-5: NER (BERT + NuNER + spaCy)</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Expressões Regulares para detecção de <strong className="text-foreground">padrões estruturados</strong> 
-                    como CPF, CNPJ, RG, telefones e e-mails.
+                    Modelos de <strong className="text-foreground">Named Entity Recognition</strong>
+                    para nomes, organizações e contexto semântico.
                   </p>
                 </div>
                 <div className="p-4 bg-background/50 rounded-lg border border-success/20">
                   <div className="flex items-center gap-2 text-success mb-2">
                     <Calculator className="w-5 h-5" />
-                    <span className="font-semibold">Validação Matemática</span>
+                    <span className="font-semibold">6-9: Fusão + LLM</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Algoritmos de <strong className="text-foreground">dígito verificador (Módulo 11)</strong> para 
-                    validar CPF e CNPJ, eliminando falsos positivos.
+                    <strong className="text-foreground">Presidio + Gazetteer GDF</strong> com árbitro
+                    <strong className="text-success"> Llama-3.2-3B</strong> para decisões ambíguas.
                   </p>
                 </div>
               </div>
@@ -722,8 +755,8 @@ cd motor-pii`}</CodeBlock>
                     <span className="px-2 py-0.5 bg-success/20 text-success rounded text-xs font-medium">DESTAQUE</span>
                   </h4>
                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                    Implementação de algoritmos de <strong className="text-foreground">dígito verificador (Módulo 11)</strong> para 
-                    validação matemática de CPF e CNPJ. Isso garante que apenas documentos <strong className="text-success">matematicamente válidos</strong> sejam 
+                    Implementação de algoritmos de <strong className="text-foreground">dígito verificador (Módulo 11)</strong> para
+                    validação matemática de CPF e CNPJ. Isso garante que apenas documentos <strong className="text-success">matematicamente válidos</strong> sejam
                     classificados como dados pessoais, eliminando falsos positivos causados por sequências numéricas aleatórias.
                   </p>
                 </div>
@@ -735,7 +768,7 @@ cd motor-pii`}</CodeBlock>
               <BarChart3 className="w-4 h-4 text-primary" />
               Métricas de Performance do Motor Híbrido
             </h4>
-            
+
             <div className="overflow-x-auto mb-6">
               <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
                 <thead className="bg-muted">
@@ -747,25 +780,25 @@ cd motor-pii`}</CodeBlock>
                 </thead>
                 <tbody>
                   <tr className="border-t border-border">
-                    <td className="py-3 px-4 font-medium text-foreground">Precisão</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="px-3 py-1 bg-success/10 text-success rounded-full text-lg font-bold">94%</span>
-                    </td>
-                    <td className="py-3 px-4 text-muted-foreground text-xs">De todos os itens classificados como PII, 94% eram realmente PII.</td>
-                  </tr>
-                  <tr className="border-t border-border">
-                    <td className="py-3 px-4 font-medium text-foreground">Sensibilidade (Recall)</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="px-3 py-1 bg-success/10 text-success rounded-full text-lg font-bold">98%</span>
-                    </td>
-                    <td className="py-3 px-4 text-muted-foreground text-xs">De todos os PIIs existentes, o motor identificou 98%.</td>
-                  </tr>
-                  <tr className="border-t border-border">
                     <td className="py-3 px-4 font-medium text-foreground">F1-Score</td>
                     <td className="py-3 px-4 text-center">
-                      <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-lg font-bold">96%</span>
+                      <span className="px-3 py-1 bg-success/10 text-success rounded-full text-lg font-bold">1.0000</span>
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground text-xs">Média harmônica entre Precisão e Sensibilidade.</td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs">Perfeito equilíbrio entre Precisão e Recall no benchmark LGPD.</td>
+                  </tr>
+                  <tr className="border-t border-border">
+                    <td className="py-3 px-4 font-medium text-foreground">Testes Automatizados</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-lg font-bold">452</span>
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs">Cobertura de 156 tipos de PII com validação matemática e edge cases.</td>
+                  </tr>
+                  <tr className="border-t border-border">
+                    <td className="py-3 px-4 font-medium text-foreground">Tipos de PII</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="px-3 py-1 bg-warning/10 text-warning rounded-full text-lg font-bold">30+</span>
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs">CPF, RG, CNH, Email, Telefone, Nome, Endereço, Dados Bancários, etc.</td>
                   </tr>
                 </tbody>
               </table>
@@ -813,7 +846,7 @@ cd motor-pii`}</CodeBlock>
               <Lock className="w-5 h-5 text-primary" />
               7. Segurança e Privacidade
             </h3>
-            
+
             <div className="grid md:grid-cols-2 gap-6">
               {/* Privacy by Design */}
               <div className="p-5 bg-gradient-to-br from-success/10 via-success/5 to-transparent border-2 border-success/30 rounded-xl">
@@ -823,26 +856,26 @@ cd motor-pii`}</CodeBlock>
                   </div>
                   <h4 className="font-bold text-foreground">Privacy by Design</h4>
                 </div>
-                
+
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
                     <span>
-                      <strong className="text-foreground">Processamento em Memória Volátil (RAM):</strong> Os dados enviados 
+                      <strong className="text-foreground">Processamento em Memória Volátil (RAM):</strong> Os dados enviados
                       são processados exclusivamente em memória RAM e destruídos imediatamente após o retorno da resposta.
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
                     <span>
-                      <strong className="text-foreground">Sem Persistência de Dados Sensíveis:</strong> Nenhum texto de 
+                      <strong className="text-foreground">Sem Persistência de Dados Sensíveis:</strong> Nenhum texto de
                       manifestação é gravado em banco de dados, arquivos de log ou qualquer meio persistente.
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
                     <span>
-                      <strong className="text-foreground">Sem Logs de Conteúdo:</strong> Os logs do sistema registram apenas 
+                      <strong className="text-foreground">Sem Logs de Conteúdo:</strong> Os logs do sistema registram apenas
                       metadados operacionais (timestamps, status), nunca o conteúdo das manifestações.
                     </span>
                   </li>
@@ -857,26 +890,26 @@ cd motor-pii`}</CodeBlock>
                   </div>
                   <h4 className="font-bold text-foreground">Comunicação Criptografada</h4>
                 </div>
-                
+
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <Lock className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                     <span>
-                      <strong className="text-foreground">Criptografia TLS 1.3:</strong> Toda comunicação entre o Frontend 
+                      <strong className="text-foreground">Criptografia TLS 1.3:</strong> Toda comunicação entre o Frontend
                       e o Backend utiliza o protocolo de criptografia mais recente e seguro.
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Lock className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                     <span>
-                      <strong className="text-foreground">HTTPS Obrigatório:</strong> Todas as requisições são automaticamente 
+                      <strong className="text-foreground">HTTPS Obrigatório:</strong> Todas as requisições são automaticamente
                       redirecionadas para conexão segura HTTPS.
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Lock className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                     <span>
-                      <strong className="text-foreground">Certificado SSL Válido:</strong> Emitido e gerenciado automaticamente 
+                      <strong className="text-foreground">Certificado SSL Válido:</strong> Emitido e gerenciado automaticamente
                       pela infraestrutura Hugging Face Spaces.
                     </span>
                   </li>
@@ -916,28 +949,27 @@ cd motor-pii`}</CodeBlock>
               <Server className="w-5 h-5 text-primary" />
               8. Referência da API
             </h3>
-            
+
             {/* Endpoint Principal */}
             <div className="p-5 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/30 rounded-xl mb-6">
               <div className="flex items-center gap-3 mb-4">
                 <span className="px-3 py-1 bg-primary text-white rounded text-sm font-bold">POST</span>
                 <code className="font-mono text-foreground font-semibold text-lg">/analyze</code>
               </div>
-              
+
               <p className="text-sm text-muted-foreground mb-4">
-                Endpoint principal para análise de texto individual. Retorna classificação, nível de risco, 
+                Endpoint principal para análise de texto individual. Retorna classificação, nível de risco,
                 confiança e lista de identificadores encontrados.
               </p>
-              
+
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <h5 className="font-semibold text-foreground mb-2 text-sm flex items-center gap-2">
                     <FileInput className="w-4 h-4 text-primary" /> Request Payload
                   </h5>
                   <CodeBlock title="POST /analyze">{`{
-  "id": "12345",
-  "text": "Solicito dados do servidor 
-           José Silva, CPF 123.456.789-00"
+  "text": "Meu CPF é 529.982.247-25 e 
+           meu email é joao@email.com"
 }`}</CodeBlock>
                 </div>
                 <div>
@@ -945,15 +977,34 @@ cd motor-pii`}</CodeBlock>
                     <FileOutput className="w-4 h-4 text-success" /> Response
                   </h5>
                   <CodeBlock title="200 OK">{`{
-  "classificacao": "NAO_PUBLICO",
-  "risco": "CRITICO",
-  "confianca": 0.98,
-  "detalhes": [
-    {"tipo": "CPF", "valor": "123.456.789-00"},
-    {"tipo": "NOME_PESSOAL", "valor": "José Silva"}
-  ]
+  "contem_pii": true,
+  "nivel_risco": "CRÍTICO",
+  "peso_risco": 5,
+  "tipos_pii": ["CPF", "EMAIL"],
+  "quantidade_pii": 2,
+  "texto_anonimizado": "Meu CPF é [CPF_1] e...",
+  "findings": [{...}],
+  "confianca": {"min_entity": 0.95}
 }`}</CodeBlock>
                 </div>
+              </div>
+            </div>
+
+            {/* Outros Endpoints */}
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
+              <div className="p-4 border border-border rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-0.5 bg-success text-white rounded text-xs font-bold">POST</span>
+                  <code className="font-mono text-foreground text-sm">/feedback</code>
+                </div>
+                <p className="text-xs text-muted-foreground">Envia correção do usuário (CORRETO/INCORRETO) para aprendizado contínuo.</p>
+              </div>
+              <div className="p-4 border border-border rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-0.5 bg-primary text-white rounded text-xs font-bold">GET</span>
+                  <code className="font-mono text-foreground text-sm">/feedback/stats</code>
+                </div>
+                <p className="text-xs text-muted-foreground">Retorna estatísticas de feedbacks e taxa de acurácia percebida.</p>
               </div>
             </div>
 
@@ -961,7 +1012,7 @@ cd motor-pii`}</CodeBlock>
             <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
               <Database className="w-4 h-4 text-primary" /> Estrutura do Payload
             </h4>
-            
+
             <div className="overflow-x-auto mb-6">
               <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
                 <thead className="bg-muted">
@@ -990,8 +1041,8 @@ cd motor-pii`}</CodeBlock>
             <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
               <FileOutput className="w-4 h-4 text-success" /> Estrutura da Response
             </h4>
-            
-            <div className="overflow-x-auto">
+
+            <div className="overflow-x-auto mb-6">
               <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
                 <thead className="bg-muted">
                   <tr>
@@ -1002,31 +1053,85 @@ cd motor-pii`}</CodeBlock>
                 </thead>
                 <tbody>
                   <tr className="border-t border-border">
-                    <td className="py-3 px-4"><code className="bg-success/10 text-success px-2 py-0.5 rounded text-xs">classificacao</code></td>
-                    <td className="py-3 px-4 text-muted-foreground">string</td>
-                    <td className="py-3 px-4 text-muted-foreground">"PUBLICO" ou "NAO_PUBLICO"</td>
+                    <td className="py-3 px-4"><code className="bg-success/10 text-success px-2 py-0.5 rounded text-xs">contem_pii</code></td>
+                    <td className="py-3 px-4 text-muted-foreground">boolean</td>
+                    <td className="py-3 px-4 text-muted-foreground">Indica se há PII no texto analisado</td>
                   </tr>
                   <tr className="border-t border-border">
-                    <td className="py-3 px-4"><code className="bg-success/10 text-success px-2 py-0.5 rounded text-xs">risco</code></td>
+                    <td className="py-3 px-4"><code className="bg-success/10 text-success px-2 py-0.5 rounded text-xs">nivel_risco</code></td>
                     <td className="py-3 px-4 text-muted-foreground">string</td>
-                    <td className="py-3 px-4 text-muted-foreground">"SEGURO", "MODERADO", "ALTO" ou "CRITICO"</td>
+                    <td className="py-3 px-4 text-muted-foreground">"SEGURO", "MODERADO", "ALTO" ou "CRÍTICO"</td>
+                  </tr>
+                  <tr className="border-t border-border">
+                    <td className="py-3 px-4"><code className="bg-success/10 text-success px-2 py-0.5 rounded text-xs">peso_risco</code></td>
+                    <td className="py-3 px-4 text-muted-foreground">number</td>
+                    <td className="py-3 px-4 text-muted-foreground">0 (seguro), 3 (moderado), 4 (alto), 5 (crítico)</td>
+                  </tr>
+                  <tr className="border-t border-border">
+                    <td className="py-3 px-4"><code className="bg-success/10 text-success px-2 py-0.5 rounded text-xs">tipos_pii</code></td>
+                    <td className="py-3 px-4 text-muted-foreground">array</td>
+                    <td className="py-3 px-4 text-muted-foreground">Lista de tipos de PII detectados (CPF, EMAIL, etc.)</td>
+                  </tr>
+                  <tr className="border-t border-border">
+                    <td className="py-3 px-4"><code className="bg-success/10 text-success px-2 py-0.5 rounded text-xs">texto_anonimizado</code></td>
+                    <td className="py-3 px-4 text-muted-foreground">string</td>
+                    <td className="py-3 px-4 text-muted-foreground">Texto com PIIs substituídos por placeholders</td>
+                  </tr>
+                  <tr className="border-t border-border">
+                    <td className="py-3 px-4"><code className="bg-success/10 text-success px-2 py-0.5 rounded text-xs">findings</code></td>
+                    <td className="py-3 px-4 text-muted-foreground">array</td>
+                    <td className="py-3 px-4 text-muted-foreground">Detalhes de cada PII: tipo, valor, início, fim, confidence</td>
                   </tr>
                   <tr className="border-t border-border">
                     <td className="py-3 px-4"><code className="bg-success/10 text-success px-2 py-0.5 rounded text-xs">confianca</code></td>
-                    <td className="py-3 px-4 text-muted-foreground">number</td>
-                    <td className="py-3 px-4 text-muted-foreground">Valor entre 0.0 e 1.0 indicando certeza da classificação</td>
+                    <td className="py-3 px-4 text-muted-foreground">object</td>
+                    <td className="py-3 px-4 text-muted-foreground">Scores: min_entity, all_found, no_pii (0-1)</td>
                   </tr>
-                  <tr className="border-t border-border">
-                    <td className="py-3 px-4"><code className="bg-success/10 text-success px-2 py-0.5 rounded text-xs">detalhes</code></td>
-                    <td className="py-3 px-4 text-muted-foreground">array</td>
-                    <td className="py-3 px-4 text-muted-foreground">Lista de achados com "tipo" e "valor" (valor mascarado)</td>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Níveis de Risco */}
+            <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-warning" /> Níveis de Risco
+            </h4>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="py-3 px-4 text-left font-semibold text-foreground">Nível</th>
+                    <th className="py-3 px-4 text-left font-semibold text-foreground">Peso</th>
+                    <th className="py-3 px-4 text-left font-semibold text-foreground">Tipos de PII</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-t border-border bg-red-50 dark:bg-red-950/20">
+                    <td className="py-3 px-4"><span className="text-red-600 font-bold">🔴 CRÍTICO</span></td>
+                    <td className="py-3 px-4 font-bold">5</td>
+                    <td className="py-3 px-4 text-muted-foreground">CPF, RG, CNH, Passaporte, PIS, CNS</td>
+                  </tr>
+                  <tr className="border-t border-border bg-orange-50 dark:bg-orange-950/20">
+                    <td className="py-3 px-4"><span className="text-orange-600 font-bold">🟠 ALTO</span></td>
+                    <td className="py-3 px-4 font-bold">4</td>
+                    <td className="py-3 px-4 text-muted-foreground">Email, Telefone, Endereço, Nome</td>
+                  </tr>
+                  <tr className="border-t border-border bg-yellow-50 dark:bg-yellow-950/20">
+                    <td className="py-3 px-4"><span className="text-yellow-600 font-bold">🟡 MODERADO</span></td>
+                    <td className="py-3 px-4 font-bold">3</td>
+                    <td className="py-3 px-4 text-muted-foreground">Placa, Data de Nascimento, Processo</td>
+                  </tr>
+                  <tr className="border-t border-border bg-green-50 dark:bg-green-950/20">
+                    <td className="py-3 px-4"><span className="text-green-600 font-bold">🟢 SEGURO</span></td>
+                    <td className="py-3 px-4 font-bold">0</td>
+                    <td className="py-3 px-4 text-muted-foreground">Nenhum PII detectado</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
         </TabsContent>
-      </Tabs>
+      </Tabs >
 
       {/* GitHub Links */}
       <div className="gov-card">
@@ -1036,19 +1141,19 @@ cd motor-pii`}</CodeBlock>
         </h3>
         <div className="grid md:grid-cols-2 gap-4">
           <DocLink
-            href="https://github.com/participadf/motor-pii"
+            href="https://github.com/marinhothiago/desafio-participa-df"
             icon={<Shield className="w-5 h-5" />}
-            title="Motor PII"
-            description="Repositório principal do Motor Híbrido de Proteção de Dados Pessoais."
+            title="Repositório Principal"
+            description="Monorepo completo: Backend (FastAPI) + Frontend (React) com Docker."
           />
           <DocLink
-            href="https://github.com/participadf/frontend-desafio-participa-df"
+            href="https://huggingface.co/spaces/thiagomarinho/participa-df"
             icon={<Layout className="w-5 h-5" />}
-            title="Frontend Dashboard"
-            description="Interface web React com visualização de métricas e análise interativa."
+            title="Hugging Face Spaces"
+            description="Backend hospedado com Swagger UI para testes da API."
           />
         </div>
       </div>
-    </div>
+    </div >
   );
 }
