@@ -726,6 +726,24 @@ python3 -m venv .venv
 source .venv/bin/activate`}</CodeBlock>
                     </div>
 
+                    {/* Pré-requisitos Linux/macOS */}
+                    <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
+                        <div>
+                          <span className="font-medium text-foreground text-sm">Linux/macOS/WSL: Instale dependências de build primeiro</span>
+                          <CodeBlock>{`# Ubuntu/Debian/WSL (Windows Subsystem for Linux)
+sudo apt-get install -y build-essential cmake pkg-config
+
+# macOS (Homebrew)
+brew install cmake pkg-config`}</CodeBlock>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Necessário para compilar o pacote <code className="bg-muted px-1 rounded">sentencepiece</code>. No Windows nativo não é necessário.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="p-3 bg-background/50 rounded-lg border-l-4 border-success">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="w-5 h-5 bg-success text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>

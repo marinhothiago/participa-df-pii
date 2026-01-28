@@ -150,12 +150,29 @@ python scripts/main_cli.py \
 <details>
 <summary>📌 Execução local sem Docker (desenvolvimento)</summary>
 
+### Pré-requisitos Linux/macOS
+
+Antes de instalar as dependências Python, instale as ferramentas de compilação:
+
+```bash
+# Ubuntu/Debian/WSL
+sudo apt-get update
+sudo apt-get install -y build-essential cmake pkg-config
+
+# macOS (via Homebrew)
+brew install cmake pkg-config
+```
+
+### Backend
+
 ```bash
 # Backend
 cd backend
 python -m venv venv
-.\venv\Scripts\activate  # Windows
+source venv/bin/activate  # Linux/macOS
+# .\venv\Scripts\activate  # Windows
 pip install -r requirements.txt
+python -m spacy download pt_core_news_lg
 python -m uvicorn api.main:app --host 0.0.0.0 --port 7860 --reload
 
 # Frontend (outro terminal)

@@ -85,6 +85,24 @@ pinned: false
 
 **Requisitos de Sistema:** RAM 4GB+ (recomendado 8GB), Disco ~3GB para modelos NLP
 
+### Pré-requisitos Linux/macOS (Dependências de Build)
+
+Antes de instalar as dependências Python no Linux ou macOS, é necessário instalar ferramentas de compilação C++ para o pacote `sentencepiece`:
+
+```bash
+# Ubuntu/Debian/WSL (Windows Subsystem for Linux)
+sudo apt-get update
+sudo apt-get install -y build-essential cmake pkg-config
+
+# Fedora/RHEL
+sudo dnf install -y gcc-c++ cmake pkgconfig
+
+# macOS (via Homebrew)
+brew install cmake pkg-config
+```
+
+> **Nota:** No Windows, as dependências são instaladas automaticamente via wheels pré-compilados.
+
 ### Instalação Passo a Passo
 
 ```bash
