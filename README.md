@@ -150,32 +150,48 @@ python scripts/main_cli.py \
 <details>
 <summary>📌 Execução local sem Docker (desenvolvimento)</summary>
 
-### Pré-requisitos Linux/macOS
+### Backend (via Conda - Recomendado)
 
-Antes de instalar as dependências Python, instale as ferramentas de compilação:
+O projeto requer Python 3.10+ e ferramentas de compilação C++. Recomendamos o **Conda** para evitar conflitos (especialmente no Ubuntu 24.04+ e macOS).
 
 ```bash
-# Ubuntu/Debian/WSL (Windows Subsystem for Linux)
-sudo apt-get update
-sudo apt-get install -y build-essential cmake pkg-config
+# 1. Clonar e entrar no diretório
+git clone https://github.com/marinhothiago/desafio-participa-df.git
+cd desafio-participa-df/backend
 
-# macOS (via Homebrew)
-brew install cmake pkg-config
+# 2. Criar ambiente com Python 3.10 + ferramentas de build
+conda create -n participa_env python=3.10 cmake pkg-config -c conda-forge -y
+
+# 3. Ativar o ambiente
+conda activate participa_env
+
+# 4. Instalar dependências
+pip install -r requirements.txt
+python -m spacy download pt_core_news_lg
+
+# 5. Iniciar servidor
+python -m uvicorn api.main:app --host 0.0.0.0 --port 7860 --reload
 ```
 
-### Backend
+> 💡 Se for a primeira vez usando Conda, rode `conda init` e reinicie o terminal.
+
+<details>
+<summary>Alternativa: venv (apenas Windows)</summary>
 
 ```bash
-# Backend
 cd backend
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# .\venv\Scripts\activate  # Windows
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 python -m spacy download pt_core_news_lg
 python -m uvicorn api.main:app --host 0.0.0.0 --port 7860 --reload
+```
 
-# Frontend (outro terminal)
+</details>
+
+### Frontend
+
+```bash
 cd frontend
 npm install
 npm run dev

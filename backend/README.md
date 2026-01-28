@@ -85,25 +85,36 @@ pinned: false
 
 **Requisitos de Sistema:** RAM 4GB+ (recomendado 8GB), Disco ~3GB para modelos NLP
 
-### Pré-requisitos Linux/macOS (Dependências de Build)
+### Instalação via Conda (Recomendado)
 
-Antes de instalar as dependências Python no Linux ou macOS, é necessário instalar ferramentas de compilação C++ para o pacote `sentencepiece`:
+O projeto requer Python 3.10+ e ferramentas de compilação C++. Recomendamos fortemente o uso do **Conda** para evitar conflitos com o sistema operacional (especialmente no Ubuntu 24.04+ e macOS).
 
 ```bash
-# Ubuntu/Debian/WSL (Windows Subsystem for Linux)
-sudo apt-get update
-sudo apt-get install -y build-essential cmake pkg-config
+# 1. Entre na pasta backend
+cd desafio-participa-df/backend
 
-# Fedora/RHEL
-sudo dnf install -y gcc-c++ cmake pkgconfig
+# 2. Crie ambiente com Python 3.10 + ferramentas de build
+conda create -n participa_env python=3.10 cmake pkg-config -c conda-forge -y
 
-# macOS (via Homebrew)
-brew install cmake pkg-config
+# 3. Ative o ambiente
+conda activate participa_env
+
+# 4. Instale todas as dependências
+pip install -r requirements.txt
+
+# 5. Baixe o modelo spaCy (OBRIGATÓRIO)
+python -m spacy download pt_core_news_lg
+
+# 6. (Opcional) Configure o token Hugging Face para o árbitro LLM
+echo "HF_TOKEN=seu_token_aqui" > .env
 ```
 
-> **Nota:** No Windows, as dependências são instaladas automaticamente via wheels pré-compilados.
+> 💡 Se for a primeira vez usando Conda, rode `conda init` e reinicie o terminal.
 
-### Instalação Passo a Passo
+<details>
+<summary>📌 Alternativa: venv (apenas Windows)</summary>
+
+No Windows, as dependências C++ são instaladas automaticamente via wheels pré-compilados:
 
 ```bash
 # 1. Entre na pasta backend
@@ -113,10 +124,7 @@ cd desafio-participa-df/backend
 python -m venv venv
 
 # 3. Ative o ambiente
-# Windows:
 venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
 
 # 4. Instale PyTorch CPU (antes das outras dependências)
 pip install torch==2.1.0+cpu --index-url https://download.pytorch.org/whl/cpu
@@ -130,6 +138,8 @@ python -m spacy download pt_core_news_lg
 # 7. (Opcional) Configure o token Hugging Face para o árbitro LLM
 echo "HF_TOKEN=seu_token_aqui" > .env
 ```
+
+</details>
 
 ### Verificar Instalação
 
